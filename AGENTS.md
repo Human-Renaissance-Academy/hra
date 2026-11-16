@@ -6,6 +6,10 @@ This version has breaking changes — APIs, conventions, and file structure may 
 
 # HRA Platform — Agent Rules
 
+> **운영 우선 원칙 (2026-11-16):** HRA는 거의 1명이 개발·유지보수하고 항상 관여하기 어렵다. **Production 웹 1개만 상시 운영**하고, 개발은 로컬, 품질 검증은 필수 GitHub CI, Vercel Preview는 필요할 때만 사용한다. 별도 상시 Dev/QA/Staging과 PR별 Neon/Blob 생성은 기본 요구가 아니다. 운영 DB·PII·Private Blob·인증 보안과 복구 가능성은 축소하지 않는다. [환경 전략](docs/developer/environment-strategy.md), [1인 운영 체크리스트](docs/operations/solo-operations.md) 참조.
+>
+> 모바일·OpenAPI·monorepo 확대, 전면적인 기존 코드의 모듈 이동은 **#491의 실제 수요·유지 여력 결정 전 새 작업을 기본 보류**한다. 이미 구현된 API/모바일·보안/세션 데이터는 임의로 제거하지 않는다. 기존 설계의 예시는 조건부 장기 목표이며 현재 필수 선행조건이 아니다. 운영 품질·핵심 웹 기능·실제 위험 해결이 신규 아키텍처보다 우선한다.
+
 ## 1. 언어 규칙
 
 이 사이트는 **한글(Korean)** 사이트입니다.
@@ -57,6 +61,8 @@ src/
 ```
 
 ### 목표 아키텍처 전환 규칙
+
+> 아래 규칙은 이미 시작된 공용 Web/API 모듈과 **추가 구축을 승인한 경우**의 목표 구조다. 기존 웹 전체를 의무적으로 재배치하거나 mobile/iOS CI를 무조건 확대하지 않는다(#491/#492). 신규 기능에서 권한·저장·검증 경계를 명확히 하는 원칙은 계속 유효하다.
 
 현재 디렉터리 구조는 #277 전환 전의 legacy 구조다. 신규 기능과 구조 개편 대상은 [플랫폼 아키텍처](docs/developer/platform-architecture.md)를 따른다.
 
@@ -197,7 +203,7 @@ src/app/(admin)/admin/[feature]/
 - **DB**: 단위 테스트는 필요한 경우 mock, DB 경합·제약은 격리 PostgreSQL 사용
 - **Blob**: 대부분 mock, 실제 업로드 검증은 별도 E2E에서 수행
 - **CI(현재)**: lint/typecheck/Vitest/build·일반 Playwright smoke와 별도 학사 G1 검증(`test:academic-g1`). 모든 E2E 파일이 기본 실행되는 것은 아니다.
-- **CI(목표)**: server integration + API contract/OpenAPI + web build/E2E + mobile typecheck + Android build + iOS compile/build check
+- **CI(조건부 장기 목표)**: 실제 모바일 출시를 결정한 경우에만 server integration + API contract/OpenAPI + web build/E2E + mobile typecheck + Android/iOS build 확대. 현재는 웹 필수 안전 회귀·운영 배포 점검을 우선하고 중복·무의미한 검사 비용을 #492에서 측정하여 줄인다.
 
 ## 10. 배포
 
