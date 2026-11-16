@@ -1,8 +1,8 @@
 # HRA 멀티클라이언트 플랫폼 아키텍처
 
-> 상태: **목표 아키텍처**. 현재 `main`의 디렉터리 구조를 설명하는 문서가 아니라 #277에서 진행하는 구조 개편의 정본이다.
+> 상태: **수요 승인 시의 장기 목표 아키텍처(조건부)**. 현재 `main` 상태나 필수 웹 배포 선행조건이 아니다. 2026-11-16부터 기본은 1인 저관여 웹 운영이며 모바일·monorepo 신규 확대는 #491 판단 전 보류한다. 현재 실행 정책은 [환경 전략](environment-strategy.md)을 우선한다.
 
-HRA는 Web만 제공하는 사이트에서 **Web + Android + iOS**를 지원하는 하나의 서비스 플랫폼으로 확장한다. 실서비스 전 구조 변경 비용이 낮은 시점을 활용하되, 이미 검증된 학사 도메인·DB 제약·인가·Private Blob·감사·테스트를 버리지 않는다.
+HRA는 현재 **Web 운영 안정성**을 우선하며, 실수요·출시 책임·운영 여력이 확보된 경우에만 **Web + Android + iOS** 플랫폼 확장을 재개한다. 실서비스 전 구조 변경 비용이 낮은 시점을 활용하되, 이미 검증된 학사 도메인·DB 제약·인가·Private Blob·감사·테스트를 버리지 않는다.
 
 ## 처음 읽는 분을 위한 안내
 
@@ -257,16 +257,16 @@ NotificationService는 FCM/APNs/Expo provider와 application event를 분리한�
 
 환경 분리는 [환경 분리 및 배포 전략](environment-strategy.md)을 정본으로 한다.
 
-기본은 **Local Development → PR Preview/Test → Production**이며, 고정 Staging은 Android/iOS 내부 배포나 반복 pre-production 검수가 실제로 필요해질 때만 추가한다.
+현재 기본은 **Local Development → GitHub CI → Production(상시 1개)**이며 PR Preview는 필요한 경우에만 격리 테스트 데이터로 사용한다. 고정 Staging은 Android/iOS 내부 배포나 외부 검수가 실제로 필요하고 유지 여력이 확인될 때만 추가한다.
 
 - Preview는 Production DB/Blob/PII를 사용하지 않는다.
 - DB migration은 Vercel build와 분리한다.
 - monorepo 전환 뒤 `apps/web`은 Vercel, `apps/mobile`은 Expo EAS가 담당한다.
 - Web/Android/iOS release는 서로 독립적으로 실행·롤백 가능해야 한다.
 
-## 11. CI 목표
+## 11. CI 목표(모바일 확대 결정 이후에만 적용)
 
-monorepo PR 하나에서 가능한 범위로 다음을 검증한다.
+현재는 필수 Web CI, 보안·권한/DB 회귀, Production 배포 SHA·smoke/장애 알림을 우선하고 #492에서 중복·수작업을 줄인다. **아래는 #491에 따라 모바일 지속을 결정한 경우** monorepo PR에서 필요한 범위로 검증할 장기 목표다.
 
 - 코드 규칙과 타입 검사
 - 서버 단위 검사와 격리 PostgreSQL 통합 검사
