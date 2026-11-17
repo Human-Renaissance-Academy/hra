@@ -13,7 +13,7 @@ import remarkRehype from "remark-rehype";
 import rehypeRaw from "rehype-raw";
 import rehypeSanitize from "rehype-sanitize";
 import rehypeStringify from "rehype-stringify";
-import { isAllowedImageUrl, sanitizeSchema } from "@/lib/markdown/sanitize";
+import { isAllowedImageUrl, resolveAllowedImageSrc, sanitizeSchema } from "@/lib/markdown/sanitize";
 
 async function renderMarkdown(input: string): Promise<string> {
   const file = await unified()
@@ -50,7 +50,7 @@ describe("sanitizeSchema", () => {
   });
 
   it("javascript: URL을 차단한다", async () => {
-    const out = await renderMarkdown('[클릭](javascript:alert(1))');
+    const out = await renderMarkdown("[클릭](javascript:alert(1))");
     expect(out).not.toContain("javascript:");
   });
 
@@ -80,9 +80,9 @@ describe("sanitizeSchema", () => {
 
 describe("isAllowedImageUrl", () => {
   it("프로젝트 Blob 저장소의 이미지는 허용한다", () => {
-    expect(
-      isAllowedImageUrl("https://4sompt13gxwuz2x8.public.blob.vercel-storage.com/x.png"),
-    ).toBe(true);
+    expect(isAllowedImageUrl("https://4sompt13gxwuz2x8.public.blob.vercel-storage.com/x.png")).toBe(
+      true,
+    );
   });
 
   it("다른 Blob 저장소와 허용 호스트의 하위 도메인은 거부한다", () => {
@@ -108,8 +108,50 @@ describe("isAllowedImageUrl", () => {
   });
 
   it("http(비암호화)는 거부한다", () => {
+    expect(isAllowedImageUrl("http://blob.vercel-storage.com/x.png")).toBe(false);
+  });
+});
+
+// 현재 배포 origin은 서버 설정으로만 주입하며 반환 경로도 외부 origin이 되지 않아야 합니다.
+describe("환경별 사이트 이미지 origin", () => {
+  const origin = "https://hra-custom.invalid";
+  it.each([origin, "https://hra-preview.vercel.app", "https://localhost"])(
+    "%s를 정확히 일치하는 HTTPS origin으로 허용한다",
+    (trusted) => {
+      expect(isAllowedImageUrl(`${trusted}/images/a.png?x=1#표지`, trusted)).toBe(true);
+    },
+  );
+  it.each([
+    "http://hra-custom.invalid/x.png",
+    "data:image/png;base64,eA==",
+    "javascript:alert(1)",
+    "//outside.invalid/x.png",
+    "/\\outside.invalid/x.png",
+    "https://outside.invalid/x.png",
+    "https://sub.hra-custom.invalid/x.png",
+    "https://user@hra-custom.invalid/x.png",
+    "https://user:pass@hra-custom.invalid/x.png",
+    "https://hra-custom.invalid:444/x.png",
+    "https://hra-custom.invalid//outside.invalid/x.png",
+    "https://hra-custom.invalid/a/..//outside.invalid/x.png",
+    "https://hra-custom.invalid/\\outside.invalid/x.png",
+  ])("위험 URL을 거부한다: %s", (url) => {
+    expect(isAllowedImageUrl(url, origin)).toBe(false);
+  });
+  it("HTTP 개발 설정은 절대 HTTP 이미지 허용 근거가 아니다", () => {
+    expect(isAllowedImageUrl("http://localhost:3000/a.png", "http://localhost:3000")).toBe(false);
+    expect(isAllowedImageUrl("/a.png", "http://localhost:3000")).toBe(true);
+  });
+  it("경로·검색어·조각은 URL parser의 인코딩 결과 그대로 반환한다", () => {
+    expect(resolveAllowedImageSrc(`${origin}/images/표지.png?x=1&y=2#cover`, origin)).toBe(
+      "/images/%ED%91%9C%EC%A7%80.png?x=1&y=2#cover",
+    );
+  });
+  it("기본 443 정규화와 기존 Blob·운영 URL 호환을 유지한다", () => {
+    expect(isAllowedImageUrl("https://hra-custom.invalid:443/a.png", origin)).toBe(true);
+    expect(isAllowedImageUrl("https://hra-website-theta.vercel.app/a.png", origin)).toBe(true);
     expect(
-      isAllowedImageUrl("http://blob.vercel-storage.com/x.png"),
-    ).toBe(false);
+      isAllowedImageUrl("https://4sompt13gxwuz2x8.public.blob.vercel-storage.com/a.png", origin),
+    ).toBe(true);
   });
 });

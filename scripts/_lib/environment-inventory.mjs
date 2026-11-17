@@ -740,7 +740,7 @@ export const environmentInventory = {
     {
       path: "scripts/verify-markdown-boundary.mjs",
       expression:
-        'Object.fromEntries(["PATH", "HOME", "TMPDIR", "TMP", "TEMP", "SYSTEMROOT"]\n    .filter(key => process.env[key]).map(key => [key, process.env[key]]))',
+        'Object.fromEntries(["PATH", "HOME", "TMPDIR", "TMP", "TEMP", "SYSTEMROOT"].filter((key) => process.env[key]).map((key) => [key, process.env[key]]),)',
       reason:
         "Markdown 경계 검증 실행기의 기존 여섯 시스템 값만 새 자식 환경으로 복사; 작업 디렉터리의 .env 파일 로딩까지 차단한다는 뜻은 아님",
       names: ["PATH", "HOME", "TMPDIR", "TMP", "TEMP", "SYSTEMROOT"],

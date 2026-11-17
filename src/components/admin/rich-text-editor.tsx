@@ -17,6 +17,7 @@
  * 공개 import 경로(`@/components/admin/rich-text-editor`)와 `RichTextEditor` props는 그대로입니다.
  */
 
+import { useSiteImageOrigin } from "@/components/markdown/site-image-origin-provider";
 import { useCspNonce } from "@/components/security/csp-nonce-provider";
 import { useEditor, EditorContent, useEditorState } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
@@ -51,15 +52,25 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { MarkdownViewer } from "@/components/markdown/markdown-viewer";
-import { Dialog, DialogClose, DialogContent, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
 // 표 스트립 방향 — 오른쪽(열 추가) or 아래쪽(행 추가)
 type TableEdge = "right" | "bottom";
 
 // 표 스트립 절대 좌표 (에디터 콘텐츠 컨테이너 기준)
 type TableBounds = {
-  top: number; left: number; right: number; bottom: number;
-  width: number; height: number;
+  top: number;
+  left: number;
+  right: number;
+  bottom: number;
+  width: number;
+  height: number;
 };
 
 /**
@@ -95,6 +106,7 @@ export function RichTextEditor({
 }: RichTextEditorProps) {
   // RSC 탐색 뒤에도 현재 문서가 허용한 nonce를 유지한다.
   const nonce = useCspNonce();
+  const trustedSiteOrigin = useSiteImageOrigin();
   const [internalValue, setInternalValue] = useState(value ?? defaultValue);
 
   // 에디터 표시 모드
@@ -228,7 +240,7 @@ export function RichTextEditor({
         if (fileInputRef.current) fileInputRef.current.value = "";
       }
     },
-    [editor]
+    [editor],
   );
 
   // 파일 input 변경 → 업로드
@@ -237,7 +249,7 @@ export function RichTextEditor({
       const file = e.target.files?.[0];
       if (file) void uploadAndInsert(file);
     },
-    [uploadAndInsert]
+    [uploadAndInsert],
   );
 
   // 에디터 영역에 이미지 파일을 드래그앤드롭했을 때 업로드
@@ -248,7 +260,7 @@ export function RichTextEditor({
       e.preventDefault();
       void uploadAndInsert(file);
     },
-    [uploadAndInsert]
+    [uploadAndInsert],
   );
 
   // 행/열 추가·삭제 후 rAF 안에서 호출해 표 스트립 위치를 최신 DOM 기준으로 갱신
@@ -259,9 +271,11 @@ export function RichTextEditor({
       if (!container) return;
       // 마지막으로 활성화된 표 우선, 없으면 첫 번째 표 fallback
       const tableEl =
-        lastActiveTableElRef.current ??
-        container.querySelector(".tableWrapper table");
-      if (!tableEl) { setTableBounds(null); return; }
+        lastActiveTableElRef.current ?? container.querySelector(".tableWrapper table");
+      if (!tableEl) {
+        setTableBounds(null);
+        return;
+      }
       const cRect = container.getBoundingClientRect();
       const wRect = tableEl.getBoundingClientRect();
       setTableBounds({
@@ -315,9 +329,17 @@ export function RichTextEditor({
     const bottom = Math.round(wRect.bottom - cRect.top);
     const width = Math.round(wRect.width);
     const height = Math.round(wRect.height);
-    setTableBounds(prev => {
-      if (prev && prev.top === top && prev.left === left && prev.right === right &&
-          prev.bottom === bottom && prev.width === width && prev.height === height) return prev;
+    setTableBounds((prev) => {
+      if (
+        prev &&
+        prev.top === top &&
+        prev.left === left &&
+        prev.right === right &&
+        prev.bottom === bottom &&
+        prev.width === width &&
+        prev.height === height
+      )
+        return prev;
       return { top, left, right, bottom, width, height };
     });
   }, []);
@@ -455,7 +477,7 @@ export function RichTextEditor({
         const lastCell = existingCells[existingCells.length - 1] as HTMLElement | undefined;
         // colwidth 속성 우선, 없으면 DOM offsetWidth 사용
         const prevWidth = lastCell
-          ? (parseInt(lastCell.getAttribute("colwidth") ?? "", 10) || lastCell.offsetWidth || null)
+          ? parseInt(lastCell.getAttribute("colwidth") ?? "", 10) || lastCell.offsetWidth || null
           : null;
 
         const pos = findFirstRowLastCellPos();
@@ -481,7 +503,10 @@ export function RichTextEditor({
                 for (let d = $pos.depth; d >= 0; d--) {
                   const n = $pos.node(d);
                   if (n.type.name === "tableCell" || n.type.name === "tableHeader") {
-                    pmTr = pmTr.setNodeMarkup($pos.before(d), null, { ...n.attrs, colwidth: [prevWidth] });
+                    pmTr = pmTr.setNodeMarkup($pos.before(d), null, {
+                      ...n.attrs,
+                      colwidth: [prevWidth],
+                    });
                     changed = true;
                     break;
                   }
@@ -524,7 +549,8 @@ export function RichTextEditor({
 
         if (diff > 0) {
           for (let i = 0; i < diff; i++) {
-            if (edge === "bottom") addRowAtEnd(); else addColAtEnd();
+            if (edge === "bottom") addRowAtEnd();
+            else addColAtEnd();
             actualDelta++;
           }
         } else if (diff < 0) {
@@ -547,7 +573,8 @@ export function RichTextEditor({
 
         // 드래그 없이 클릭만 했으면 1개 추가
         if (!hasDragged) {
-          if (edge === "bottom") addRowAtEnd(); else addColAtEnd();
+          if (edge === "bottom") addRowAtEnd();
+          else addColAtEnd();
         }
         setDragInfo(null);
         // 표 크기 변화를 스트립 위치에 반영
@@ -630,14 +657,14 @@ export function RichTextEditor({
       // 이 경우 이미지를 따로 업로드하면 같은 클립보드 내용이 중복 삽입됩니다.
       if (e.clipboardData.getData("text/plain") || e.clipboardData.getData("text/html")) return;
       const imageItem = Array.from(e.clipboardData.items).find(
-        (item) => item.kind === "file" && item.type.startsWith("image/")
+        (item) => item.kind === "file" && item.type.startsWith("image/"),
       );
       const file = imageItem?.getAsFile();
       if (!file) return;
       e.preventDefault();
       void uploadAndInsert(file);
     },
-    [uploadAndInsert]
+    [uploadAndInsert],
   );
 
   // 표 안에 커서가 있는지 반응형으로 추적 — 인라인 컨트롤 바 표시 여부 결정
@@ -651,9 +678,13 @@ export function RichTextEditor({
   }
 
   return (
-    <Dialog open={mode === "preview"} onOpenChange={(open) => setMode(open ? "preview" : "edit")} modal>
-    {/* 에디터 내부 표 스타일 — prose 기본값을 보완해 셀 테두리·선택 하이라이트를 명시적으로 지정 */}
-    <style nonce={nonce}>{`
+    <Dialog
+      open={mode === "preview"}
+      onOpenChange={(open) => setMode(open ? "preview" : "edit")}
+      modal
+    >
+      {/* 에디터 내부 표 스타일 — prose 기본값을 보완해 셀 테두리·선택 하이라이트를 명시적으로 지정 */}
+      <style nonce={nonce}>{`
       .ProseMirror .tableWrapper { overflow-x: auto; }
       .ProseMirror table { border-collapse: collapse; table-layout: fixed; margin: 0; }
       .ProseMirror table td, .ProseMirror table th { border: 1px solid #D9D9D9; padding: 3px 8px; vertical-align: top; min-width: 40px; position: relative; box-sizing: border-box; }
@@ -664,389 +695,431 @@ export function RichTextEditor({
       .ProseMirror td:hover .column-resize-handle, .ProseMirror th:hover .column-resize-handle, .ProseMirror .resize-cursor .column-resize-handle { opacity: 1; }
       .ProseMirror.resize-cursor { cursor: col-resize; }
     `}</style>
-    <div className="w-full border border-[#D9D9D9] rounded-md overflow-hidden bg-white shadow-[var(--shadow-soft)]">
-      <div className="flex flex-wrap items-center gap-1 bg-gray-50 p-2 border-b border-[#D9D9D9]">
-        {/* fieldset[disabled] 로 소스 모드일 때 모든 WYSIWYG 툴바 버튼을 일괄 비활성화. */}
-        {/* display:contents 로 layout 영향 없이 disabled 만 자식 버튼들에 전파됨. */}
-        <fieldset disabled={mode !== "edit"} className="contents">
-          <ToolbarButton
-          onClick={() => editor.chain().focus().toggleBold().run()}
-          isActive={editor.isActive("bold")}
-          title="굵게 (Ctrl+B 또는 **텍스트**)"
-        >
-          <Bold className="w-4 h-4" />
-        </ToolbarButton>
-        <ToolbarButton
-          onClick={() => editor.chain().focus().toggleItalic().run()}
-          isActive={editor.isActive("italic")}
-          title="기울임 (Ctrl+I 또는 *텍스트*)"
-        >
-          <Italic className="w-4 h-4" />
-        </ToolbarButton>
-        <ToolbarButton
-          onClick={() => editor.chain().focus().toggleStrike().run()}
-          isActive={editor.isActive("strike")}
-          title="취소선 (~~텍스트~~)"
-        >
-          <Strikethrough className="w-4 h-4" />
-        </ToolbarButton>
-
-        <div className="w-[1px] h-4 bg-gray-300 mx-1" />
-
-        <ToolbarButton
-          onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
-          isActive={editor.isActive("heading", { level: 1 })}
-          title="제목 1 (# 텍스트)"
-        >
-          <Heading1 className="w-4 h-4" />
-        </ToolbarButton>
-        <ToolbarButton
-          onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
-          isActive={editor.isActive("heading", { level: 2 })}
-          title="제목 2 (## 텍스트)"
-        >
-          <Heading2 className="w-4 h-4" />
-        </ToolbarButton>
-        <ToolbarButton
-          onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
-          isActive={editor.isActive("heading", { level: 3 })}
-          title="제목 3 (### 텍스트)"
-        >
-          <Heading3 className="w-4 h-4" />
-        </ToolbarButton>
-
-        <div className="w-[1px] h-4 bg-gray-300 mx-1" />
-
-        <ToolbarButton
-          onClick={() => editor.chain().focus().toggleBulletList().run()}
-          isActive={editor.isActive("bulletList")}
-          title="기호 목록 (- 텍스트)"
-        >
-          <List className="w-4 h-4" />
-        </ToolbarButton>
-        <ToolbarButton
-          onClick={() => editor.chain().focus().toggleOrderedList().run()}
-          isActive={editor.isActive("orderedList")}
-          title="번호 목록 (1. 텍스트)"
-        >
-          <ListOrdered className="w-4 h-4" />
-        </ToolbarButton>
-        <ToolbarButton
-          onClick={() => editor.chain().focus().toggleBlockquote().run()}
-          isActive={editor.isActive("blockquote")}
-          title="인용구 (> 텍스트)"
-        >
-          <Quote className="w-4 h-4" />
-        </ToolbarButton>
-        <ToolbarButton
-          onClick={() => editor.chain().focus().toggleCodeBlock().run()}
-          isActive={editor.isActive("codeBlock")}
-          title="코드 블록 (```)"
-        >
-          <Code className="w-4 h-4" />
-        </ToolbarButton>
-
-        <div className="w-[1px] h-4 bg-gray-300 mx-1" />
-
-        <ToolbarButton
-          onClick={() => {
-            const previousUrl = editor.getAttributes("link").href;
-            const url = window.prompt("URL을 입력하세요:", previousUrl);
-            if (url === null) return;
-            if (url === "") {
-              editor.chain().focus().extendMarkRange("link").unsetLink().run();
-              return;
-            }
-            editor.chain().focus().extendMarkRange("link").setLink({ href: url }).run();
-          }}
-          isActive={editor.isActive("link")}
-          title="링크 삽입 ([텍스트](url))"
-        >
-          <LinkIcon className="w-4 h-4" />
-        </ToolbarButton>
-
-        <ToolbarButton
-          onClick={() => fileInputRef.current?.click()}
-          title="이미지 삽입 (![대체텍스트](url))"
-        >
-          <ImageIcon className="w-4 h-4" />
-        </ToolbarButton>
-        <input
-          type="file"
-          accept="image/*"
-          className="hidden"
-          ref={fileInputRef}
-          onChange={handleImageUpload}
-        />
-
-        <ToolbarButton
-          onClick={() => editor.chain().focus().setHorizontalRule().run()}
-          title="구분선 (---)"
-        >
-          <Minus className="w-4 h-4" />
-        </ToolbarButton>
-
-        <div className="w-[1px] h-4 bg-gray-300 mx-1" />
-
-        {/* 표 삽입 버튼 — 에디터 너비의 절반 크기로 기본 삽입 */}
-        <ToolbarButton
-          onClick={() => {
-            const container = editorContentRef.current;
-            // p-4 패딩(32px) 제외 후 절반을 3열로 나눠 각 열 너비 계산
-            const editorInnerWidth = container ? container.offsetWidth - 32 : 480;
-            const colW = Math.round(editorInnerWidth / 2 / 3);
-            editor.chain().focus().insertContent({
-              type: "table",
-              content: [
-                {
-                  type: "tableRow",
-                  content: [0, 1, 2].map(() => ({
-                    type: "tableHeader",
-                    attrs: { colspan: 1, rowspan: 1, colwidth: [colW] },
-                    content: [{ type: "paragraph" }],
-                  })),
-                },
-                ...[0, 1].map(() => ({
-                  type: "tableRow",
-                  content: [0, 1, 2].map(() => ({
-                    type: "tableCell",
-                    attrs: { colspan: 1, rowspan: 1, colwidth: [colW] },
-                    content: [{ type: "paragraph" }],
-                  })),
-                })),
-              ],
-            }).run();
-          }}
-          isActive={editor.isActive("table")}
-          title="표 삽입 (3×3, 헤더 포함)"
-        >
-          <Table2 className="w-4 h-4" />
-        </ToolbarButton>
-
-        {/* 표 안에 커서가 있을 때만 표시되는 조작 버튼 */}
-        {editor.isActive("table") && (
-          <>
-            <div className="w-[1px] h-4 bg-gray-300 mx-0.5" />
+      <div className="w-full border border-[#D9D9D9] rounded-md overflow-hidden bg-white shadow-[var(--shadow-soft)]">
+        <div className="flex flex-wrap items-center gap-1 bg-gray-50 p-2 border-b border-[#D9D9D9]">
+          {/* fieldset[disabled] 로 소스 모드일 때 모든 WYSIWYG 툴바 버튼을 일괄 비활성화. */}
+          {/* display:contents 로 layout 영향 없이 disabled 만 자식 버튼들에 전파됨. */}
+          <fieldset disabled={mode !== "edit"} className="contents">
             <ToolbarButton
+              onClick={() => editor.chain().focus().toggleBold().run()}
+              isActive={editor.isActive("bold")}
+              title="굵게 (Ctrl+B 또는 **텍스트**)"
+            >
+              <Bold className="w-4 h-4" />
+            </ToolbarButton>
+            <ToolbarButton
+              onClick={() => editor.chain().focus().toggleItalic().run()}
+              isActive={editor.isActive("italic")}
+              title="기울임 (Ctrl+I 또는 *텍스트*)"
+            >
+              <Italic className="w-4 h-4" />
+            </ToolbarButton>
+            <ToolbarButton
+              onClick={() => editor.chain().focus().toggleStrike().run()}
+              isActive={editor.isActive("strike")}
+              title="취소선 (~~텍스트~~)"
+            >
+              <Strikethrough className="w-4 h-4" />
+            </ToolbarButton>
+
+            <div className="w-[1px] h-4 bg-gray-300 mx-1" />
+
+            <ToolbarButton
+              onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
+              isActive={editor.isActive("heading", { level: 1 })}
+              title="제목 1 (# 텍스트)"
+            >
+              <Heading1 className="w-4 h-4" />
+            </ToolbarButton>
+            <ToolbarButton
+              onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
+              isActive={editor.isActive("heading", { level: 2 })}
+              title="제목 2 (## 텍스트)"
+            >
+              <Heading2 className="w-4 h-4" />
+            </ToolbarButton>
+            <ToolbarButton
+              onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
+              isActive={editor.isActive("heading", { level: 3 })}
+              title="제목 3 (### 텍스트)"
+            >
+              <Heading3 className="w-4 h-4" />
+            </ToolbarButton>
+
+            <div className="w-[1px] h-4 bg-gray-300 mx-1" />
+
+            <ToolbarButton
+              onClick={() => editor.chain().focus().toggleBulletList().run()}
+              isActive={editor.isActive("bulletList")}
+              title="기호 목록 (- 텍스트)"
+            >
+              <List className="w-4 h-4" />
+            </ToolbarButton>
+            <ToolbarButton
+              onClick={() => editor.chain().focus().toggleOrderedList().run()}
+              isActive={editor.isActive("orderedList")}
+              title="번호 목록 (1. 텍스트)"
+            >
+              <ListOrdered className="w-4 h-4" />
+            </ToolbarButton>
+            <ToolbarButton
+              onClick={() => editor.chain().focus().toggleBlockquote().run()}
+              isActive={editor.isActive("blockquote")}
+              title="인용구 (> 텍스트)"
+            >
+              <Quote className="w-4 h-4" />
+            </ToolbarButton>
+            <ToolbarButton
+              onClick={() => editor.chain().focus().toggleCodeBlock().run()}
+              isActive={editor.isActive("codeBlock")}
+              title="코드 블록 (```)"
+            >
+              <Code className="w-4 h-4" />
+            </ToolbarButton>
+
+            <div className="w-[1px] h-4 bg-gray-300 mx-1" />
+
+            <ToolbarButton
+              onClick={() => {
+                const previousUrl = editor.getAttributes("link").href;
+                const url = window.prompt("URL을 입력하세요:", previousUrl);
+                if (url === null) return;
+                if (url === "") {
+                  editor.chain().focus().extendMarkRange("link").unsetLink().run();
+                  return;
+                }
+                editor.chain().focus().extendMarkRange("link").setLink({ href: url }).run();
+              }}
+              isActive={editor.isActive("link")}
+              title="링크 삽입 ([텍스트](url))"
+            >
+              <LinkIcon className="w-4 h-4" />
+            </ToolbarButton>
+
+            <ToolbarButton
+              onClick={() => fileInputRef.current?.click()}
+              title="이미지 삽입 (![대체텍스트](url))"
+            >
+              <ImageIcon className="w-4 h-4" />
+            </ToolbarButton>
+            <input
+              type="file"
+              accept="image/*"
+              className="hidden"
+              ref={fileInputRef}
+              onChange={handleImageUpload}
+            />
+
+            <ToolbarButton
+              onClick={() => editor.chain().focus().setHorizontalRule().run()}
+              title="구분선 (---)"
+            >
+              <Minus className="w-4 h-4" />
+            </ToolbarButton>
+
+            <div className="w-[1px] h-4 bg-gray-300 mx-1" />
+
+            {/* 표 삽입 버튼 — 에디터 너비의 절반 크기로 기본 삽입 */}
+            <ToolbarButton
+              onClick={() => {
+                const container = editorContentRef.current;
+                // p-4 패딩(32px) 제외 후 절반을 3열로 나눠 각 열 너비 계산
+                const editorInnerWidth = container ? container.offsetWidth - 32 : 480;
+                const colW = Math.round(editorInnerWidth / 2 / 3);
+                editor
+                  .chain()
+                  .focus()
+                  .insertContent({
+                    type: "table",
+                    content: [
+                      {
+                        type: "tableRow",
+                        content: [0, 1, 2].map(() => ({
+                          type: "tableHeader",
+                          attrs: { colspan: 1, rowspan: 1, colwidth: [colW] },
+                          content: [{ type: "paragraph" }],
+                        })),
+                      },
+                      ...[0, 1].map(() => ({
+                        type: "tableRow",
+                        content: [0, 1, 2].map(() => ({
+                          type: "tableCell",
+                          attrs: { colspan: 1, rowspan: 1, colwidth: [colW] },
+                          content: [{ type: "paragraph" }],
+                        })),
+                      })),
+                    ],
+                  })
+                  .run();
+              }}
+              isActive={editor.isActive("table")}
+              title="표 삽입 (3×3, 헤더 포함)"
+            >
+              <Table2 className="w-4 h-4" />
+            </ToolbarButton>
+
+            {/* 표 안에 커서가 있을 때만 표시되는 조작 버튼 */}
+            {editor.isActive("table") && (
+              <>
+                <div className="w-[1px] h-4 bg-gray-300 mx-0.5" />
+                <ToolbarButton
+                  onClick={() => editor.chain().focus().addRowAfter().run()}
+                  title="아래에 행 추가"
+                >
+                  <span className="text-[11px] font-semibold">+행</span>
+                </ToolbarButton>
+                <ToolbarButton
+                  onClick={() => editor.chain().focus().deleteRow().run()}
+                  title="현재 행 삭제"
+                >
+                  <span className="text-[11px] font-semibold">−행</span>
+                </ToolbarButton>
+                <ToolbarButton onClick={addColumnAfterWithSameWidth} title="오른쪽에 열 추가">
+                  <span className="text-[11px] font-semibold">+열</span>
+                </ToolbarButton>
+                <ToolbarButton
+                  onClick={() => editor.chain().focus().deleteColumn().run()}
+                  title="현재 열 삭제"
+                >
+                  <span className="text-[11px] font-semibold">−열</span>
+                </ToolbarButton>
+                <ToolbarButton
+                  onClick={() => editor.chain().focus().deleteTable().run()}
+                  title="표 전체 삭제"
+                >
+                  <span className="text-[11px] font-semibold text-red-500">표삭제</span>
+                </ToolbarButton>
+              </>
+            )}
+
+            <div className="w-[1px] h-4 bg-gray-300 mx-1" />
+
+            <ToolbarButton
+              onClick={() => editor.chain().focus().undo().run()}
+              disabled={!editor.can().chain().focus().undo().run()}
+              title="실행 취소 (Ctrl+Z)"
+            >
+              <Undo className="w-4 h-4" />
+            </ToolbarButton>
+            <ToolbarButton
+              onClick={() => editor.chain().focus().redo().run()}
+              disabled={!editor.can().chain().focus().redo().run()}
+              title="다시 실행 (Ctrl+Shift+Z)"
+            >
+              <Redo className="w-4 h-4" />
+            </ToolbarButton>
+          </fieldset>
+
+          <div className="ml-auto flex gap-1">
+            {/* 미리보기 토글 — 실제 홈페이지에서 보이는 그대로 렌더링 */}
+            <DialogTrigger
+              ref={previewTriggerRef}
+              onClick={() => {
+                if (mode === "source") {
+                  // 소스 → 미리보기: textarea 값을 editor에 동기화 후 미리보기
+                  editor.commands.setContent(internalValue, {
+                    contentType: "markdown",
+                    emitUpdate: false,
+                  });
+                  const normalized = editor.getMarkdown();
+                  setInternalValue(normalized);
+                  onChange?.(normalized);
+                }
+              }}
+              className={cn(
+                "rounded-md p-2 transition-colors",
+                mode === "preview"
+                  ? "bg-gray-200 text-[#1a1a1a]"
+                  : "text-[#666666] hover:bg-gray-100 hover:text-[#1a1a1a]",
+              )}
+              title={mode === "preview" ? "편집으로 돌아가기" : "미리보기 (홈페이지 렌더링)"}
+            >
+              <Eye className="w-4 h-4" />
+            </DialogTrigger>
+            {/* 소스 모드 토글 */}
+            <ToolbarButton
+              onClick={() => {
+                if (mode === "source") {
+                  // 소스 → WYSIWYG
+                  editor.commands.setContent(internalValue, {
+                    contentType: "markdown",
+                    emitUpdate: false,
+                  });
+                  const normalized = editor.getMarkdown();
+                  setInternalValue(normalized);
+                  onChange?.(normalized);
+                  setMode("edit");
+                } else {
+                  setMode("source");
+                }
+              }}
+              isActive={mode === "source"}
+              title={mode === "source" ? "WYSIWYG 보기로 전환" : "마크다운 소스 보기로 전환"}
+            >
+              <FileCode className="w-4 h-4" />
+            </ToolbarButton>
+          </div>
+        </div>
+
+        {mode === "source" ? (
+          <textarea
+            className="w-full p-4 text-[#1a1a1a] min-h-[300px] font-mono text-sm leading-relaxed focus:outline-none focus:ring-2 focus:ring-[#2563EB]/20 resize-y"
+            value={internalValue}
+            onChange={(e) => {
+              setInternalValue(e.target.value);
+              onChange?.(e.target.value);
+            }}
+            placeholder={placeholder || "마크다운 소스를 직접 입력하세요..."}
+            spellCheck={false}
+          />
+        ) : (
+          <div
+            ref={editorContentRef}
+            className="relative p-4 text-[#1a1a1a] min-h-[300px] prose max-w-none focus:outline-none focus-within:ring-2 focus-within:ring-[#2563EB]/20"
+            onDrop={handleDrop}
+            onDragOver={(e) => e.preventDefault()}
+            onPaste={handlePaste}
+            onMouseMove={mode === "edit" ? handleMouseMove : undefined}
+            onMouseLeave={mode === "edit" ? handleEditorMouseLeave : undefined}
+          >
+            {/* 이미지 업로드 중 오버레이 */}
+            {isUploading && (
+              <div className="absolute inset-0 z-10 flex items-center justify-center rounded-b-md bg-white/80 backdrop-blur-sm">
+                <span className="text-sm font-medium text-[#2563EB]">이미지 업로드 중...</span>
+              </div>
+            )}
+            <EditorContent editor={editor} />
+
+            {/* 표 오른쪽 스트립 — 열 추가/드래그(좌우)로 열 추가·삭제 */}
+            {mode === "edit" && tableBounds && (
+              <button
+                type="button"
+                onMouseDown={(e) => handleAddBtnMouseDown("right", e)}
+                style={{
+                  position: "absolute",
+                  top: tableBounds.top,
+                  left: tableBounds.right,
+                  width: 20,
+                  height: tableBounds.height,
+                  cursor: "ew-resize",
+                }}
+                className={cn(
+                  "group z-20 flex items-center justify-center border-t border-r border-b border-[#D9D9D9] bg-[#f8fafc] transition-colors hover:border-[#2563EB]/40 hover:bg-blue-50",
+                  dragInfo?.edge === "right" && "border-[#2563EB]/40 bg-blue-50",
+                )}
+                title="클릭: 열 추가 / 좌우 드래그: 열 추가·삭제"
+              >
+                <span className="select-none text-[11px] font-bold leading-none text-[#bbb] transition-colors group-hover:text-[#2563EB]">
+                  +
+                </span>
+                {/* 드래그 중 증감 피드백 — 스트립 왼쪽에 표시 */}
+                {dragInfo?.edge === "right" && (
+                  <div className="pointer-events-none absolute right-full top-1/2 mr-1.5 -translate-y-1/2 whitespace-nowrap rounded bg-[#1a1a1a] px-1.5 py-0.5 text-[11px] font-semibold text-white shadow-sm">
+                    {dragInfo.delta > 0 ? `+${dragInfo.delta}열` : `${dragInfo.delta}열`}
+                  </div>
+                )}
+              </button>
+            )}
+
+            {/* 표 아래쪽 스트립 — 행 추가/드래그(상하)로 행 추가·삭제 */}
+            {mode === "edit" && tableBounds && (
+              <button
+                type="button"
+                onMouseDown={(e) => handleAddBtnMouseDown("bottom", e)}
+                style={{
+                  position: "absolute",
+                  top: tableBounds.bottom,
+                  left: tableBounds.left,
+                  width: tableBounds.width,
+                  height: 20,
+                  cursor: "ns-resize",
+                }}
+                className={cn(
+                  "group z-20 flex items-center justify-center border-l border-r border-b border-[#D9D9D9] bg-[#f8fafc] transition-colors hover:border-[#2563EB]/40 hover:bg-blue-50",
+                  dragInfo?.edge === "bottom" && "border-[#2563EB]/40 bg-blue-50",
+                )}
+                title="클릭: 행 추가 / 위아래 드래그: 행 추가·삭제"
+              >
+                <span className="select-none text-[11px] font-bold leading-none text-[#bbb] transition-colors group-hover:text-[#2563EB]">
+                  +
+                </span>
+                {/* 드래그 중 증감 피드백 — 스트립 위에 표시 */}
+                {dragInfo?.edge === "bottom" && (
+                  <div className="pointer-events-none absolute bottom-full left-1/2 mb-1 -translate-x-1/2 whitespace-nowrap rounded bg-[#1a1a1a] px-1.5 py-0.5 text-[11px] font-semibold text-white shadow-sm">
+                    {dragInfo.delta > 0 ? `+${dragInfo.delta}행` : `${dragInfo.delta}행`}
+                  </div>
+                )}
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* 표 인라인 컨트롤 바 — 표 셀에 커서가 있을 때 에디터 하단에 나타남 */}
+        {mode === "edit" && isTableActive && (
+          <div className="flex flex-wrap items-center gap-0.5 border-t border-[#D9D9D9] bg-gray-50 px-2 py-1.5">
+            <span className="mr-0.5 text-[10px] font-semibold tracking-wide text-[#666666]">
+              행
+            </span>
+            <BubbleBtn
+              onClick={() => editor.chain().focus().addRowBefore().run()}
+              title="위에 행 추가"
+            >
+              ↑ 추가
+            </BubbleBtn>
+            <BubbleBtn
               onClick={() => editor.chain().focus().addRowAfter().run()}
               title="아래에 행 추가"
             >
-              <span className="text-[11px] font-semibold">+행</span>
-            </ToolbarButton>
-            <ToolbarButton
+              ↓ 추가
+            </BubbleBtn>
+            <BubbleBtn
               onClick={() => editor.chain().focus().deleteRow().run()}
               title="현재 행 삭제"
+              danger
             >
-              <span className="text-[11px] font-semibold">−행</span>
-            </ToolbarButton>
-            <ToolbarButton
-              onClick={addColumnAfterWithSameWidth}
-              title="오른쪽에 열 추가"
+              삭제
+            </BubbleBtn>
+            <div className="mx-1 h-3.5 w-px bg-gray-300" />
+            <span className="mr-0.5 text-[10px] font-semibold tracking-wide text-[#666666]">
+              열
+            </span>
+            <BubbleBtn
+              onClick={() => editor.chain().focus().addColumnBefore().run()}
+              title="왼쪽에 열 추가"
             >
-              <span className="text-[11px] font-semibold">+열</span>
-            </ToolbarButton>
-            <ToolbarButton
+              ← 추가
+            </BubbleBtn>
+            <BubbleBtn onClick={addColumnAfterWithSameWidth} title="오른쪽에 열 추가">
+              → 추가
+            </BubbleBtn>
+            <BubbleBtn
               onClick={() => editor.chain().focus().deleteColumn().run()}
               title="현재 열 삭제"
+              danger
             >
-              <span className="text-[11px] font-semibold">−열</span>
-            </ToolbarButton>
-            <ToolbarButton
+              삭제
+            </BubbleBtn>
+            <div className="mx-1 h-3.5 w-px bg-gray-300" />
+            <BubbleBtn
               onClick={() => editor.chain().focus().deleteTable().run()}
               title="표 전체 삭제"
+              danger
             >
-              <span className="text-[11px] font-semibold text-red-500">표삭제</span>
-            </ToolbarButton>
-          </>
+              표 전체 삭제
+            </BubbleBtn>
+          </div>
         )}
 
-        <div className="w-[1px] h-4 bg-gray-300 mx-1" />
-
-        <ToolbarButton
-          onClick={() => editor.chain().focus().undo().run()}
-          disabled={!editor.can().chain().focus().undo().run()}
-          title="실행 취소 (Ctrl+Z)"
-        >
-          <Undo className="w-4 h-4" />
-        </ToolbarButton>
-        <ToolbarButton
-          onClick={() => editor.chain().focus().redo().run()}
-          disabled={!editor.can().chain().focus().redo().run()}
-          title="다시 실행 (Ctrl+Shift+Z)"
-        >
-          <Redo className="w-4 h-4" />
-        </ToolbarButton>
-        </fieldset>
-
-        <div className="ml-auto flex gap-1">
-          {/* 미리보기 토글 — 실제 홈페이지에서 보이는 그대로 렌더링 */}
-          <DialogTrigger
-            ref={previewTriggerRef}
-            onClick={() => {
-              if (mode === "source") {
-                // 소스 → 미리보기: textarea 값을 editor에 동기화 후 미리보기
-                editor.commands.setContent(internalValue, { contentType: "markdown", emitUpdate: false });
-                const normalized = editor.getMarkdown();
-                setInternalValue(normalized);
-                onChange?.(normalized);
-              }
-            }}
-            className={cn(
-              "rounded-md p-2 transition-colors",
-              mode === "preview" ? "bg-gray-200 text-[#1a1a1a]" : "text-[#666666] hover:bg-gray-100 hover:text-[#1a1a1a]",
-            )}
-            title={mode === "preview" ? "편집으로 돌아가기" : "미리보기 (홈페이지 렌더링)"}
-          >
-            <Eye className="w-4 h-4" />
-          </DialogTrigger>
-          {/* 소스 모드 토글 */}
-          <ToolbarButton
-            onClick={() => {
-              if (mode === "source") {
-                // 소스 → WYSIWYG
-                editor.commands.setContent(internalValue, { contentType: "markdown", emitUpdate: false });
-                const normalized = editor.getMarkdown();
-                setInternalValue(normalized);
-                onChange?.(normalized);
-                setMode("edit");
-              } else {
-                setMode("source");
-              }
-            }}
-            isActive={mode === "source"}
-            title={mode === "source" ? "WYSIWYG 보기로 전환" : "마크다운 소스 보기로 전환"}
-          >
-            <FileCode className="w-4 h-4" />
-          </ToolbarButton>
-        </div>
+        <input type="hidden" id={id} name={name} value={internalValue} required={required} />
       </div>
 
-      {mode === "source" ? (
-        <textarea
-          className="w-full p-4 text-[#1a1a1a] min-h-[300px] font-mono text-sm leading-relaxed focus:outline-none focus:ring-2 focus:ring-[#2563EB]/20 resize-y"
-          value={internalValue}
-          onChange={(e) => {
-            setInternalValue(e.target.value);
-            onChange?.(e.target.value);
-          }}
-          placeholder={placeholder || "마크다운 소스를 직접 입력하세요..."}
-          spellCheck={false}
-        />
-      ) : (
-        <div
-          ref={editorContentRef}
-          className="relative p-4 text-[#1a1a1a] min-h-[300px] prose max-w-none focus:outline-none focus-within:ring-2 focus-within:ring-[#2563EB]/20"
-          onDrop={handleDrop}
-          onDragOver={(e) => e.preventDefault()}
-          onPaste={handlePaste}
-          onMouseMove={mode === "edit" ? handleMouseMove : undefined}
-          onMouseLeave={mode === "edit" ? handleEditorMouseLeave : undefined}
-        >
-          {/* 이미지 업로드 중 오버레이 */}
-          {isUploading && (
-            <div className="absolute inset-0 z-10 flex items-center justify-center rounded-b-md bg-white/80 backdrop-blur-sm">
-              <span className="text-sm font-medium text-[#2563EB]">이미지 업로드 중...</span>
-            </div>
-          )}
-          <EditorContent editor={editor} />
-
-          {/* 표 오른쪽 스트립 — 열 추가/드래그(좌우)로 열 추가·삭제 */}
-          {mode === "edit" && tableBounds && (
-            <button
-              type="button"
-              onMouseDown={(e) => handleAddBtnMouseDown("right", e)}
-              style={{
-                position: "absolute",
-                top: tableBounds.top,
-                left: tableBounds.right,
-                width: 20,
-                height: tableBounds.height,
-                cursor: "ew-resize",
-              }}
-              className={cn(
-                "group z-20 flex items-center justify-center border-t border-r border-b border-[#D9D9D9] bg-[#f8fafc] transition-colors hover:border-[#2563EB]/40 hover:bg-blue-50",
-                dragInfo?.edge === "right" && "border-[#2563EB]/40 bg-blue-50",
-              )}
-              title="클릭: 열 추가 / 좌우 드래그: 열 추가·삭제"
-            >
-              <span className="select-none text-[11px] font-bold leading-none text-[#bbb] transition-colors group-hover:text-[#2563EB]">
-                +
-              </span>
-              {/* 드래그 중 증감 피드백 — 스트립 왼쪽에 표시 */}
-              {dragInfo?.edge === "right" && (
-                <div className="pointer-events-none absolute right-full top-1/2 mr-1.5 -translate-y-1/2 whitespace-nowrap rounded bg-[#1a1a1a] px-1.5 py-0.5 text-[11px] font-semibold text-white shadow-sm">
-                  {dragInfo.delta > 0 ? `+${dragInfo.delta}열` : `${dragInfo.delta}열`}
-                </div>
-              )}
-            </button>
-          )}
-
-          {/* 표 아래쪽 스트립 — 행 추가/드래그(상하)로 행 추가·삭제 */}
-          {mode === "edit" && tableBounds && (
-            <button
-              type="button"
-              onMouseDown={(e) => handleAddBtnMouseDown("bottom", e)}
-              style={{
-                position: "absolute",
-                top: tableBounds.bottom,
-                left: tableBounds.left,
-                width: tableBounds.width,
-                height: 20,
-                cursor: "ns-resize",
-              }}
-              className={cn(
-                "group z-20 flex items-center justify-center border-l border-r border-b border-[#D9D9D9] bg-[#f8fafc] transition-colors hover:border-[#2563EB]/40 hover:bg-blue-50",
-                dragInfo?.edge === "bottom" && "border-[#2563EB]/40 bg-blue-50",
-              )}
-              title="클릭: 행 추가 / 위아래 드래그: 행 추가·삭제"
-            >
-              <span className="select-none text-[11px] font-bold leading-none text-[#bbb] transition-colors group-hover:text-[#2563EB]">
-                +
-              </span>
-              {/* 드래그 중 증감 피드백 — 스트립 위에 표시 */}
-              {dragInfo?.edge === "bottom" && (
-                <div className="pointer-events-none absolute bottom-full left-1/2 mb-1 -translate-x-1/2 whitespace-nowrap rounded bg-[#1a1a1a] px-1.5 py-0.5 text-[11px] font-semibold text-white shadow-sm">
-                  {dragInfo.delta > 0 ? `+${dragInfo.delta}행` : `${dragInfo.delta}행`}
-                </div>
-              )}
-            </button>
-          )}
-        </div>
-      )}
-
-      {/* 표 인라인 컨트롤 바 — 표 셀에 커서가 있을 때 에디터 하단에 나타남 */}
-      {mode === "edit" && isTableActive && (
-        <div className="flex flex-wrap items-center gap-0.5 border-t border-[#D9D9D9] bg-gray-50 px-2 py-1.5">
-          <span className="mr-0.5 text-[10px] font-semibold tracking-wide text-[#666666]">행</span>
-          <BubbleBtn onClick={() => editor.chain().focus().addRowBefore().run()} title="위에 행 추가">↑ 추가</BubbleBtn>
-          <BubbleBtn onClick={() => editor.chain().focus().addRowAfter().run()} title="아래에 행 추가">↓ 추가</BubbleBtn>
-          <BubbleBtn onClick={() => editor.chain().focus().deleteRow().run()} title="현재 행 삭제" danger>삭제</BubbleBtn>
-          <div className="mx-1 h-3.5 w-px bg-gray-300" />
-          <span className="mr-0.5 text-[10px] font-semibold tracking-wide text-[#666666]">열</span>
-          <BubbleBtn onClick={() => editor.chain().focus().addColumnBefore().run()} title="왼쪽에 열 추가">← 추가</BubbleBtn>
-          <BubbleBtn onClick={addColumnAfterWithSameWidth} title="오른쪽에 열 추가">→ 추가</BubbleBtn>
-          <BubbleBtn onClick={() => editor.chain().focus().deleteColumn().run()} title="현재 열 삭제" danger>삭제</BubbleBtn>
-          <div className="mx-1 h-3.5 w-px bg-gray-300" />
-          <BubbleBtn onClick={() => editor.chain().focus().deleteTable().run()} title="표 전체 삭제" danger>표 전체 삭제</BubbleBtn>
-        </div>
-      )}
-
-      <input
-        type="hidden"
-        id={id}
-        name={name}
-        value={internalValue}
-        required={required}
-      />
-    </div>
-
-    {/* 기존 Dialog의 모달 격리·스크롤 잠금·Escape 처리를 사용하며 전체화면 배치는 유지합니다. */}
-    <DialogContent
-      showCloseButton={false}
-      initialFocus={previewCloseRef}
-      finalFocus={previewTriggerRef}
-      className="fixed inset-0 top-0 left-0 z-[9999] flex h-dvh w-screen max-w-none translate-x-0 translate-y-0 flex-col gap-0 overflow-hidden rounded-none bg-gray-50 p-0 text-base ring-0 sm:max-w-none data-open:animate-none data-closed:animate-none"
-    >
+      {/* 기존 Dialog의 모달 격리·스크롤 잠금·Escape 처리를 사용하며 전체화면 배치는 유지합니다. */}
+      <DialogContent
+        showCloseButton={false}
+        initialFocus={previewCloseRef}
+        finalFocus={previewTriggerRef}
+        className="fixed inset-0 top-0 left-0 z-[9999] flex h-dvh w-screen max-w-none translate-x-0 translate-y-0 flex-col gap-0 overflow-hidden rounded-none bg-gray-50 p-0 text-base ring-0 sm:max-w-none data-open:animate-none data-closed:animate-none"
+      >
         {/* 상단 미리보기 바 */}
         <div className="flex shrink-0 items-center justify-between border-b border-[#D9D9D9] bg-white px-4 py-2.5 shadow-sm">
           <div className="flex items-center gap-2">
@@ -1064,7 +1137,12 @@ export function RichTextEditor({
         </div>
 
         {/* 스크롤 가능한 본문 영역 */}
-        <div role="region" aria-label="미리보기 본문" tabIndex={0} className="min-h-0 flex-1 overflow-y-auto">
+        <div
+          role="region"
+          aria-label="미리보기 본문"
+          tabIndex={0}
+          className="min-h-0 flex-1 overflow-y-auto"
+        >
           {/* 실제 공개 페이지와 동일한 컨테이너·패딩·최대 너비 */}
           <div className="mx-auto max-w-4xl px-4 py-12 sm:px-6 sm:py-20">
             {/* 제목이 전달된 경우 기사 헤더 시뮬레이션 */}
@@ -1076,13 +1154,13 @@ export function RichTextEditor({
               </header>
             )}
             {internalValue.trim() ? (
-              <MarkdownViewer body={internalValue} />
+              <MarkdownViewer trustedSiteOrigin={trustedSiteOrigin} body={internalValue} />
             ) : (
               <p className="text-sm text-[#666666]">내용이 없습니다.</p>
             )}
           </div>
         </div>
-    </DialogContent>
+      </DialogContent>
     </Dialog>
   );
 }
@@ -1105,9 +1183,7 @@ function BubbleBtn({
       title={title}
       className={cn(
         "rounded px-1.5 py-0.5 font-mono text-xs transition-colors",
-        danger
-          ? "text-red-500 hover:bg-red-50"
-          : "text-[#1a1a1a] hover:bg-gray-100",
+        danger ? "text-red-500 hover:bg-red-50" : "text-[#1a1a1a] hover:bg-gray-100",
       )}
     >
       {children}
@@ -1136,8 +1212,10 @@ function ToolbarButton({
       title={title}
       className={cn(
         "p-2 rounded-md transition-colors",
-        isActive ? "bg-gray-200 text-[#1a1a1a]" : "text-[#666666] hover:bg-gray-100 hover:text-[#1a1a1a]",
-        disabled && "opacity-50 cursor-not-allowed"
+        isActive
+          ? "bg-gray-200 text-[#1a1a1a]"
+          : "text-[#666666] hover:bg-gray-100 hover:text-[#1a1a1a]",
+        disabled && "opacity-50 cursor-not-allowed",
       )}
     >
       {children}

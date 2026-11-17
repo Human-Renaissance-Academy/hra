@@ -10,6 +10,7 @@
  *   - submission-guide
  */
 
+import { getSiteConfig } from "@/lib/site-url";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -56,34 +57,23 @@ export default async function MemberGuideDetailPage({ params }: Props) {
 
       <header className="mb-8 space-y-3 border-b border-[#D9D9D9] pb-6">
         <div className="flex flex-wrap items-center gap-2">
-          <Badge
-            variant="outline"
-            className="border-[#D9D9D9] bg-white text-[#666666]"
-          >
+          <Badge variant="outline" className="border-[#D9D9D9] bg-white text-[#666666]">
             v{guide.version}
           </Badge>
           {guide.createdAt ? (
-            <span className="text-xs text-[#666666]">
-              등록일:{" "}
-              {formatKstDate(guide.createdAt)}
-            </span>
+            <span className="text-xs text-[#666666]">등록일: {formatKstDate(guide.createdAt)}</span>
           ) : null}
           {guide.updatedAt ? (
             <span className="text-xs text-[#666666]">
-              최종 수정:{" "}
-              {formatKstDate(guide.updatedAt)}
+              최종 수정: {formatKstDate(guide.updatedAt)}
             </span>
           ) : null}
         </div>
-        <h1 className="text-3xl font-semibold tracking-tight text-[#1a1a1a]">
-          {guide.title}
-        </h1>
-        {guide.description ? (
-          <p className="text-sm text-[#666666]">{guide.description}</p>
-        ) : null}
+        <h1 className="text-3xl font-semibold tracking-tight text-[#1a1a1a]">{guide.title}</h1>
+        {guide.description ? <p className="text-sm text-[#666666]">{guide.description}</p> : null}
       </header>
 
-      <MarkdownViewer body={guide.body} />
+      <MarkdownViewer trustedSiteOrigin={getSiteConfig().url} body={guide.body} />
     </div>
   );
 }

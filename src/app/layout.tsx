@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { headers } from "next/headers";
+import { SiteImageOriginProvider } from "@/components/markdown/site-image-origin-provider";
 import { CspNonceProvider } from "@/components/security/csp-nonce-provider";
 import { requireCspNonce } from "@/lib/security/csp";
 import { getSiteConfig } from "@/lib/site-url";
@@ -57,8 +58,10 @@ export default async function RootLayout({
     <html lang="ko" className="h-full antialiased">
       <body className="min-h-full flex flex-col font-sans">
         <CspNonceProvider nonce={nonce}>
-          {children}
-          <Toaster />
+          <SiteImageOriginProvider origin={siteConfig.url}>
+            {children}
+            <Toaster />
+          </SiteImageOriginProvider>
         </CspNonceProvider>
       </body>
     </html>
