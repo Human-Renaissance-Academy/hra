@@ -9,6 +9,7 @@
  */
 
 import { NextResponse } from "next/server";
+import { canReadSharedResource } from "@/features/resources/access";
 import { auth } from "@/lib/auth";
 import { resolveTemplate, resolveGuide } from "@/lib/markdown/resolve";
 
@@ -20,21 +21,25 @@ export async function GET(_req: Request, { params }: Params) {
   if (!session?.user) {
     return new NextResponse("로그인이 필요합니다.", { status: 401 });
   }
-  if (session.user.role === "PENDING") {
+  // 다운로드도 공동 자료 열람 정책을 따르며 미인식 역할은 조회 전에 거부합니다.
+  if (!canReadSharedResource(session.user.role)) {
     return new NextResponse("승인 대기 중입니다.", { status: 403 });
   }
 
   const { slug } = await params;
 
   // 양식(template) 먼저 시도, 없으면 가이드(guide)로 fallback
-  const template = await resolveTemplate(slug) ?? await resolveGuide(slug);
+  const template = (await resolveTemplate(slug)) ?? (await resolveGuide(slug));
 
   if (!template) {
     return new NextResponse("양식을 찾을 수 없습니다.", { status: 404 });
   }
 
   // 파일명: 제목 기반으로 생성, 특수문자 제거
-  const safeTitle = template.title.replace(/[^\w가-힣\s-]/g, "").trim().replace(/\s+/g, "-");
+  const safeTitle = template.title
+    .replace(/[^\w가-힣\s-]/g, "")
+    .trim()
+    .replace(/\s+/g, "-");
   const fileName = `${safeTitle}.md`;
 
   return new NextResponse(template.body, {
