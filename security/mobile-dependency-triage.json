@@ -1,11 +1,22 @@
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
+  "identityMode": "reviewed-input-origin-leaf-v1",
+  "manifestBinding": {
+    "algorithm": "sha256",
+    "input": "package-json.raw-bytes-v1",
+    "digest": "cf2c7fca0a6c88938e7ef130166f7777f07e4f907c9b2de35432c42e39d29e56"
+  },
+  "lockBinding": {
+    "algorithm": "sha256",
+    "input": "package-lock.raw-bytes-v1",
+    "digest": "ec75da5f4d1fe592446fa72de80e5eb076f923248baa0cd64848f5e05204f77f"
+  },
   "note": "모바일 앱(apps/mobile/package-lock.json) 원장이다. P2는 코드 사용면 평가이며 owner의 P1 위험 수용 승인이 아니다. advisory 집합과 nodes는 독립적이며 모든 조합이 실제 영향 경로라는 뜻이 아니다. 독립 리뷰에서 재검토한다.",
   "packages": [
     {
       "name": "@expo/cli",
-      "severity": "moderate",
-      "range": "0.19.0-canary-20240625-2333e70 - 57.0.32 || >=58.0.0-canary-20260806-8c2d007",
+      "severity": "high",
+      "range": "<=0.0.0-canary-20231123-1b19f96-4 || 0.0.1-canary-20231125-d600e44 - 0.0.1-canary-20240418-8d74597 || >=0.17.2",
       "nodes": [
         {
           "path": "node_modules/@expo/cli",
@@ -15,7 +26,65 @@
       ],
       "via": [
         {
+          "dependency": "@expo/config-plugins"
+        },
+        {
+          "dependency": "@expo/config"
+        },
+        {
+          "dependency": "@expo/inline-modules"
+        },
+        {
+          "dependency": "@expo/metro-config"
+        },
+        {
+          "dependency": "@expo/metro-file-map"
+        },
+        {
+          "dependency": "@expo/metro"
+        },
+        {
+          "dependency": "@expo/prebuild-config"
+        },
+        {
           "dependency": "glob"
+        },
+        {
+          "dependency": "picomatch"
+        }
+      ]
+    },
+    {
+      "name": "@expo/config",
+      "severity": "high",
+      "range": "11.0.6-canary-20250428-4156f88 || >=58.0.11",
+      "nodes": [
+        {
+          "path": "node_modules/@expo/config",
+          "version": "58.0.11",
+          "development": false
+        }
+      ],
+      "via": [
+        {
+          "dependency": "@expo/config-plugins"
+        }
+      ]
+    },
+    {
+      "name": "@expo/config-plugins",
+      "severity": "high",
+      "range": ">=58.0.12",
+      "nodes": [
+        {
+          "path": "node_modules/@expo/config-plugins",
+          "version": "58.0.12",
+          "development": false
+        }
+      ],
+      "via": [
+        {
+          "dependency": "tinyglobby"
         }
       ]
     },
@@ -40,9 +109,152 @@
       ]
     },
     {
+      "name": "@expo/inline-modules",
+      "severity": "high",
+      "range": ">=0.2.9",
+      "nodes": [
+        {
+          "path": "node_modules/@expo/inline-modules",
+          "version": "0.2.9",
+          "development": false
+        }
+      ],
+      "via": [
+        {
+          "dependency": "@expo/config-plugins"
+        }
+      ]
+    },
+    {
+      "name": "@expo/local-build-cache-provider",
+      "severity": "high",
+      "range": ">=58.0.11",
+      "nodes": [
+        {
+          "path": "node_modules/@expo/local-build-cache-provider",
+          "version": "58.0.11",
+          "development": false
+        }
+      ],
+      "via": [
+        {
+          "dependency": "@expo/config"
+        }
+      ]
+    },
+    {
+      "name": "@expo/metro",
+      "severity": "high",
+      "range": "*",
+      "nodes": [
+        {
+          "path": "node_modules/@expo/metro",
+          "version": "58.0.0",
+          "development": false
+        }
+      ],
+      "via": [
+        {
+          "dependency": "metro-config"
+        },
+        {
+          "dependency": "metro-file-map"
+        },
+        {
+          "dependency": "metro-transform-worker"
+        },
+        {
+          "dependency": "metro"
+        }
+      ]
+    },
+    {
+      "name": "@expo/metro-config",
+      "severity": "high",
+      "range": ">=0.21.0-canary-20250630-547cd82",
+      "nodes": [
+        {
+          "path": "node_modules/@expo/metro-config",
+          "version": "58.0.21",
+          "development": false
+        }
+      ],
+      "via": [
+        {
+          "dependency": "@expo/config"
+        },
+        {
+          "dependency": "@expo/metro"
+        },
+        {
+          "dependency": "picomatch"
+        },
+        {
+          "dependency": "tinyglobby"
+        }
+      ]
+    },
+    {
+      "name": "@expo/metro-file-map",
+      "severity": "high",
+      "range": "*",
+      "nodes": [
+        {
+          "path": "node_modules/@expo/metro-file-map",
+          "version": "58.0.5",
+          "development": false
+        }
+      ],
+      "via": [
+        {
+          "dependency": "jest-worker"
+        }
+      ]
+    },
+    {
+      "name": "@expo/prebuild-config",
+      "severity": "high",
+      "range": ">=58.0.19",
+      "nodes": [
+        {
+          "path": "node_modules/@expo/prebuild-config",
+          "version": "58.0.19",
+          "development": false
+        }
+      ],
+      "via": [
+        {
+          "dependency": "@expo/config-plugins"
+        },
+        {
+          "dependency": "@expo/config"
+        }
+      ]
+    },
+    {
+      "name": "@jest/console",
+      "severity": "high",
+      "range": ">=27.0.0-next.0",
+      "nodes": [
+        {
+          "path": "node_modules/@jest/console",
+          "version": "30.5.2",
+          "development": false
+        }
+      ],
+      "via": [
+        {
+          "dependency": "jest-message-util"
+        },
+        {
+          "dependency": "jest-util"
+        }
+      ]
+    },
+    {
       "name": "@jest/core",
-      "severity": "moderate",
-      "range": ">=30.0.0-alpha.1",
+      "severity": "high",
+      "range": ">=27.0.0-next.0",
       "nodes": [
         {
           "path": "node_modules/@jest/core",
@@ -52,16 +264,34 @@
       ],
       "via": [
         {
+          "dependency": "@jest/console"
+        },
+        {
           "dependency": "@jest/reporters"
+        },
+        {
+          "dependency": "@jest/test-result"
         },
         {
           "dependency": "@jest/transform"
         },
         {
+          "dependency": "jest-changed-files"
+        },
+        {
           "dependency": "jest-config"
         },
         {
+          "dependency": "jest-haste-map"
+        },
+        {
+          "dependency": "jest-message-util"
+        },
+        {
           "dependency": "jest-resolve-dependencies"
+        },
+        {
+          "dependency": "jest-resolve"
         },
         {
           "dependency": "jest-runner"
@@ -71,13 +301,70 @@
         },
         {
           "dependency": "jest-snapshot"
+        },
+        {
+          "dependency": "jest-util"
+        },
+        {
+          "dependency": "jest-watcher"
+        }
+      ]
+    },
+    {
+      "name": "@jest/environment",
+      "severity": "high",
+      "range": ">=27.0.0-next.0",
+      "nodes": [
+        {
+          "path": "node_modules/@jest/environment",
+          "version": "30.5.2",
+          "development": false
+        },
+        {
+          "path": "node_modules/jest-environment-node/node_modules/@jest/environment",
+          "version": "29.7.0",
+          "development": true
+        }
+      ],
+      "via": [
+        {
+          "dependency": "@jest/fake-timers"
+        },
+        {
+          "dependency": "jest-mock"
+        }
+      ]
+    },
+    {
+      "name": "@jest/environment-jsdom-abstract",
+      "severity": "high",
+      "range": "*",
+      "nodes": [
+        {
+          "path": "node_modules/@jest/environment-jsdom-abstract",
+          "version": "30.5.2",
+          "development": true
+        }
+      ],
+      "via": [
+        {
+          "dependency": "@jest/environment"
+        },
+        {
+          "dependency": "@jest/fake-timers"
+        },
+        {
+          "dependency": "jest-mock"
+        },
+        {
+          "dependency": "jest-util"
         }
       ]
     },
     {
       "name": "@jest/expect",
-      "severity": "moderate",
-      "range": ">=30.5.0",
+      "severity": "high",
+      "range": "*",
       "nodes": [
         {
           "path": "node_modules/@jest/expect",
@@ -87,14 +374,48 @@
       ],
       "via": [
         {
+          "dependency": "expect"
+        },
+        {
           "dependency": "jest-snapshot"
         }
       ]
     },
     {
+      "name": "@jest/fake-timers",
+      "severity": "high",
+      "range": ">=25.0.0",
+      "nodes": [
+        {
+          "path": "node_modules/@jest/fake-timers",
+          "version": "30.5.2",
+          "development": false
+        },
+        {
+          "path": "node_modules/jest-environment-node/node_modules/@jest/fake-timers",
+          "version": "29.7.0",
+          "development": true
+        }
+      ],
+      "via": [
+        {
+          "dependency": "jest-message-util"
+        },
+        {
+          "dependency": "jest-message-util"
+        },
+        {
+          "dependency": "jest-mock"
+        },
+        {
+          "dependency": "jest-util"
+        }
+      ]
+    },
+    {
       "name": "@jest/globals",
-      "severity": "moderate",
-      "range": ">=30.5.0",
+      "severity": "high",
+      "range": ">=27.0.0-next.0",
       "nodes": [
         {
           "path": "node_modules/@jest/globals",
@@ -104,14 +425,20 @@
       ],
       "via": [
         {
+          "dependency": "@jest/environment"
+        },
+        {
           "dependency": "@jest/expect"
+        },
+        {
+          "dependency": "jest-mock"
         }
       ]
     },
     {
       "name": "@jest/reporters",
-      "severity": "moderate",
-      "range": ">=30.0.0-alpha.1",
+      "severity": "high",
+      "range": ">=27.0.0-next.0",
       "nodes": [
         {
           "path": "node_modules/@jest/reporters",
@@ -121,17 +448,69 @@
       ],
       "via": [
         {
+          "dependency": "@jest/console"
+        },
+        {
+          "dependency": "@jest/test-result"
+        },
+        {
           "dependency": "@jest/transform"
         },
         {
           "dependency": "glob"
+        },
+        {
+          "dependency": "jest-message-util"
+        },
+        {
+          "dependency": "jest-util"
+        },
+        {
+          "dependency": "jest-worker"
+        }
+      ]
+    },
+    {
+      "name": "@jest/test-result",
+      "severity": "high",
+      "range": ">=27.0.0-next.0",
+      "nodes": [
+        {
+          "path": "node_modules/@jest/test-result",
+          "version": "30.5.2",
+          "development": false
+        }
+      ],
+      "via": [
+        {
+          "dependency": "@jest/console"
+        }
+      ]
+    },
+    {
+      "name": "@jest/test-sequencer",
+      "severity": "high",
+      "range": ">=27.0.0-next.0",
+      "nodes": [
+        {
+          "path": "node_modules/@jest/test-sequencer",
+          "version": "30.5.2",
+          "development": false
+        }
+      ],
+      "via": [
+        {
+          "dependency": "@jest/test-result"
+        },
+        {
+          "dependency": "jest-haste-map"
         }
       ]
     },
     {
       "name": "@jest/transform",
-      "severity": "moderate",
-      "range": ">=30.5.0",
+      "severity": "high",
+      "range": ">=25.0.0",
       "nodes": [
         {
           "path": "node_modules/@jest/core/node_modules/@jest/transform",
@@ -142,6 +521,11 @@
           "path": "node_modules/@jest/reporters/node_modules/@jest/transform",
           "version": "30.5.2",
           "development": false
+        },
+        {
+          "path": "node_modules/@jest/transform",
+          "version": "29.7.0",
+          "development": true
         },
         {
           "path": "node_modules/jest-config/node_modules/@jest/transform",
@@ -172,13 +556,215 @@
       "via": [
         {
           "dependency": "babel-plugin-istanbul"
+        },
+        {
+          "dependency": "jest-haste-map"
+        },
+        {
+          "dependency": "jest-haste-map"
+        },
+        {
+          "dependency": "jest-util"
+        },
+        {
+          "dependency": "micromatch"
+        }
+      ]
+    },
+    {
+      "name": "@parcel/watcher",
+      "severity": "high",
+      "range": ">=2.5.4",
+      "nodes": [
+        {
+          "path": "node_modules/@parcel/watcher",
+          "version": "2.6.0",
+          "development": false
+        }
+      ],
+      "via": [
+        {
+          "dependency": "picomatch"
+        }
+      ]
+    },
+    {
+      "name": "@react-native/babel-plugin-codegen",
+      "severity": "high",
+      "range": "0.73.0-nightly-20230603-fd9e295be - 0.73.0-nightly-20230922-52104c6ee || >=0.84.0-nightly-20251105-5ec5cc3a3",
+      "nodes": [
+        {
+          "path": "node_modules/@react-native/babel-plugin-codegen",
+          "version": "0.88.1",
+          "development": false
+        }
+      ],
+      "via": [
+        {
+          "dependency": "@react-native/codegen"
+        }
+      ]
+    },
+    {
+      "name": "@react-native/babel-preset",
+      "severity": "high",
+      "range": "<=0.73.0-nightly-20230922-52104c6ee || >=0.84.0-nightly-20251105-5ec5cc3a3",
+      "nodes": [
+        {
+          "path": "node_modules/@react-native/babel-preset",
+          "version": "0.88.1",
+          "development": false
+        }
+      ],
+      "via": [
+        {
+          "dependency": "@react-native/babel-plugin-codegen"
+        }
+      ]
+    },
+    {
+      "name": "@react-native/codegen",
+      "severity": "high",
+      "range": ">=0.84.0-nightly-20251105-5ec5cc3a3",
+      "nodes": [
+        {
+          "path": "node_modules/@react-native/codegen",
+          "version": "0.88.1",
+          "development": false
+        }
+      ],
+      "via": [
+        {
+          "dependency": "tinyglobby"
+        }
+      ]
+    },
+    {
+      "name": "@react-native/community-cli-plugin",
+      "severity": "high",
+      "range": "0.73.8 - 0.74.0-nightly-20240220-e9351f0f8 || >=0.74.1",
+      "nodes": [
+        {
+          "path": "node_modules/@react-native/community-cli-plugin",
+          "version": "0.88.1",
+          "development": false
+        }
+      ],
+      "via": [
+        {
+          "dependency": "@react-native/metro-config"
+        }
+      ]
+    },
+    {
+      "name": "@react-native/jest-preset",
+      "severity": "high",
+      "range": "*",
+      "nodes": [
+        {
+          "path": "node_modules/@react-native/jest-preset",
+          "version": "0.88.1",
+          "development": true
+        }
+      ],
+      "via": [
+        {
+          "dependency": "babel-jest"
+        },
+        {
+          "dependency": "jest-environment-node"
+        }
+      ]
+    },
+    {
+      "name": "@react-native/metro-babel-transformer",
+      "severity": "high",
+      "range": ">=0.84.0-nightly-20251105-5ec5cc3a3",
+      "nodes": [
+        {
+          "path": "node_modules/@react-native/metro-babel-transformer",
+          "version": "0.88.1",
+          "development": false
+        }
+      ],
+      "via": [
+        {
+          "dependency": "@react-native/babel-preset"
+        }
+      ]
+    },
+    {
+      "name": "@react-native/metro-config",
+      "severity": "high",
+      "range": "0.73.0-nightly-20230603-fd9e295be - 0.73.0-nightly-20231002-0371014a3 || 0.73.2 - 0.74.0-nightly-20240220-e9351f0f8 || >=0.74.1",
+      "nodes": [
+        {
+          "path": "node_modules/@react-native/metro-config",
+          "version": "0.88.1",
+          "development": false
+        }
+      ],
+      "via": [
+        {
+          "dependency": "@react-native/metro-babel-transformer"
+        }
+      ]
+    },
+    {
+      "name": "@react-native/virtualized-lists",
+      "severity": "high",
+      "range": ">=0.85.0-nightly-20260108-1236b6be4",
+      "nodes": [
+        {
+          "path": "node_modules/@react-native/virtualized-lists",
+          "version": "0.88.1",
+          "development": false
+        }
+      ],
+      "via": [
+        {
+          "dependency": "react-native"
+        }
+      ]
+    },
+    {
+      "name": "@testing-library/react-native",
+      "severity": "high",
+      "range": ">=11.1.0",
+      "nodes": [
+        {
+          "path": "node_modules/@testing-library/react-native",
+          "version": "14.1.0",
+          "development": false
+        }
+      ],
+      "via": [
+        {
+          "dependency": "jest"
+        }
+      ]
+    },
+    {
+      "name": "@types/jest",
+      "severity": "high",
+      "range": ">=29.0.0",
+      "nodes": [
+        {
+          "path": "node_modules/@types/jest",
+          "version": "30.0.0",
+          "development": true
+        }
+      ],
+      "via": [
+        {
+          "dependency": "expect"
         }
       ]
     },
     {
       "name": "@typescript-eslint/eslint-plugin",
       "severity": "moderate",
-      "range": ">=6.16.0",
+      "range": "6.16.0 - 8.72.2",
       "nodes": [
         {
           "path": "node_modules/@typescript-eslint/eslint-plugin",
@@ -198,7 +784,7 @@
     {
       "name": "@typescript-eslint/parser",
       "severity": "moderate",
-      "range": ">=6.16.0",
+      "range": "6.16.0 - 8.72.2",
       "nodes": [
         {
           "path": "node_modules/@typescript-eslint/parser",
@@ -215,7 +801,7 @@
     {
       "name": "@typescript-eslint/type-utils",
       "severity": "moderate",
-      "range": ">=6.16.0",
+      "range": "6.16.0 - 8.72.2",
       "nodes": [
         {
           "path": "node_modules/@typescript-eslint/type-utils",
@@ -234,7 +820,7 @@
     },
     {
       "name": "@typescript-eslint/typescript-estree",
-      "severity": "moderate",
+      "severity": "high",
       "range": ">=6.16.0",
       "nodes": [
         {
@@ -246,13 +832,16 @@
       "via": [
         {
           "dependency": "minimatch"
+        },
+        {
+          "dependency": "tinyglobby"
         }
       ]
     },
     {
       "name": "@typescript-eslint/utils",
       "severity": "moderate",
-      "range": ">=6.16.0",
+      "range": "6.16.0 - 8.72.2",
       "nodes": [
         {
           "path": "node_modules/@typescript-eslint/utils",
@@ -267,10 +856,32 @@
       ]
     },
     {
-      "name": "babel-jest",
-      "severity": "moderate",
-      "range": ">=30.5.0",
+      "name": "anymatch",
+      "severity": "high",
+      "range": ">=3.0.0",
       "nodes": [
+        {
+          "path": "node_modules/anymatch",
+          "version": "3.1.3",
+          "development": false
+        }
+      ],
+      "via": [
+        {
+          "dependency": "picomatch"
+        }
+      ]
+    },
+    {
+      "name": "babel-jest",
+      "severity": "high",
+      "range": ">=27.0.0-next.0",
+      "nodes": [
+        {
+          "path": "node_modules/babel-jest",
+          "version": "29.7.0",
+          "development": true
+        },
         {
           "path": "node_modules/jest-config/node_modules/babel-jest",
           "version": "30.5.2",
@@ -339,9 +950,66 @@
       ]
     },
     {
+      "name": "babel-preset-expo",
+      "severity": "high",
+      "range": ">=56.0.0-canary-20260212-4f61309",
+      "nodes": [
+        {
+          "path": "node_modules/babel-preset-expo",
+          "version": "58.0.24",
+          "development": false
+        }
+      ],
+      "via": [
+        {
+          "dependency": "@react-native/babel-plugin-codegen"
+        }
+      ]
+    },
+    {
+      "name": "eslint-import-resolver-typescript",
+      "severity": "high",
+      "range": ">=3.8.0",
+      "nodes": [
+        {
+          "path": "node_modules/eslint-import-resolver-typescript",
+          "version": "3.10.1",
+          "development": true
+        }
+      ],
+      "via": [
+        {
+          "dependency": "tinyglobby"
+        }
+      ]
+    },
+    {
+      "name": "expect",
+      "severity": "high",
+      "range": ">=28.0.1",
+      "nodes": [
+        {
+          "path": "node_modules/expect",
+          "version": "30.5.2",
+          "development": false
+        }
+      ],
+      "via": [
+        {
+          "dependency": "jest-message-util"
+        },
+        {
+          "dependency": "jest-mock"
+        },
+        {
+          "dependency": "jest-util"
+        }
+      ]
+    },
+    {
       "name": "expo",
-      "severity": "moderate",
-      "range": ">=52.0.0-canary-20240625-2333e70",
+      "severity": "high",
+      "range": "50.0.0-alpha.0 - 50.0.0-canary-20240308-6715875 || >=50.0.3",
       "nodes": [
         {
           "path": "node_modules/expo",
@@ -351,7 +1019,144 @@
       ],
       "via": [
         {
+          "dependency": "@expo/cli"
+        },
+        {
+          "dependency": "@expo/config-plugins"
+        },
+        {
+          "dependency": "@expo/config"
+        },
+        {
           "dependency": "@expo/fingerprint"
+        },
+        {
+          "dependency": "@expo/local-build-cache-provider"
+        },
+        {
+          "dependency": "@expo/metro-config"
+        },
+        {
+          "dependency": "@expo/metro"
+        },
+        {
+          "dependency": "babel-preset-expo"
+        },
+        {
+          "dependency": "expo-modules-core"
+        }
+      ]
+    },
+    {
+      "name": "expo-modules-core",
+      "severity": "high",
+      "range": ">=58.0.20",
+      "nodes": [
+        {
+          "path": "node_modules/expo-modules-core",
+          "version": "58.0.30",
+          "development": false
+        }
+      ],
+      "via": [
+        {
+          "dependency": "react-native-worklets"
+        }
+      ]
+    },
+    {
+      "name": "expo-router",
+      "severity": "high",
+      "range": ">=5.2.0-canary-20250611-f0afe80",
+      "nodes": [
+        {
+          "path": "node_modules/expo-router",
+          "version": "58.0.30",
+          "development": false
+        }
+      ],
+      "via": [
+        {
+          "dependency": "@testing-library/react-native"
+        }
+      ]
+    },
+    {
+      "name": "expo-sharing",
+      "severity": "high",
+      "range": "56.0.0-canary-20260212-4f61309 - 56.0.0-canary-20260506-964f25d || >=58.0.22",
+      "nodes": [
+        {
+          "path": "node_modules/expo-sharing",
+          "version": "58.0.22",
+          "development": false
+        }
+      ],
+      "via": [
+        {
+          "dependency": "@expo/config-plugins"
+        }
+      ]
+    },
+    {
+      "name": "fdir",
+      "severity": "high",
+      "range": ">=5.2.1",
+      "nodes": [
+        {
+          "path": "node_modules/@jest/core/node_modules/fdir",
+          "version": "6.5.0",
+          "development": false
+        },
+        {
+          "path": "node_modules/@jest/reporters/node_modules/fdir",
+          "version": "6.5.0",
+          "development": false
+        },
+        {
+          "path": "node_modules/@jest/test-sequencer/node_modules/fdir",
+          "version": "6.5.0",
+          "development": false
+        },
+        {
+          "path": "node_modules/jest-config/node_modules/fdir",
+          "version": "6.5.0",
+          "development": false
+        },
+        {
+          "path": "node_modules/jest-expo/node_modules/fdir",
+          "version": "6.5.0",
+          "development": true
+        },
+        {
+          "path": "node_modules/jest-resolve/node_modules/fdir",
+          "version": "6.5.0",
+          "development": false
+        },
+        {
+          "path": "node_modules/jest-runner/node_modules/fdir",
+          "version": "6.5.0",
+          "development": false
+        },
+        {
+          "path": "node_modules/jest-runtime/node_modules/fdir",
+          "version": "6.5.0",
+          "development": false
+        },
+        {
+          "path": "node_modules/jest-snapshot/node_modules/fdir",
+          "version": "6.5.0",
+          "development": false
+        },
+        {
+          "path": "node_modules/tinyglobby/node_modules/fdir",
+          "version": "6.5.0",
+          "development": false
+        }
+      ],
+      "via": [
+        {
+          "dependency": "picomatch"
         }
       ]
     },
@@ -416,8 +1221,8 @@
     },
     {
       "name": "jest",
-      "severity": "moderate",
-      "range": ">=30.0.0-alpha.1",
+      "severity": "high",
+      "range": ">=27.0.0-next.0",
       "nodes": [
         {
           "path": "node_modules/jest",
@@ -435,9 +1240,26 @@
       ]
     },
     {
+      "name": "jest-changed-files",
+      "severity": "high",
+      "range": ">=29.6.3",
+      "nodes": [
+        {
+          "path": "node_modules/jest-changed-files",
+          "version": "30.5.1",
+          "development": false
+        }
+      ],
+      "via": [
+        {
+          "dependency": "jest-util"
+        }
+      ]
+    },
+    {
       "name": "jest-circus",
-      "severity": "moderate",
-      "range": ">=30.0.0-alpha.1",
+      "severity": "high",
+      "range": ">=27.0.0-next.0",
       "nodes": [
         {
           "path": "node_modules/jest-circus",
@@ -447,20 +1269,35 @@
       ],
       "via": [
         {
+          "dependency": "@jest/environment"
+        },
+        {
           "dependency": "@jest/expect"
+        },
+        {
+          "dependency": "@jest/test-result"
+        },
+        {
+          "dependency": "jest-each"
+        },
+        {
+          "dependency": "jest-message-util"
         },
         {
           "dependency": "jest-runtime"
         },
         {
           "dependency": "jest-snapshot"
+        },
+        {
+          "dependency": "jest-util"
         }
       ]
     },
     {
       "name": "jest-cli",
-      "severity": "moderate",
-      "range": ">=30.0.0-alpha.1",
+      "severity": "high",
+      "range": ">=27.0.0-next.0",
       "nodes": [
         {
           "path": "node_modules/jest-cli",
@@ -473,14 +1310,20 @@
           "dependency": "@jest/core"
         },
         {
+          "dependency": "@jest/test-result"
+        },
+        {
           "dependency": "jest-config"
+        },
+        {
+          "dependency": "jest-util"
         }
       ]
     },
     {
       "name": "jest-config",
-      "severity": "moderate",
-      "range": ">=25.2.0-alpha.86",
+      "severity": "high",
+      "range": ">=27.0.0-next.0",
       "nodes": [
         {
           "path": "node_modules/jest-config",
@@ -489,6 +1332,9 @@
         }
       ],
       "via": [
+        {
+          "dependency": "@jest/test-sequencer"
+        },
         {
           "dependency": "babel-jest"
         },
@@ -499,14 +1345,101 @@
           "dependency": "jest-circus"
         },
         {
+          "dependency": "jest-environment-node"
+        },
+        {
+          "dependency": "jest-resolve"
+        },
+        {
           "dependency": "jest-runner"
+        },
+        {
+          "dependency": "jest-util"
+        }
+      ]
+    },
+    {
+      "name": "jest-each",
+      "severity": "high",
+      "range": ">=27.0.0-next.0",
+      "nodes": [
+        {
+          "path": "node_modules/jest-each",
+          "version": "30.5.2",
+          "development": false
+        }
+      ],
+      "via": [
+        {
+          "dependency": "jest-util"
+        }
+      ]
+    },
+    {
+      "name": "jest-environment-jsdom",
+      "severity": "high",
+      "range": ">=27.0.0-next.0",
+      "nodes": [
+        {
+          "path": "node_modules/jest-environment-jsdom",
+          "version": "30.5.2",
+          "development": true
+        }
+      ],
+      "via": [
+        {
+          "dependency": "@jest/environment-jsdom-abstract"
+        },
+        {
+          "dependency": "@jest/environment"
+        }
+      ]
+    },
+    {
+      "name": "jest-environment-node",
+      "severity": "high",
+      "range": ">=27.0.0-next.0",
+      "nodes": [
+        {
+          "path": "node_modules/jest-config/node_modules/jest-environment-node",
+          "version": "30.5.2",
+          "development": false
+        },
+        {
+          "path": "node_modules/jest-environment-node",
+          "version": "29.7.0",
+          "development": true
+        },
+        {
+          "path": "node_modules/jest-expo/node_modules/jest-environment-node",
+          "version": "30.5.2",
+          "development": true
+        },
+        {
+          "path": "node_modules/jest-runner/node_modules/jest-environment-node",
+          "version": "30.5.2",
+          "development": false
+        }
+      ],
+      "via": [
+        {
+          "dependency": "@jest/environment"
+        },
+        {
+          "dependency": "@jest/fake-timers"
+        },
+        {
+          "dependency": "jest-mock"
+        },
+        {
+          "dependency": "jest-util"
         }
       ]
     },
     {
       "name": "jest-expo",
-      "severity": "moderate",
-      "range": ">=58.0.7",
+      "severity": "high",
+      "range": ">=43.0.0-beta.0",
       "nodes": [
         {
           "path": "node_modules/jest-expo",
@@ -516,14 +1449,188 @@
       ],
       "via": [
         {
+          "dependency": "@jest/globals"
+        },
+        {
+          "dependency": "@react-native/jest-preset"
+        },
+        {
+          "dependency": "babel-jest"
+        },
+        {
+          "dependency": "jest-environment-jsdom"
+        },
+        {
+          "dependency": "jest-environment-node"
+        },
+        {
+          "dependency": "jest-mock"
+        },
+        {
+          "dependency": "jest-snapshot"
+        },
+        {
           "dependency": "jest-watch-typeahead"
+        },
+        {
+          "dependency": "jest"
+        }
+      ]
+    },
+    {
+      "name": "jest-haste-map",
+      "severity": "high",
+      "range": ">=25.0.0",
+      "nodes": [
+        {
+          "path": "node_modules/@jest/core/node_modules/jest-haste-map",
+          "version": "30.5.1",
+          "development": false
+        },
+        {
+          "path": "node_modules/@jest/reporters/node_modules/jest-haste-map",
+          "version": "30.5.1",
+          "development": false
+        },
+        {
+          "path": "node_modules/@jest/test-sequencer/node_modules/jest-haste-map",
+          "version": "30.5.1",
+          "development": false
+        },
+        {
+          "path": "node_modules/jest-config/node_modules/jest-haste-map",
+          "version": "30.5.1",
+          "development": false
+        },
+        {
+          "path": "node_modules/jest-expo/node_modules/jest-haste-map",
+          "version": "30.5.1",
+          "development": true
+        },
+        {
+          "path": "node_modules/jest-haste-map",
+          "version": "29.7.0",
+          "development": true
+        },
+        {
+          "path": "node_modules/jest-resolve/node_modules/jest-haste-map",
+          "version": "30.5.1",
+          "development": false
+        },
+        {
+          "path": "node_modules/jest-runner/node_modules/jest-haste-map",
+          "version": "30.5.1",
+          "development": false
+        },
+        {
+          "path": "node_modules/jest-runtime/node_modules/jest-haste-map",
+          "version": "30.5.1",
+          "development": false
+        },
+        {
+          "path": "node_modules/jest-snapshot/node_modules/jest-haste-map",
+          "version": "30.5.1",
+          "development": false
+        }
+      ],
+      "via": [
+        {
+          "dependency": "@parcel/watcher"
+        },
+        {
+          "dependency": "anymatch"
+        },
+        {
+          "dependency": "fdir"
+        },
+        {
+          "dependency": "jest-util"
+        },
+        {
+          "dependency": "jest-worker"
+        },
+        {
+          "dependency": "micromatch"
+        },
+        {
+          "dependency": "picomatch"
+        }
+      ]
+    },
+    {
+      "name": "jest-message-util",
+      "severity": "high",
+      "range": ">=25.0.0",
+      "nodes": [
+        {
+          "path": "node_modules/jest-environment-node/node_modules/jest-message-util",
+          "version": "29.7.0",
+          "development": true
+        },
+        {
+          "path": "node_modules/jest-message-util",
+          "version": "30.5.1",
+          "development": false
+        }
+      ],
+      "via": [
+        {
+          "dependency": "jest-util"
+        },
+        {
+          "dependency": "micromatch"
+        },
+        {
+          "dependency": "picomatch"
+        }
+      ]
+    },
+    {
+      "name": "jest-mock",
+      "severity": "high",
+      "range": ">=29.1.0",
+      "nodes": [
+        {
+          "path": "node_modules/jest-environment-node/node_modules/jest-mock",
+          "version": "29.7.0",
+          "development": true
+        },
+        {
+          "path": "node_modules/jest-mock",
+          "version": "30.5.2",
+          "development": false
+        }
+      ],
+      "via": [
+        {
+          "dependency": "jest-util"
+        }
+      ]
+    },
+    {
+      "name": "jest-resolve",
+      "severity": "high",
+      "range": ">=27.0.0-next.0",
+      "nodes": [
+        {
+          "path": "node_modules/jest-resolve",
+          "version": "30.5.1",
+          "development": false
+        }
+      ],
+      "via": [
+        {
+          "dependency": "jest-haste-map"
+        },
+        {
+          "dependency": "jest-util"
         }
       ]
     },
     {
       "name": "jest-resolve-dependencies",
-      "severity": "moderate",
-      "range": ">=30.5.0",
+      "severity": "high",
+      "range": ">=27.0.0-next.0",
       "nodes": [
         {
           "path": "node_modules/jest-resolve-dependencies",
@@ -539,8 +1646,8 @@
     },
     {
       "name": "jest-runner",
-      "severity": "moderate",
-      "range": ">=30.0.0-alpha.1",
+      "severity": "high",
+      "range": ">=27.0.0-next.0",
       "nodes": [
         {
           "path": "node_modules/jest-runner",
@@ -550,17 +1657,47 @@
       ],
       "via": [
         {
+          "dependency": "@jest/console"
+        },
+        {
+          "dependency": "@jest/environment"
+        },
+        {
+          "dependency": "@jest/test-result"
+        },
+        {
           "dependency": "@jest/transform"
         },
         {
+          "dependency": "jest-environment-node"
+        },
+        {
+          "dependency": "jest-haste-map"
+        },
+        {
+          "dependency": "jest-message-util"
+        },
+        {
+          "dependency": "jest-resolve"
+        },
+        {
           "dependency": "jest-runtime"
+        },
+        {
+          "dependency": "jest-util"
+        },
+        {
+          "dependency": "jest-watcher"
+        },
+        {
+          "dependency": "jest-worker"
         }
       ]
     },
     {
       "name": "jest-runtime",
-      "severity": "moderate",
-      "range": ">=30.0.0-alpha.1",
+      "severity": "high",
+      "range": ">=27.0.0-next.0",
       "nodes": [
         {
           "path": "node_modules/jest-runtime",
@@ -570,7 +1707,16 @@
       ],
       "via": [
         {
+          "dependency": "@jest/environment"
+        },
+        {
+          "dependency": "@jest/fake-timers"
+        },
+        {
           "dependency": "@jest/globals"
+        },
+        {
+          "dependency": "@jest/test-result"
         },
         {
           "dependency": "@jest/transform"
@@ -579,14 +1725,29 @@
           "dependency": "glob"
         },
         {
+          "dependency": "jest-haste-map"
+        },
+        {
+          "dependency": "jest-message-util"
+        },
+        {
+          "dependency": "jest-mock"
+        },
+        {
+          "dependency": "jest-resolve"
+        },
+        {
           "dependency": "jest-snapshot"
+        },
+        {
+          "dependency": "jest-util"
         }
       ]
     },
     {
       "name": "jest-snapshot",
-      "severity": "moderate",
-      "range": ">=30.5.0",
+      "severity": "high",
+      "range": ">=27.0.0-next.0",
       "nodes": [
         {
           "path": "node_modules/jest-snapshot",
@@ -597,13 +1758,144 @@
       "via": [
         {
           "dependency": "@jest/transform"
+        },
+        {
+          "dependency": "expect"
+        },
+        {
+          "dependency": "jest-message-util"
+        },
+        {
+          "dependency": "jest-util"
+        }
+      ]
+    },
+    {
+      "name": "jest-util",
+      "severity": "high",
+      "range": ">=27.0.0-next.0",
+      "nodes": [
+        {
+          "path": "node_modules/@jest/console/node_modules/jest-util",
+          "version": "30.5.1",
+          "development": false
+        },
+        {
+          "path": "node_modules/@jest/core/node_modules/jest-util",
+          "version": "30.5.1",
+          "development": false
+        },
+        {
+          "path": "node_modules/@jest/environment-jsdom-abstract/node_modules/jest-util",
+          "version": "30.5.1",
+          "development": true
+        },
+        {
+          "path": "node_modules/@jest/fake-timers/node_modules/jest-util",
+          "version": "30.5.1",
+          "development": false
+        },
+        {
+          "path": "node_modules/@jest/reporters/node_modules/jest-util",
+          "version": "30.5.1",
+          "development": false
+        },
+        {
+          "path": "node_modules/@jest/test-sequencer/node_modules/jest-util",
+          "version": "30.5.1",
+          "development": false
+        },
+        {
+          "path": "node_modules/expect/node_modules/jest-util",
+          "version": "30.5.1",
+          "development": false
+        },
+        {
+          "path": "node_modules/jest-changed-files/node_modules/jest-util",
+          "version": "30.5.1",
+          "development": false
+        },
+        {
+          "path": "node_modules/jest-circus/node_modules/jest-util",
+          "version": "30.5.1",
+          "development": false
+        },
+        {
+          "path": "node_modules/jest-cli/node_modules/jest-util",
+          "version": "30.5.1",
+          "development": false
+        },
+        {
+          "path": "node_modules/jest-config/node_modules/jest-util",
+          "version": "30.5.1",
+          "development": false
+        },
+        {
+          "path": "node_modules/jest-each/node_modules/jest-util",
+          "version": "30.5.1",
+          "development": false
+        },
+        {
+          "path": "node_modules/jest-expo/node_modules/jest-util",
+          "version": "30.5.1",
+          "development": true
+        },
+        {
+          "path": "node_modules/jest-message-util/node_modules/jest-util",
+          "version": "30.5.1",
+          "development": false
+        },
+        {
+          "path": "node_modules/jest-mock/node_modules/jest-util",
+          "version": "30.5.1",
+          "development": false
+        },
+        {
+          "path": "node_modules/jest-resolve/node_modules/jest-util",
+          "version": "30.5.1",
+          "development": false
+        },
+        {
+          "path": "node_modules/jest-runner/node_modules/jest-util",
+          "version": "30.5.1",
+          "development": false
+        },
+        {
+          "path": "node_modules/jest-runtime/node_modules/jest-util",
+          "version": "30.5.1",
+          "development": false
+        },
+        {
+          "path": "node_modules/jest-snapshot/node_modules/jest-util",
+          "version": "30.5.1",
+          "development": false
+        },
+        {
+          "path": "node_modules/jest-util",
+          "version": "29.7.0",
+          "development": false
+        },
+        {
+          "path": "node_modules/jest-watcher/node_modules/jest-util",
+          "version": "30.5.1",
+          "development": false
+        },
+        {
+          "path": "node_modules/jest-worker/node_modules/jest-util",
+          "version": "30.5.1",
+          "development": false
+        }
+      ],
+      "via": [
+        {
+          "dependency": "picomatch"
         }
       ]
     },
     {
       "name": "jest-watch-typeahead",
-      "severity": "moderate",
-      "range": ">=3.0.0",
+      "severity": "high",
+      "range": ">=0.6.4",
       "nodes": [
         {
           "path": "node_modules/jest-watch-typeahead",
@@ -613,7 +1905,164 @@
       ],
       "via": [
         {
+          "dependency": "jest-watcher"
+        },
+        {
           "dependency": "jest"
+        }
+      ]
+    },
+    {
+      "name": "jest-watcher",
+      "severity": "high",
+      "range": ">=27.0.0-next.0",
+      "nodes": [
+        {
+          "path": "node_modules/jest-watcher",
+          "version": "30.5.2",
+          "development": false
+        }
+      ],
+      "via": [
+        {
+          "dependency": "@jest/test-result"
+        },
+        {
+          "dependency": "jest-util"
+        }
+      ]
+    },
+    {
+      "name": "jest-worker",
+      "severity": "high",
+      "range": ">=29.1.2",
+      "nodes": [
+        {
+          "path": "node_modules/@expo/metro-file-map/node_modules/jest-worker",
+          "version": "29.7.0",
+          "development": false
+        },
+        {
+          "path": "node_modules/jest-haste-map/node_modules/jest-worker",
+          "version": "29.7.0",
+          "development": true
+        },
+        {
+          "path": "node_modules/jest-worker",
+          "version": "30.5.1",
+          "development": false
+        },
+        {
+          "path": "node_modules/metro-file-map/node_modules/jest-worker",
+          "version": "29.7.0",
+          "development": false
+        },
+        {
+          "path": "node_modules/metro/node_modules/jest-worker",
+          "version": "29.7.0",
+          "development": false
+        }
+      ],
+      "via": [
+        {
+          "dependency": "jest-util"
+        }
+      ]
+    },
+    {
+      "name": "metro",
+      "severity": "high",
+      "range": ">=0.71.0",
+      "nodes": [
+        {
+          "path": "node_modules/metro",
+          "version": "0.87.1",
+          "development": false
+        }
+      ],
+      "via": [
+        {
+          "dependency": "jest-worker"
+        },
+        {
+          "dependency": "metro-config"
+        },
+        {
+          "dependency": "metro-file-map"
+        },
+        {
+          "dependency": "metro-transform-worker"
+        }
+      ]
+    },
+    {
+      "name": "metro-config",
+      "severity": "high",
+      "range": ">=0.80.0",
+      "nodes": [
+        {
+          "path": "node_modules/metro-config",
+          "version": "0.87.1",
+          "development": false
+        }
+      ],
+      "via": [
+        {
+          "dependency": "metro"
+        }
+      ]
+    },
+    {
+      "name": "metro-file-map",
+      "severity": "high",
+      "range": "*",
+      "nodes": [
+        {
+          "path": "node_modules/metro-file-map",
+          "version": "0.87.1",
+          "development": false
+        }
+      ],
+      "via": [
+        {
+          "dependency": "jest-worker"
+        },
+        {
+          "dependency": "micromatch"
+        }
+      ]
+    },
+    {
+      "name": "metro-transform-worker",
+      "severity": "high",
+      "range": ">=0.80.0",
+      "nodes": [
+        {
+          "path": "node_modules/metro-transform-worker",
+          "version": "0.87.1",
+          "development": false
+        }
+      ],
+      "via": [
+        {
+          "dependency": "metro"
+        }
+      ]
+    },
+    {
+      "name": "micromatch",
+      "severity": "high",
+      "range": ">=4.0.0",
+      "nodes": [
+        {
+          "path": "node_modules/micromatch",
+          "version": "4.0.8",
+          "development": false
+        }
+      ],
+      "via": [
+        {
+          "dependency": "picomatch"
         }
       ]
     },
@@ -719,6 +2168,212 @@
       ]
     },
     {
+      "name": "picomatch",
+      "severity": "high",
+      "range": "*",
+      "nodes": [
+        {
+          "path": "node_modules/@expo/cli/node_modules/picomatch",
+          "version": "4.0.7",
+          "development": false
+        },
+        {
+          "path": "node_modules/@expo/metro-config/node_modules/picomatch",
+          "version": "4.0.7",
+          "development": false
+        },
+        {
+          "path": "node_modules/@jest/console/node_modules/picomatch",
+          "version": "4.0.7",
+          "development": false
+        },
+        {
+          "path": "node_modules/@jest/core/node_modules/picomatch",
+          "version": "4.0.7",
+          "development": false
+        },
+        {
+          "path": "node_modules/@jest/environment-jsdom-abstract/node_modules/picomatch",
+          "version": "4.0.7",
+          "development": true
+        },
+        {
+          "path": "node_modules/@jest/fake-timers/node_modules/picomatch",
+          "version": "4.0.7",
+          "development": false
+        },
+        {
+          "path": "node_modules/@jest/reporters/node_modules/picomatch",
+          "version": "4.0.7",
+          "development": false
+        },
+        {
+          "path": "node_modules/@jest/test-sequencer/node_modules/picomatch",
+          "version": "4.0.7",
+          "development": false
+        },
+        {
+          "path": "node_modules/@parcel/watcher/node_modules/picomatch",
+          "version": "4.0.7",
+          "development": false
+        },
+        {
+          "path": "node_modules/expect/node_modules/picomatch",
+          "version": "4.0.7",
+          "development": false
+        },
+        {
+          "path": "node_modules/jest-changed-files/node_modules/picomatch",
+          "version": "4.0.7",
+          "development": false
+        },
+        {
+          "path": "node_modules/jest-circus/node_modules/picomatch",
+          "version": "4.0.7",
+          "development": false
+        },
+        {
+          "path": "node_modules/jest-cli/node_modules/picomatch",
+          "version": "4.0.7",
+          "development": false
+        },
+        {
+          "path": "node_modules/jest-config/node_modules/picomatch",
+          "version": "4.0.7",
+          "development": false
+        },
+        {
+          "path": "node_modules/jest-each/node_modules/picomatch",
+          "version": "4.0.7",
+          "development": false
+        },
+        {
+          "path": "node_modules/jest-expo/node_modules/picomatch",
+          "version": "4.0.7",
+          "development": true
+        },
+        {
+          "path": "node_modules/jest-message-util/node_modules/picomatch",
+          "version": "4.0.7",
+          "development": false
+        },
+        {
+          "path": "node_modules/jest-mock/node_modules/picomatch",
+          "version": "4.0.7",
+          "development": false
+        },
+        {
+          "path": "node_modules/jest-resolve/node_modules/picomatch",
+          "version": "4.0.7",
+          "development": false
+        },
+        {
+          "path": "node_modules/jest-runner/node_modules/picomatch",
+          "version": "4.0.7",
+          "development": false
+        },
+        {
+          "path": "node_modules/jest-runtime/node_modules/picomatch",
+          "version": "4.0.7",
+          "development": false
+        },
+        {
+          "path": "node_modules/jest-snapshot/node_modules/picomatch",
+          "version": "4.0.7",
+          "development": false
+        },
+        {
+          "path": "node_modules/jest-watcher/node_modules/picomatch",
+          "version": "4.0.7",
+          "development": false
+        },
+        {
+          "path": "node_modules/jest-worker/node_modules/picomatch",
+          "version": "4.0.7",
+          "development": false
+        },
+        {
+          "path": "node_modules/picomatch",
+          "version": "2.3.2",
+          "development": false
+        },
+        {
+          "path": "node_modules/tinyglobby/node_modules/picomatch",
+          "version": "4.0.7",
+          "development": false
+        }
+      ],
+      "via": [
+        {
+          "source": 1247710,
+          "id": "GHSA-fc5q-39xc-vjpf",
+          "severity": "high",
+          "range": "<=4.0.7",
+          "title": "picomatch vulnerable to ReDoS through single-branch repeated extglobs"
+        }
+      ]
+    },
+    {
+      "name": "react-native",
+      "severity": "high",
+      "range": "0.73.0-nightly-20230506-1af868c52 - 0.90.0-nightly-20261117-c1acb2bd6",
+      "nodes": [
+        {
+          "path": "node_modules/react-native",
+          "version": "0.88.1",
+          "development": false
+        }
+      ],
+      "via": [
+        {
+          "dependency": "@react-native/codegen"
+        },
+        {
+          "dependency": "@react-native/community-cli-plugin"
+        },
+        {
+          "dependency": "@react-native/virtualized-lists"
+        },
+        {
+          "dependency": "tinyglobby"
+        }
+      ]
+    },
+    {
+      "name": "react-native-reanimated",
+      "severity": "high",
+      "range": ">=4.7.0-nightly-20260824-0788fcdeb",
+      "nodes": [
+        {
+          "path": "node_modules/react-native-reanimated",
+          "version": "4.7.1",
+          "development": false
+        }
+      ],
+      "via": [
+        {
+          "dependency": "react-native"
+        }
+      ]
+    },
+    {
+      "name": "react-native-worklets",
+      "severity": "high",
+      "range": ">=0.13.0-nightly-20260812-0f8cf6dcc",
+      "nodes": [
+        {
+          "path": "node_modules/react-native-worklets",
+          "version": "0.13.1",
+          "development": false
+        }
+      ],
+      "via": [
+        {
+          "dependency": "react-native"
+        }
+      ]
+    },
+    {
       "name": "test-exclude",
       "severity": "moderate",
       "range": ">=7.0.0",
@@ -767,6 +2422,26 @@
           "dependency": "minimatch"
         }
       ]
+    },
+    {
+      "name": "tinyglobby",
+      "severity": "high",
+      "range": "*",
+      "nodes": [
+        {
+          "path": "node_modules/tinyglobby",
+          "version": "0.2.17",
+          "development": false
+        }
+      ],
+      "via": [
+        {
+          "dependency": "fdir"
+        },
+        {
+          "dependency": "picomatch"
+        }
+      ]
     }
   ],
   "contexts": [
@@ -790,6 +2465,13 @@
       "callLocations": "apps/mobile package.json의 lint 명령과 eslint.config.cjs; node_modules/@typescript-eslint/*, node_modules/@typescript-eslint/typescript-estree/node_modules/minimatch, node_modules/eslint-config-expo, node_modules/eslint-plugin-expo. npm lock에서 dev=true인 개발 도구 경로다.",
       "assessment": "minimatch GHSA-g3hv-75wg-m249의 공격 조건은 공격자가 통제하는 glob 패턴이다. lint 패턴은 저장소가 소유한 설정 파일에 고정되어 있고 외부 입력이 도달하지 않으므로 영향은 개발·CI lint 시간의 가용성으로 한정된다. 앱 번들 경로가 아니다.",
       "residualAssumptions": "2026-11-05(UTC) 기준 GitHub가 권고 범위를 >=7.0.0 <11.0.1로 정정해 eslint 9.39.1·eslint-plugin-import·eslint-plugin-react가 쓰는 minimatch 3.1.5와 그 전이 링크는 audit에서 빠졌다. 남은 10.x 최신 10.2.6도 영향 범위이고 최신 typescript-estree 8.72.1은 minimatch ^10.2.2를 선언해 수정본(11.0.1 이상)이 범위 밖이므로 major 강제 override는 하지 않았다. 개발 도구 전용이므로 기존 기한 2026-12-02까지 eslint-config-expo·typescript-eslint 갱신을 재검토하고, lint 패턴을 외부 입력으로 받게 되거나 권고 범위가 다시 바뀌어 3.x가 포함되면 즉시 재분류한다."
+    },
+    {
+      "id": "mobile-picomatch-host-tools",
+      "usedApi": "Expo CLI/Metro 자산·모듈·의존 metadata 패턴 및 Jest/린트/codegen의 파일 glob 매칭에 picomatch/micromatch/tinyglobby가 쓰인다. GHSA-fc5q-39xc-vjpf의 반복 extglob 패턴과 매칭 문자열이 함께 제어되면 해당 Node 호스트의 이벤트 루프 DoS가 가능하다.",
+      "callLocations": "apps/mobile/package.json의 start/export/prebuild/test/lint, app.config.ts와 jest.config.cjs가 진입점이다. lock 정확 버전 @expo/cli58.1.19 exportAssets.js:139는 updates.assetPatternsToBeBundled, @expo/metro-config58.0.21 serializer/sideEffects.js:136은 package.json.sideEffects, Jest30.5.2 TestSearchSource의 testMatch는 jest-util30.5.1 globsToMatcher:634에 전달된다. Metro watcher는 설정 globs를 파일 경로와 매칭한다.",
+      "assessment": "확인한 패턴 공급면은 프로젝트·의존 package metadata·CLI/테스트 설정이며 HRA 앱의 API 응답·문서 선택·보호 자료 입력을 패턴으로 컴파일하는 직접 경로는 확인하지 않았다. 따라서 현재 호스트 도구의 가용성 P2 후보로 판단한다. Expo/React Native의 prod/devOptional·peer 전이 링크 자체를 기기 실행 근거로 사용하지 않으며 외부 PR·프로젝트/의존 입력에 의한 export/CI/로컬 Metro 중단 위험은 남는다.",
+      "residualAssumptions": "picomatch2.3.2/4.0.7 설치 경로26개와 정식 패치 부재는 그대로다. 실제 앱 번들 미포함·운영 악용 불가능은 검증하지 않았다. 모바일 확대 보류는 노출 부재의 근거가 아니며 앱/도구에서 원격 패턴 입력을 추가하거나 배포 사용면이 달라지면 즉시 재검토한다. P1 경계 발견 시 이 P2 판단을 사용할 수 없다. 기존 날짜는 유지하고 최단 기존기한과 같은 2026-11-25까지 공식 수정본·도달성을 재검토한다."
     }
   ],
   "assessments": [
@@ -1260,6 +2942,1545 @@
       "reviewedOn": "2026-11-04",
       "reviewBy": "2026-11-25",
       "attackCondition": "minimatch 전이 advisory의 공격 조건을 해당 패키지 항목에서 별도로 검토한다. 2026-11-04 모바일 lock 최초 등록 시 확인한 경로이며 2026-11-25까지 함께 재검토한다."
+    },
+    {
+      "key": "@expo/cli:@expo/config-plugins",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "@expo/cli:@expo/config-plugins — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "@expo/cli:@expo/config",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "@expo/cli:@expo/config — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "@expo/cli:@expo/inline-modules",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "@expo/cli:@expo/inline-modules — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "@expo/cli:@expo/metro-config",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "@expo/cli:@expo/metro-config — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "@expo/cli:@expo/metro-file-map",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "@expo/cli:@expo/metro-file-map — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "@expo/cli:@expo/metro",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "@expo/cli:@expo/metro — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "@expo/cli:@expo/prebuild-config",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "@expo/cli:@expo/prebuild-config — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "@expo/cli:picomatch",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "@expo/cli:picomatch — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "@expo/config:@expo/config-plugins",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "@expo/config:@expo/config-plugins — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "@expo/config-plugins:tinyglobby",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "@expo/config-plugins:tinyglobby — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "@expo/inline-modules:@expo/config-plugins",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "@expo/inline-modules:@expo/config-plugins — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "@expo/local-build-cache-provider:@expo/config",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "@expo/local-build-cache-provider:@expo/config — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "@expo/metro:metro-config",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "@expo/metro:metro-config — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "@expo/metro:metro-file-map",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "@expo/metro:metro-file-map — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "@expo/metro:metro-transform-worker",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "@expo/metro:metro-transform-worker — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "@expo/metro:metro",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "@expo/metro:metro — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "@expo/metro-config:@expo/config",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "@expo/metro-config:@expo/config — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "@expo/metro-config:@expo/metro",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "@expo/metro-config:@expo/metro — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "@expo/metro-config:picomatch",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "@expo/metro-config:picomatch — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "@expo/metro-config:tinyglobby",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "@expo/metro-config:tinyglobby — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "@expo/metro-file-map:jest-worker",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "@expo/metro-file-map:jest-worker — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "@expo/prebuild-config:@expo/config-plugins",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "@expo/prebuild-config:@expo/config-plugins — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "@expo/prebuild-config:@expo/config",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "@expo/prebuild-config:@expo/config — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "@jest/console:jest-message-util",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "@jest/console:jest-message-util — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "@jest/console:jest-util",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "@jest/console:jest-util — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "@jest/core:@jest/console",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "@jest/core:@jest/console — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "@jest/core:@jest/test-result",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "@jest/core:@jest/test-result — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "@jest/core:jest-changed-files",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "@jest/core:jest-changed-files — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "@jest/core:jest-haste-map",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "@jest/core:jest-haste-map — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "@jest/core:jest-message-util",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "@jest/core:jest-message-util — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "@jest/core:jest-resolve",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "@jest/core:jest-resolve — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "@jest/core:jest-util",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "@jest/core:jest-util — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "@jest/core:jest-watcher",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "@jest/core:jest-watcher — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "@jest/environment:@jest/fake-timers",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "@jest/environment:@jest/fake-timers — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "@jest/environment:jest-mock",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "@jest/environment:jest-mock — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "@jest/environment-jsdom-abstract:@jest/environment",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "@jest/environment-jsdom-abstract:@jest/environment — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "@jest/environment-jsdom-abstract:@jest/fake-timers",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "@jest/environment-jsdom-abstract:@jest/fake-timers — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "@jest/environment-jsdom-abstract:jest-mock",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "@jest/environment-jsdom-abstract:jest-mock — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "@jest/environment-jsdom-abstract:jest-util",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "@jest/environment-jsdom-abstract:jest-util — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "@jest/expect:expect",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "@jest/expect:expect — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "@jest/fake-timers:jest-message-util",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "@jest/fake-timers:jest-message-util — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "@jest/fake-timers:jest-mock",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "@jest/fake-timers:jest-mock — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "@jest/fake-timers:jest-util",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "@jest/fake-timers:jest-util — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "@jest/globals:@jest/environment",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "@jest/globals:@jest/environment — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "@jest/globals:jest-mock",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "@jest/globals:jest-mock — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "@jest/reporters:@jest/console",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "@jest/reporters:@jest/console — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "@jest/reporters:@jest/test-result",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "@jest/reporters:@jest/test-result — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "@jest/reporters:jest-message-util",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "@jest/reporters:jest-message-util — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "@jest/reporters:jest-util",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "@jest/reporters:jest-util — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "@jest/reporters:jest-worker",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "@jest/reporters:jest-worker — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "@jest/test-result:@jest/console",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "@jest/test-result:@jest/console — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "@jest/test-sequencer:@jest/test-result",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "@jest/test-sequencer:@jest/test-result — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "@jest/test-sequencer:jest-haste-map",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "@jest/test-sequencer:jest-haste-map — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "@jest/transform:jest-haste-map",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "@jest/transform:jest-haste-map — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "@jest/transform:jest-util",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "@jest/transform:jest-util — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "@jest/transform:micromatch",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "@jest/transform:micromatch — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "@parcel/watcher:picomatch",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "@parcel/watcher:picomatch — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "@react-native/babel-plugin-codegen:@react-native/codegen",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "@react-native/babel-plugin-codegen:@react-native/codegen — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "@react-native/babel-preset:@react-native/babel-plugin-codegen",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "@react-native/babel-preset:@react-native/babel-plugin-codegen — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "@react-native/codegen:tinyglobby",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "@react-native/codegen:tinyglobby — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "@react-native/community-cli-plugin:@react-native/metro-config",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "@react-native/community-cli-plugin:@react-native/metro-config — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "@react-native/jest-preset:babel-jest",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "@react-native/jest-preset:babel-jest — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "@react-native/jest-preset:jest-environment-node",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "@react-native/jest-preset:jest-environment-node — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "@react-native/metro-babel-transformer:@react-native/babel-preset",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "@react-native/metro-babel-transformer:@react-native/babel-preset — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "@react-native/metro-config:@react-native/metro-babel-transformer",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "@react-native/metro-config:@react-native/metro-babel-transformer — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "@react-native/virtualized-lists:react-native",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "@react-native/virtualized-lists:react-native — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "@testing-library/react-native:jest",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "@testing-library/react-native:jest — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "@types/jest:expect",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "@types/jest:expect — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "@typescript-eslint/typescript-estree:tinyglobby",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "@typescript-eslint/typescript-estree:tinyglobby — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "anymatch:picomatch",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "anymatch:picomatch — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "babel-preset-expo:@react-native/babel-plugin-codegen",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "babel-preset-expo:@react-native/babel-plugin-codegen — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "eslint-import-resolver-typescript:tinyglobby",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "eslint-import-resolver-typescript:tinyglobby — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "expect:jest-message-util",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "expect:jest-message-util — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "expect:jest-mock",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "expect:jest-mock — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "expect:jest-util",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "expect:jest-util — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "expo:@expo/cli",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "expo:@expo/cli — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "expo:@expo/config-plugins",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "expo:@expo/config-plugins — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "expo:@expo/config",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "expo:@expo/config — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "expo:@expo/local-build-cache-provider",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "expo:@expo/local-build-cache-provider — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "expo:@expo/metro-config",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "expo:@expo/metro-config — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "expo:@expo/metro",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "expo:@expo/metro — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "expo:babel-preset-expo",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "expo:babel-preset-expo — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "expo:expo-modules-core",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "expo:expo-modules-core — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "expo-modules-core:react-native-worklets",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "expo-modules-core:react-native-worklets — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "expo-router:@testing-library/react-native",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "expo-router:@testing-library/react-native — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "expo-sharing:@expo/config-plugins",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "expo-sharing:@expo/config-plugins — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "fdir:picomatch",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "fdir:picomatch — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "jest-changed-files:jest-util",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "jest-changed-files:jest-util — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "jest-circus:@jest/environment",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "jest-circus:@jest/environment — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "jest-circus:@jest/test-result",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "jest-circus:@jest/test-result — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "jest-circus:jest-each",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "jest-circus:jest-each — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "jest-circus:jest-message-util",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "jest-circus:jest-message-util — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "jest-circus:jest-util",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "jest-circus:jest-util — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "jest-cli:@jest/test-result",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "jest-cli:@jest/test-result — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "jest-cli:jest-util",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "jest-cli:jest-util — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "jest-config:@jest/test-sequencer",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "jest-config:@jest/test-sequencer — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "jest-config:jest-environment-node",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "jest-config:jest-environment-node — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "jest-config:jest-resolve",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "jest-config:jest-resolve — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "jest-config:jest-util",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "jest-config:jest-util — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "jest-each:jest-util",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "jest-each:jest-util — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "jest-environment-jsdom:@jest/environment-jsdom-abstract",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "jest-environment-jsdom:@jest/environment-jsdom-abstract — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "jest-environment-jsdom:@jest/environment",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "jest-environment-jsdom:@jest/environment — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "jest-environment-node:@jest/environment",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "jest-environment-node:@jest/environment — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "jest-environment-node:@jest/fake-timers",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "jest-environment-node:@jest/fake-timers — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "jest-environment-node:jest-mock",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "jest-environment-node:jest-mock — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "jest-environment-node:jest-util",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "jest-environment-node:jest-util — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "jest-expo:@jest/globals",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "jest-expo:@jest/globals — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "jest-expo:@react-native/jest-preset",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "jest-expo:@react-native/jest-preset — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "jest-expo:babel-jest",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "jest-expo:babel-jest — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "jest-expo:jest-environment-jsdom",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "jest-expo:jest-environment-jsdom — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "jest-expo:jest-environment-node",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "jest-expo:jest-environment-node — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "jest-expo:jest-mock",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "jest-expo:jest-mock — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "jest-expo:jest-snapshot",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "jest-expo:jest-snapshot — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "jest-expo:jest",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "jest-expo:jest — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "jest-haste-map:@parcel/watcher",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "jest-haste-map:@parcel/watcher — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "jest-haste-map:anymatch",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "jest-haste-map:anymatch — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "jest-haste-map:fdir",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "jest-haste-map:fdir — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "jest-haste-map:jest-util",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "jest-haste-map:jest-util — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "jest-haste-map:jest-worker",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "jest-haste-map:jest-worker — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "jest-haste-map:micromatch",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "jest-haste-map:micromatch — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "jest-haste-map:picomatch",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "jest-haste-map:picomatch — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "jest-message-util:jest-util",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "jest-message-util:jest-util — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "jest-message-util:micromatch",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "jest-message-util:micromatch — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "jest-message-util:picomatch",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "jest-message-util:picomatch — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "jest-mock:jest-util",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "jest-mock:jest-util — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "jest-resolve:jest-haste-map",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "jest-resolve:jest-haste-map — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "jest-resolve:jest-util",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "jest-resolve:jest-util — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "jest-runner:@jest/console",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "jest-runner:@jest/console — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "jest-runner:@jest/environment",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "jest-runner:@jest/environment — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "jest-runner:@jest/test-result",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "jest-runner:@jest/test-result — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "jest-runner:jest-environment-node",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "jest-runner:jest-environment-node — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "jest-runner:jest-haste-map",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "jest-runner:jest-haste-map — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "jest-runner:jest-message-util",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "jest-runner:jest-message-util — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "jest-runner:jest-resolve",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "jest-runner:jest-resolve — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "jest-runner:jest-util",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "jest-runner:jest-util — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "jest-runner:jest-watcher",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "jest-runner:jest-watcher — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "jest-runner:jest-worker",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "jest-runner:jest-worker — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "jest-runtime:@jest/environment",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "jest-runtime:@jest/environment — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "jest-runtime:@jest/fake-timers",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "jest-runtime:@jest/fake-timers — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "jest-runtime:@jest/test-result",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "jest-runtime:@jest/test-result — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "jest-runtime:jest-haste-map",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "jest-runtime:jest-haste-map — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "jest-runtime:jest-message-util",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "jest-runtime:jest-message-util — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "jest-runtime:jest-mock",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "jest-runtime:jest-mock — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "jest-runtime:jest-resolve",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "jest-runtime:jest-resolve — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "jest-runtime:jest-util",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "jest-runtime:jest-util — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "jest-snapshot:expect",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "jest-snapshot:expect — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "jest-snapshot:jest-message-util",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "jest-snapshot:jest-message-util — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "jest-snapshot:jest-util",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "jest-snapshot:jest-util — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "jest-util:picomatch",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "jest-util:picomatch — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "jest-watch-typeahead:jest-watcher",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "jest-watch-typeahead:jest-watcher — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "jest-watcher:@jest/test-result",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "jest-watcher:@jest/test-result — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "jest-watcher:jest-util",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "jest-watcher:jest-util — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "jest-worker:jest-util",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "jest-worker:jest-util — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "metro:jest-worker",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "metro:jest-worker — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "metro:metro-config",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "metro:metro-config — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "metro:metro-file-map",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "metro:metro-file-map — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "metro:metro-transform-worker",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "metro:metro-transform-worker — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "metro-config:metro",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "metro-config:metro — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "metro-file-map:jest-worker",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "metro-file-map:jest-worker — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "metro-file-map:micromatch",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "metro-file-map:micromatch — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "metro-transform-worker:metro",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "metro-transform-worker:metro — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "micromatch:picomatch",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "micromatch:picomatch — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "picomatch:1247710",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "picomatch:1247710 — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "react-native:@react-native/codegen",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "react-native:@react-native/codegen — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "react-native:@react-native/community-cli-plugin",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "react-native:@react-native/community-cli-plugin — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "react-native:@react-native/virtualized-lists",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "react-native:@react-native/virtualized-lists — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "react-native:tinyglobby",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "react-native:tinyglobby — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "react-native-reanimated:react-native",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "react-native-reanimated:react-native — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "react-native-worklets:react-native",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "react-native-worklets:react-native — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "tinyglobby:fdir",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "tinyglobby:fdir — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
+    },
+    {
+      "key": "tinyglobby:picomatch",
+      "contextId": "mobile-picomatch-host-tools",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "tinyglobby:picomatch — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
     }
   ]
 }
