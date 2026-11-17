@@ -62,11 +62,13 @@ export async function POST(request: NextRequest) {
     if (!session?.user) {
       return NextResponse.json({ error: "인증이 필요합니다." }, { status: 401 });
     }
-    // PENDING(승인 대기) 계정은 이미지 업로드 불가 — 승인 완료(MEMBER 이상)만 허용
-    if (session.user.role === "PENDING") {
+    // 이미지 쓰기는 열람 정책과 별도로 승인된 세 역할에만 허용합니다.
+    // 역할이 누락되거나 예상 밖 값이면 요청 제한 예약·본문 처리·저장 전에 거부합니다.
+    const role = session.user.role;
+    if (role !== "ADMIN" && role !== "FACULTY" && role !== "MEMBER") {
       return NextResponse.json(
         { error: "승인된 회원만 이미지를 업로드할 수 있습니다." },
-        { status: 403 }
+        { status: 403 },
       );
     }
 
@@ -90,10 +92,7 @@ export async function POST(request: NextRequest) {
     try {
       formData = await request.formData();
     } catch {
-      return NextResponse.json(
-        { error: "올바른 파일 업로드 요청이 아닙니다." },
-        { status: 400 },
-      );
+      return NextResponse.json({ error: "올바른 파일 업로드 요청이 아닙니다." }, { status: 400 });
     }
     const file = formData.get("file");
 
@@ -107,10 +106,7 @@ export async function POST(request: NextRequest) {
     // 10MB 이미지는 /api/editor-image-uploads 직접 업로드 경로를 사용합니다.
     const maxSize = 4 * 1024 * 1024;
     if (file.size > maxSize) {
-      return NextResponse.json(
-        { error: "파일 크기는 4MB를 초과할 수 없습니다." },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "파일 크기는 4MB를 초과할 수 없습니다." }, { status: 400 });
     }
 
     // 매직 바이트 검사 — 클라이언트가 위조 가능한 file.type 대신 실제 바이트로 검증
@@ -120,7 +116,7 @@ export async function POST(request: NextRequest) {
     if (!detectedExt) {
       return NextResponse.json(
         { error: "지원하지 않는 이미지 형식입니다. (jpg, png, webp, gif만 가능)" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -143,9 +139,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ url: blob.url });
   } catch (error) {
     logServerError("api/upload-image", error);
-    return NextResponse.json(
-      { error: "이미지 업로드 중 오류가 발생했습니다." },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "이미지 업로드 중 오류가 발생했습니다." }, { status: 500 });
   }
 }
