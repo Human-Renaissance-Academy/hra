@@ -63,6 +63,14 @@ export const UPLOAD_RATE_LIMIT = {
 } as const;
 
 /**
+ * 공개 기사 클릭의 단순 반복 집계를 억제하는 기본값입니다.
+ * 같은 IP·기사는 분당 한 번, 한 IP의 전체 기사는 분당 60회까지 예약합니다.
+ * 고유 방문자 통계가 아니며 NAT·unknown IP는 여러 독자의 예산을 공유합니다.
+ */
+export const PRESS_VIEW_PAIR_RATE_LIMIT = { windowMs: 60 * 1000, maxAttempts: 1 } as const;
+export const PRESS_VIEW_IP_RATE_LIMIT = { windowMs: 60 * 1000, maxAttempts: 60 } as const;
+
+/**
  * 지원서 제출 IP 시간당 rate limit 정책.
  *
  * 값 근거:
@@ -75,8 +83,14 @@ export const APPLICATION_SUBMISSION_HOURLY_RATE_LIMIT = {
 } as const;
 
 // 공유 네트워크의 정상 지원자를 보호하면서 장기적인 자동 제출은 제한합니다 (#121).
-export const APPLICATION_SUBMISSION_DAILY_RATE_LIMIT = { windowMs: 24 * 60 * 60 * 1000, maxAttempts: 200 } as const;
-export const APPLICATION_SUBMISSION_EMAIL_DAILY_RATE_LIMIT = { windowMs: 24 * 60 * 60 * 1000, maxAttempts: 5 } as const;
+export const APPLICATION_SUBMISSION_DAILY_RATE_LIMIT = {
+  windowMs: 24 * 60 * 60 * 1000,
+  maxAttempts: 200,
+} as const;
+export const APPLICATION_SUBMISSION_EMAIL_DAILY_RATE_LIMIT = {
+  windowMs: 24 * 60 * 60 * 1000,
+  maxAttempts: 5,
+} as const;
 
 /**
  * 자료실 파일·메타데이터 조회의 인증 사용자별 빈도 제한 정책 (#444).
@@ -94,7 +108,10 @@ export const APPLICATION_SUBMISSION_EMAIL_DAILY_RATE_LIMIT = { windowMs: 24 * 60
  *   - 차단된 요청은 DB 함수가 기록하지 않으므로 재시도 폭주가 대기 시간을 늘리지 않는다.
  */
 export const RESOURCE_READ_BURST_RATE_LIMIT = { windowMs: 60 * 1000, maxAttempts: 300 } as const;
-export const RESOURCE_READ_HOURLY_RATE_LIMIT = { windowMs: 60 * 60 * 1000, maxAttempts: 2000 } as const;
+export const RESOURCE_READ_HOURLY_RATE_LIMIT = {
+  windowMs: 60 * 60 * 1000,
+  maxAttempts: 2000,
+} as const;
 
 /**
  * unknown IP 를 나타내는 sentinel 값.
@@ -122,9 +139,10 @@ export const UNKNOWN_IP = "unknown" as const;
  */
 export function extractClientIp(headers: Headers): string {
   // Vercel이 설정하는 전용 헤더만 프로덕션 신뢰 경계로 사용합니다.
-  const names = process.env.VERCEL === "1"
-    ? ["x-vercel-forwarded-for"]
-    : ["x-vercel-forwarded-for", "x-forwarded-for", "x-real-ip", "cf-connecting-ip"];
+  const names =
+    process.env.VERCEL === "1"
+      ? ["x-vercel-forwarded-for"]
+      : ["x-vercel-forwarded-for", "x-forwarded-for", "x-real-ip", "cf-connecting-ip"];
   for (const name of names) {
     const candidate = headers.get(name)?.split(",")[0]?.trim();
     if (candidate && candidate.length <= 45 && isIP(candidate) !== 0) return candidate;

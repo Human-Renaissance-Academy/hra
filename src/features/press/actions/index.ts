@@ -6,21 +6,25 @@
  */
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import { z } from "zod/v4";
 import { requireAdmin } from "@/lib/admin";
 import { createItem, updateItem, deleteItem, reorderItems } from "@/features/press/admin/service";
 import { recordPressView } from "@/features/press/view-service";
 import { logServerError } from "@/lib/errors";
+import { extractClientIp } from "@/lib/rate-limit-core";
 
 const pressArticleFormSchema = z.object({
   title: z.string().trim().min(1, "제목을 입력해주세요.").max(300, "제목은 300자 이하여야 합니다."),
-  source: z.string().trim().min(1, "언론사명을 입력해주세요.").max(200, "언론사명은 200자 이하여야 합니다."),
+  source: z
+    .string()
+    .trim()
+    .min(1, "언론사명을 입력해주세요.")
+    .max(200, "언론사명은 200자 이하여야 합니다."),
   url: z.httpUrl("올바른 기사 링크를 입력해주세요."),
   publishedAt: z.iso.date("올바른 게시일을 입력해주세요."),
   description: z.string().trim().max(5000, "요약은 5000자 이하여야 합니다.").optional(),
-  imageUrl: z
-    .union([z.literal(""), z.httpUrl("올바른 썸네일 URL을 입력해주세요.")])
-    .optional(),
+  imageUrl: z.union([z.literal(""), z.httpUrl("올바른 썸네일 URL을 입력해주세요.")]).optional(),
 });
 
 export type PressArticleActionState = {
@@ -86,7 +90,10 @@ export async function createPressArticle(formData: FormData): Promise<PressArtic
   redirect("/admin/press");
 }
 
-export async function updatePressArticle(id: string, formData: FormData): Promise<PressArticleActionState> {
+export async function updatePressArticle(
+  id: string,
+  formData: FormData,
+): Promise<PressArticleActionState> {
   const session = await requireAdmin();
 
   const parsedId = z.uuid().safeParse(id);
@@ -107,7 +114,11 @@ export async function updatePressArticle(id: string, formData: FormData): Promis
     };
   }
 
-  const updated = await updateItem({ userId: session.user.id, role: session.user.role }, parsedId.data, parsed.data);
+  const updated = await updateItem(
+    { userId: session.user.id, role: session.user.role },
+    parsedId.data,
+    parsed.data,
+  );
 
   // 저장 직전 다른 관리자가 삭제했더라도 UPDATE 결과로 확인해 성공 처리를 막습니다.
   if (!updated) {
@@ -137,7 +148,7 @@ export async function deletePressArticle(id: string): Promise<void> {
 // 단일 UPDATE ... CASE 문(reorderByCase 헬퍼)으로 원자적으로 갱신 —
 // 개별 UPDATE 루프에서 중간 실패 시 정렬 상태가 뒤엉키던 문제를 근본 차단한다.
 export async function reorderPressArticles(
-  orderedIds: string[]
+  orderedIds: string[],
 ): Promise<{ success: boolean; message: string }> {
   const session = await requireAdmin();
 
@@ -152,18 +163,17 @@ export async function reorderPressArticles(
   const validIds = parsedIds.data;
 
   try {
-    const { matched, affected } = await reorderItems({ userId: session.user.id, role: session.user.role }, validIds);
+    const { matched, affected } = await reorderItems(
+      { userId: session.user.id, role: session.user.role },
+      validIds,
+    );
 
     // 존재하지 않는 ID 또는 중복 ID 로 인해 일부만 갱신된 경우 방어
     if (!matched) {
-      logServerError(
-        "press/reorder",
-        new Error("update count mismatch"),
-        {
-          expected: validIds.length,
-          actual: affected,
-        },
-      );
+      logServerError("press/reorder", new Error("update count mismatch"), {
+        expected: validIds.length,
+        actual: affected,
+      });
       return { success: false, message: "일부 항목을 저장하지 못했습니다." };
     }
   } catch (err) {
@@ -177,9 +187,12 @@ export async function reorderPressArticles(
   return { success: true, message: "순서를 저장했습니다." };
 }
 
-export async function trackPressView(id: string) {
+/** 잘못된 ID는 요청 맥락도 읽지 않고, 정상 클릭만 신뢰된 서버 IP와 서비스에 전달합니다. */
+export async function trackPressView(id: string): Promise<void> {
   const parsedId = z.uuid().safeParse(id);
   if (!parsedId.success) return;
 
-  await recordPressView(parsedId.data);
+  const ip = extractClientIp(await headers());
+  // DB UUID와 해시 키가 같은 기사를 가리키도록 대소문자 변형을 하나로 맞춥니다.
+  await recordPressView(parsedId.data.toLowerCase(), ip);
 }
