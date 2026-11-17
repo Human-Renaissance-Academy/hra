@@ -36,7 +36,7 @@ jobs:
       # 문서·모바일 전용 PR도 변경 소스 포맷 게이트는 반드시 실행합니다.
       # 여기서 실패하면 범위 생략이 허용되지 않으며 기존 전체 CI도 다시 검사합니다.
       - name: 포맷 검사 의존성 설치
-        run: npm ci
+        run: npm ci --no-audit
       - name: 변경 소스 포맷 검사
         run: |
           node --test scripts/tests/code-format-scope.test.mjs

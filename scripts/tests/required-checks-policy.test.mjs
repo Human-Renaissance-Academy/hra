@@ -653,6 +653,21 @@ for (const [reason, mutate] of [
   });
 }
 
+// scope는 설치의 중복 감사 요청만 생략합니다. lifecycle·의존성·실패 전파 변경은 별도 승인 없이 허용하지 않습니다.
+for (const [reason, command] of [
+  ["lifecycle 생략", "npm ci --no-audit --ignore-scripts"],
+  ["개발 의존성 생략", "npm ci --no-audit --omit=dev"],
+  ["강제 설치", "npm ci --no-audit --force"],
+  ["혼합 셸", "npm ci --no-audit && true"],
+  ["설치 실패 흡수", "npm ci --no-audit || true"],
+]) {
+  test("scope 설치의 " + reason + " 변이는 차단한다", () => {
+    const files = replace(baseline(), "ci.yml", "run: npm ci --no-audit", "run: " + command);
+    const errors = validateWorkflowCheckBoundaries(files);
+    assert.ok(errors.some((error) => error.includes("ci.yml:scope: REVIEWED_PIPELINE_DRIFT")));
+  });
+}
+
 // 최신 scope 그래프는 정상 생략만 허용하며, 탐지 실패/출력 누락은 항상 전체 CI로 복귀해야 합니다.
 const scopeMutations = [
   [
