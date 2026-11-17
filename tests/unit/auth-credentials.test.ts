@@ -22,6 +22,8 @@ describe("이메일 로그인 계정 조회", () => {
     const options = mocks.findMany.mock.calls[0][0];
     const query = new PgDialect().sqlToQuery(options.where);
     expect(query.sql).toContain("lower(");
+    expect(query.sql).toContain("btrim(");
+    expect(query.sql.match(/lower\(btrim\(/g)).toHaveLength(2);
     expect(query.params).toEqual(["member@example.com"]);
     expect(options.limit).toBe(2);
   });

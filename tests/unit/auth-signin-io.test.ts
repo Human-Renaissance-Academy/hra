@@ -19,8 +19,8 @@
  * mock 전략:
  *   SignInIO 메서드를 vi.fn() 으로 만들고 기본은 findByBinding / findByEmail
  *   이 undefined 를 반환 (allow-new 흐름). 각 테스트에서 필요한 반환값만 오버라이드
- *   해서 시나리오를 조립한다. drizzle 자체는 mock 하지 않으며 어댑터의 SQL 정합성은
- *   scripts/verify-oauth-binding-security.mjs 격리 DB 스모크가 담당한다.
+ *   해서 시나리오를 조립한다. 실제 어댑터·SQL 정합성은
+ *   auth-email-identity-postgres.test.ts의 소유 PostgreSQL 검증이 담당한다.
  *
  * import 경로 주의: auth.ts 는 NextAuth() 를 최상단에서 실행하므로 vitest 에서
  * import 하면 next-auth 내부의 next/server 참조가 module resolution 을 깨뜨린다.
@@ -28,11 +28,7 @@
  */
 
 import { describe, expect, it, vi } from "vitest";
-import {
-  handleOAuthSignIn,
-  type OAuthSignInInput,
-  type SignInIO,
-} from "@/lib/auth-signin";
+import { handleOAuthSignIn, type OAuthSignInInput, type SignInIO } from "@/lib/auth-signin";
 import { users } from "@/lib/db/schema";
 
 type UserRow = typeof users.$inferSelect;
@@ -98,11 +94,13 @@ function makeMockIO(overrides: Partial<SignInIO> = {}): SignInIO {
   };
 }
 
-function makeInput(overrides: {
-  user?: Partial<OAuthSignInInput["user"]>;
-  account?: Partial<OAuthSignInInput["account"]>;
-  profile?: OAuthSignInInput["profile"];
-} = {}): OAuthSignInInput {
+function makeInput(
+  overrides: {
+    user?: Partial<OAuthSignInInput["user"]>;
+    account?: Partial<OAuthSignInInput["account"]>;
+    profile?: OAuthSignInInput["profile"];
+  } = {},
+): OAuthSignInInput {
   return {
     user: {
       name: "홍길동",
@@ -135,10 +133,7 @@ describe("handleOAuthSignIn — SELECT 단계 (findByBinding / findByEmail)", ()
     await handleOAuthSignIn(input, io);
 
     expect(io.findByBinding).toHaveBeenCalledTimes(1);
-    expect(io.findByBinding).toHaveBeenCalledWith(
-      "google",
-      "google-account-123",
-    );
+    expect(io.findByBinding).toHaveBeenCalledWith("google", "google-account-123");
   });
 
   it("kakao provider 는 provider 인자로 'kakao' 를 넘긴다", async () => {
@@ -173,9 +168,7 @@ describe("handleOAuthSignIn — SELECT 단계 (findByBinding / findByEmail)", ()
 
     await handleOAuthSignIn(input, io);
 
-    expect(io.findByEmail).toHaveBeenCalledWith(
-      "kakao_kakao-777@oauth.placeholder",
-    );
+    expect(io.findByEmail).toHaveBeenCalledWith("kakao_kakao-777@oauth.placeholder");
   });
 
   it("email 이 undefined 여도 동일한 placeholder 규칙이 적용된다", async () => {
@@ -187,9 +180,7 @@ describe("handleOAuthSignIn — SELECT 단계 (findByBinding / findByEmail)", ()
 
     await handleOAuthSignIn(input, io);
 
-    expect(io.findByEmail).toHaveBeenCalledWith(
-      "kakao_kakao-abc@oauth.placeholder",
-    );
+    expect(io.findByEmail).toHaveBeenCalledWith("kakao_kakao-abc@oauth.placeholder");
   });
 });
 
@@ -325,8 +316,7 @@ describe("handleOAuthSignIn — allow-existing 분기 (boundUser 존재)", () =>
     await handleOAuthSignIn(input, io);
 
     expect(io.updateProfile).toHaveBeenCalledTimes(1);
-    const [, updates] = (io.updateProfile as ReturnType<typeof vi.fn>).mock
-      .calls[0];
+    const [, updates] = (io.updateProfile as ReturnType<typeof vi.fn>).mock.calls[0];
     expect(updates).not.toHaveProperty("oauthProvider");
     expect(updates).not.toHaveProperty("oauthProviderAccountId");
     expect(updates).not.toHaveProperty("role");
@@ -363,8 +353,7 @@ describe("handleOAuthSignIn — allow-new 분기 (신규 계정)", () => {
     expect(result).toBe(true);
     expect(io.insertNew).toHaveBeenCalledTimes(1);
 
-    const [payload] = (io.insertNew as ReturnType<typeof vi.fn>).mock
-      .calls[0] as [UserInsert];
+    const [payload] = (io.insertNew as ReturnType<typeof vi.fn>).mock.calls[0] as [UserInsert];
 
     expect(payload).toMatchObject({
       name: "홍길동",
@@ -385,8 +374,7 @@ describe("handleOAuthSignIn — allow-new 분기 (신규 계정)", () => {
 
     await handleOAuthSignIn(input, io);
 
-    const [payload] = (io.insertNew as ReturnType<typeof vi.fn>).mock
-      .calls[0] as [UserInsert];
+    const [payload] = (io.insertNew as ReturnType<typeof vi.fn>).mock.calls[0] as [UserInsert];
     expect(payload.name).toBe("구글 사용자");
   });
 
@@ -399,8 +387,7 @@ describe("handleOAuthSignIn — allow-new 분기 (신규 계정)", () => {
 
     await handleOAuthSignIn(input, io);
 
-    const [payload] = (io.insertNew as ReturnType<typeof vi.fn>).mock
-      .calls[0] as [UserInsert];
+    const [payload] = (io.insertNew as ReturnType<typeof vi.fn>).mock.calls[0] as [UserInsert];
     expect(payload.name).toBe("카카오 사용자");
   });
 
@@ -413,8 +400,7 @@ describe("handleOAuthSignIn — allow-new 분기 (신규 계정)", () => {
 
     await handleOAuthSignIn(input, io);
 
-    const [payload] = (io.insertNew as ReturnType<typeof vi.fn>).mock
-      .calls[0] as [UserInsert];
+    const [payload] = (io.insertNew as ReturnType<typeof vi.fn>).mock.calls[0] as [UserInsert];
     expect(payload.name).toBe("구글 사용자");
   });
 
@@ -427,8 +413,7 @@ describe("handleOAuthSignIn — allow-new 분기 (신규 계정)", () => {
 
     await handleOAuthSignIn(input, io);
 
-    const [payload] = (io.insertNew as ReturnType<typeof vi.fn>).mock
-      .calls[0] as [UserInsert];
+    const [payload] = (io.insertNew as ReturnType<typeof vi.fn>).mock.calls[0] as [UserInsert];
     expect(payload.email).toBe("kakao_kakao-new-2@oauth.placeholder");
   });
 
@@ -436,8 +421,7 @@ describe("handleOAuthSignIn — allow-new 분기 (신규 계정)", () => {
     const io = makeMockIO();
     await handleOAuthSignIn(makeInput(), io);
 
-    const [payload] = (io.insertNew as ReturnType<typeof vi.fn>).mock
-      .calls[0] as [UserInsert];
+    const [payload] = (io.insertNew as ReturnType<typeof vi.fn>).mock.calls[0] as [UserInsert];
     expect(payload.role).toBe("PENDING");
   });
 
@@ -680,13 +664,15 @@ describe("handleOAuthSignIn — 카카오 내부 이메일 승격 (#178)", () =>
 
   it("실제 이메일이 이미 저장된 계정은 카카오 이메일로 덮어쓰지 않는다", async () => {
     const io = makeMockIO({
-      findByBinding: vi.fn().mockResolvedValue(makeBoundUser({
-        email: "saved@example.com",
-        oauthProvider: "kakao",
-        oauthProviderAccountId: "123",
-        name: "홍길동",
-        image: "https://cdn/new.png",
-      })),
+      findByBinding: vi.fn().mockResolvedValue(
+        makeBoundUser({
+          email: "saved@example.com",
+          oauthProvider: "kakao",
+          oauthProviderAccountId: "123",
+          name: "홍길동",
+          image: "https://cdn/new.png",
+        }),
+      ),
     });
     const input = makeKakaoInput();
 
@@ -697,10 +683,12 @@ describe("handleOAuthSignIn — 카카오 내부 이메일 승격 (#178)", () =>
 
   it("구글의 내부 주소는 카카오 프로필 형식이 와도 갱신하지 않는다", async () => {
     const io = makeMockIO({
-      findByBinding: vi.fn().mockResolvedValue(makeBoundUser({
-        email: "google_123@oauth.placeholder",
-        oauthProvider: "google",
-      })),
+      findByBinding: vi.fn().mockResolvedValue(
+        makeBoundUser({
+          email: "google_123@oauth.placeholder",
+          oauthProvider: "google",
+        }),
+      ),
     });
     const input = makeInput({
       user: { email: "member@example.com" },
@@ -710,5 +698,168 @@ describe("handleOAuthSignIn — 카카오 내부 이메일 승격 (#178)", () =>
     expect(await handleOAuthSignIn(input, io)).toBe(true);
     expect(io.promotePlaceholderEmail).not.toHaveBeenCalled();
     expect(input.user.email).toBe("google_123@oauth.placeholder");
+  });
+});
+
+describe("이메일 식별 정규화와 바인딩 보존 (#507)", () => {
+  it("신규 이메일 검색과 저장은 같은 정규값을 사용하고 tuple 원문은 보존한다", async () => {
+    const io = makeMockIO();
+    const input = makeInput({
+      user: { email: "  Mixed@Example.COM  " },
+      account: { providerAccountId: "Account-Mixed" },
+    });
+    expect(await handleOAuthSignIn(input, io)).toBe(true);
+    expect(io.findByEmail).toHaveBeenCalledWith("mixed@example.com");
+    expect(io.insertNew).toHaveBeenCalledWith(
+      expect.objectContaining({
+        email: "mixed@example.com",
+        oauthProviderAccountId: "Account-Mixed",
+        role: "PENDING",
+      }),
+    );
+    expect(input.user.email).toBe("mixed@example.com");
+  });
+
+  it("이메일 중복은 새 계정 선택·바인딩·권한 승계 없이 일반 오류가 된다", async () => {
+    const io = makeMockIO({ findByEmail: vi.fn().mockResolvedValue("ambiguous") });
+    expect(await handleOAuthSignIn(makeInput(), io)).toBe("/login?error=OAuthAccountNotLinked");
+    expect(io.insertNew).not.toHaveBeenCalled();
+    expect(io.updateProfile).not.toHaveBeenCalled();
+    expect(io.promotePlaceholderEmail).not.toHaveBeenCalled();
+  });
+
+  it("중복 주소가 있어도 기존 tuple은 자기 row의 원래 표시 주소로 로그인한다", async () => {
+    const bound = makeBoundUser({
+      email: "LegacyCase@Example.COM",
+      name: "홍길동",
+      image: "https://cdn/new.png",
+    });
+    const io = makeMockIO({
+      findByBinding: vi.fn().mockResolvedValue(bound),
+      findByEmail: vi.fn().mockResolvedValue("ambiguous"),
+    });
+    const input = makeInput({ user: { email: "legacycase@example.com" } });
+    expect(await handleOAuthSignIn(input, io)).toBe(true);
+    expect(input.user.email).toBe("LegacyCase@Example.COM");
+    expect(io.insertNew).not.toHaveBeenCalled();
+    expect(io.updateProfile).not.toHaveBeenCalled();
+    expect(io.promotePlaceholderEmail).not.toHaveBeenCalled();
+  });
+
+  it("Kakao 원문 검증을 통과한 후에만 승격 주소를 정규화한다", async () => {
+    const io = makeMockIO({
+      findByBinding: vi.fn().mockResolvedValue(
+        makeBoundUser({
+          email: "kakao_123@oauth.placeholder",
+          oauthProvider: "kakao",
+          oauthProviderAccountId: "123",
+        }),
+      ),
+      promotePlaceholderEmail: vi.fn().mockResolvedValue(true),
+    });
+    const input = makeInput({
+      user: { email: "Mixed@Example.COM" },
+      account: { provider: "kakao", providerAccountId: "123" },
+      profile: {
+        kakao_account: {
+          email: "Mixed@Example.COM",
+          is_email_valid: true,
+          is_email_verified: true,
+        },
+      },
+    });
+    expect(await handleOAuthSignIn(input, io)).toBe(true);
+    expect(io.promotePlaceholderEmail).toHaveBeenCalledWith(
+      UUID_BOUND,
+      "kakao_123@oauth.placeholder",
+      "mixed@example.com",
+    );
+    expect(input.user.email).toBe("mixed@example.com");
+  });
+
+  it("정규화하면 같아지는 Kakao 원문 불일치를 검증 성공으로 바꾸지 않는다", async () => {
+    const io = makeMockIO({
+      findByBinding: vi.fn().mockResolvedValue(
+        makeBoundUser({
+          email: "kakao_123@oauth.placeholder",
+          oauthProvider: "kakao",
+          oauthProviderAccountId: "123",
+        }),
+      ),
+    });
+    const input = makeInput({
+      user: { email: "Mixed@Example.COM" },
+      account: { provider: "kakao", providerAccountId: "123" },
+      profile: {
+        kakao_account: {
+          email: "mixed@example.com",
+          is_email_valid: true,
+          is_email_verified: true,
+        },
+      },
+    });
+    expect(await handleOAuthSignIn(input, io)).toBe(true);
+    expect(io.promotePlaceholderEmail).not.toHaveBeenCalled();
+    expect(input.user.email).toBe("kakao_123@oauth.placeholder");
+  });
+
+  it("공백뿐인 provider 이메일은 새 계정을 생성하지 않는다", async () => {
+    const io = makeMockIO();
+    expect(await handleOAuthSignIn(makeInput({ user: { email: "   " } }), io)).toBe(
+      "/login?error=OAuthAccountNotLinked",
+    );
+    expect(io.insertNew).not.toHaveBeenCalled();
+  });
+
+  it("provider 이메일이 공백이어도 기존 tuple의 로그인과 표시 주소를 보존한다", async () => {
+    const bound = makeBoundUser({
+      email: "Legacy@Example.COM",
+      name: "홍길동",
+      image: "https://cdn/new.png",
+    });
+    const io = makeMockIO({ findByBinding: vi.fn().mockResolvedValue(bound) });
+    const attempt = makeInput({ user: { email: "   " } });
+    expect(await handleOAuthSignIn(attempt, io)).toBe(true);
+    expect(attempt.user.email).toBe("Legacy@Example.COM");
+    expect(io.findByEmail).not.toHaveBeenCalled();
+    expect(io.insertNew).not.toHaveBeenCalled();
+    expect(io.updateProfile).not.toHaveBeenCalled();
+  });
+
+  it("새 placeholder 주소는 정규 저장하되 accountId 원문은 변경하지 않는다", async () => {
+    const io = makeMockIO();
+    const attempt = makeInput({
+      user: { email: null },
+      account: { provider: "google", providerAccountId: "Case-Sensitive-Account" },
+    });
+    expect(await handleOAuthSignIn(attempt, io)).toBe(true);
+    expect(io.insertNew).toHaveBeenCalledWith(
+      expect.objectContaining({
+        email: "google_case-sensitive-account@oauth.placeholder",
+        oauthProviderAccountId: "Case-Sensitive-Account",
+      }),
+    );
+  });
+
+  for (const constraint of [
+    "users_email_unique",
+    "users_email_identity_unique",
+    "users_oauth_binding_unique",
+  ]) {
+    it(`알려진 ${constraint} 가입 경합은 다른 계정 재인증 없이 일반 오류가 된다`, async () => {
+      const io = makeMockIO({
+        insertNew: vi.fn().mockRejectedValue({ code: "23505", constraint }),
+      });
+      expect(await handleOAuthSignIn(makeInput(), io)).toBe("/login?error=OAuthAccountNotLinked");
+      expect(io.updateProfile).not.toHaveBeenCalled();
+    });
+  }
+
+  it("다른 제약과 저장소 오류는 이메일 충돌로 숨기지 않는다", async () => {
+    const error = { code: "23505", constraint: "unrelated_unique" };
+    const io = makeMockIO({ insertNew: vi.fn().mockRejectedValue(error) });
+    await expect(handleOAuthSignIn(makeInput(), io)).rejects.toMatchObject({
+      message: "로그인 정보를 처리하지 못했습니다.",
+    });
   });
 });

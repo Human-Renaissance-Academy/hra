@@ -2,6 +2,13 @@
   "version": 1,
   "sql": [
     {
+      "path": "scripts/migrate-507-email-identity-unique.sql",
+      "role": "versioned_candidate",
+      "sha256": "223086a65fbc8358aec709ca18bbb88a679796fab531566c379306a2af277cb3",
+      "id": "email-identity-unique",
+      "predecessors": []
+    },
+    {
       "path": "scripts/migrate-mobile-sessions.sql",
       "role": "versioned_candidate",
       "sha256": "aa64427df8d95e538eccc7ff4b382801e7ad51b3ba18df7cfcbfd0cfa35e9a23",
@@ -414,7 +421,7 @@
     },
     {
       "path": "scripts/seed-admin.mjs",
-      "sha256": "d5ea3e78c94a9af5fa41230abcb0a6e5f740e477142bc4cc4958602077f9028c",
+      "sha256": "9678b680b77560672c3de9e43c5b604c94ea2b002f12f65406d122f17a1e7123",
       "effect": "seed_db",
       "defaultBehavior": "rejects",
       "writeOptions": [

@@ -1,10 +1,11 @@
 /**
  * 소셜 로그인 원본 응답의 이메일 검증을 소유합니다.
- * 공용 표시 정책은 순수 계약 패키지에서 가져와 기존 Web import 경로로 재수출합니다.
+ * 공용 표시 정책과 순수 입력 정규화를 기존 Web import 경로로 재수출합니다.
  */
 import { getDisplayEmail } from "@hra/contracts/identity";
 
 export { getDisplayEmail, isOAuthPlaceholderEmail } from "@hra/contracts/identity";
+export { normalizeEmailIdentity } from "@/lib/email-identity.mjs";
 
 /**
  * 카카오의 원본 계정 정보에서 유효하고 검증된 주소만 추출한다.
