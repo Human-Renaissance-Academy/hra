@@ -1,3 +1,4 @@
+import { getSiteConfig } from "@/lib/site-url";
 import type { Metadata } from "next";
 import { formatKstDate as formatDate } from "@/lib/date-time";
 import Link from "next/link";
@@ -99,7 +100,7 @@ export default async function WeeklyTextViewerPage({ params }: WeeklyTextViewerP
           {text.body ? (
             <section className="space-y-3">
               <h2 className="text-base font-semibold text-[#1a1a1a]">본문</h2>
-              <MarkdownViewer body={text.body} />
+              <MarkdownViewer trustedSiteOrigin={getSiteConfig().url} body={text.body} />
             </section>
           ) : null}
 
