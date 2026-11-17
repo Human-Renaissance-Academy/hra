@@ -96,18 +96,17 @@ const nextConfig: NextConfig = {
       bodySizeLimit: "32mb",
     },
   },
-  images: {
-    // Preview는 플랫폼 이미지 최적화 출력도 만들지 않아 별도 CDN 경로의 조회를 차단합니다.
-    ...(isRestrictedPreview(process.env.VERCEL, process.env.VERCEL_ENV)
-      ? { unoptimized: true }
-      : {}),
-    remotePatterns: [
-      {
-        protocol: "https",
-        hostname: projectBlobHost,
+  // Preview의 원격·동적 이미지 대상을 허용하지 않습니다. 자동 추가된 빌드 정적 패턴은 배포에서 확인합니다.
+  images: isRestrictedPreview(process.env.VERCEL, process.env.VERCEL_ENV)
+    ? { unoptimized: true, remotePatterns: [], localPatterns: [] }
+    : {
+        remotePatterns: [
+          {
+            protocol: "https",
+            hostname: projectBlobHost,
+          },
+        ],
       },
-    ],
-  },
 };
 
 export default nextConfig;

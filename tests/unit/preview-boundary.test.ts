@@ -179,7 +179,9 @@ it.each([
     vi.resetModules();
     const { default: config } = await import("../../next.config");
     const original = { ...nextConfig.images };
-    expect(config.images).toEqual(restricted ? { ...original, unoptimized: true } : original);
+    expect(config.images).toEqual(
+      restricted ? { unoptimized: true, remotePatterns: [], localPatterns: [] } : original,
+    );
     if (!restricted) expect(config.images).not.toHaveProperty("unoptimized");
   },
 );
