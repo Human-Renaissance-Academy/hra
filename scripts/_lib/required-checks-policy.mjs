@@ -175,7 +175,7 @@ const DIRECT_CHECK_COMMANDS = Object.values(CHECK_COMMANDS).flat();
  * 정상적인 gate/순서/env/uses 변경도 먼저 실제 실행·실패 전파 회귀를 검토하고 workflow와 이 지문을 함께 갱신합니다.
  */
 const REVIEWED_PIPELINE_DIGESTS = {
-  "ci.yml:scope": "5631be5b87ad05d36adc00a72acf62af9423cbc5e3b5bf4b4b79c74240519d37",
+  "ci.yml:scope": "aca77f0afc12dc899bfb04730a18ef0cd3cc7e468d1bcb9d065745721f5b11ab",
   "ci.yml:ci": "8b83bc1da3bc6b368d0b02a4623e85381933e6b9c3c8486cce8e34e390aabaa2",
   "process-format.yml:pull-request":
     "ae70c42a9c814c1df9e9c238b87353f08b462cc50160cfa6b485820e83a263f1",
