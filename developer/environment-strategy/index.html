@@ -2867,6 +2867,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="1. 꼭 필요한 운영 구성">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#preview-279" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        자원이 없는 Preview의 거부 계약 (#279)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -3208,6 +3225,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="1. 꼭 필요한 운영 구성">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#preview-279" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        자원이 없는 Preview의 거부 계약 (#279)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -3310,6 +3344,12 @@
 <p><strong>PR별 Neon branch·Blob·OAuth를 자동으로 생성하고 PR 종료 시 정리하는 체계는 기본 목표에서 제외한다.</strong> 테스트가 필요할 때 공용 Test DB를 재사용하되 PR 병렬 테스트 간 충돌을 막기 위해 테스트 데이터를 분리·초기화하거나 CI의 격리 DB를 사용한다. 공용 Test DB도 운영 DB와 연결되지 않는다.</p>
 <p>Vercel이 Preview 배포를 자동 생성할 수 있으나, 배포 성공 자체가 실제 DB 연결과 인증·파일 검증 성공을 뜻하지 않는다. Preview를 쓰지 않기로 했다면 기존 GitHub 필수 체크와 Vercel 프로젝트 설정을 확인하여 안전하게 비활성화한다. 기존 required check를 이름 변경·제거 없이 건너뛰어도 통과한다고 가정하지 않는다(#408/#492).</p>
 <p><strong>2026-11-14 읽기 점검:</strong> 비운영 전용 DB/Blob 자격증명이 설정되지 않은 상태에서 Preview 홈 HTTP 500이 관찰됐다(#279). 이는 안전한 테스트 환경을 갖췄다는 증거가 아니다. 운영 DB를 Preview에 넣어 해결하지 않는다. Preview를 계속 사용하면 안전한 Test DB와 합성 스키마를 준비하거나 의존 기능을 비활성화해야 한다.</p>
+<h3 id="preview-279">자원이 없는 Preview의 거부 계약 (#279)<a class="headerlink" href="#preview-279" title="Permanent link">&para;</a></h3>
+<p>코드는 정확히 <code>VERCEL=1</code>과 <code>VERCEL_ENV=preview</code>가 함께 있을 때 HTML·RSC·Server Action을 인증 조회 전에 한국어 HTTP 503으로 거부한다. API 전체(health·cron·인증·파일 포함)는 <strong>Preview 빌드에서 생성한</strong> <code>beforeFiles</code> rewrite가 순수 503 Route로 보낸다. 이미지는 같은 정확한 Preview 빌드에서만 <code>unoptimized=true</code>, <code>remotePatterns=[]</code>, <code>localPatterns=[]</code>를 설정한다. Next가 자동 추가하는 두 빌드 정적 media 경로 외의 운영 Blob·동적 로컬 이미지를 허용하지 않는 제한 후보이며, 일반 <code>next start</code>의 rewrite나 unoptimized 설정만으로 Vercel의 별도 이미지 서비스를 제거했다고 판단하지 않는다. 응답은 <code>no-store</code>, <code>noindex, nofollow</code>이며 로그인 쿠키나 복구 시각을 발급하지 않는다. 이 Preview는 기능 검수 환경이 아니다.</p>
+<p>허용한 읽기는 정확한 <code>/robots.txt</code>, <code>/sitemap.xml</code>의 GET/HEAD와 현재 Proxy matcher가 제외하는 실제 정적 자원·빌드 chunk다. robots는 전체 차단, sitemap은 비어 있다. metadata의 POST는 503이다. 임의 이미지 확장자나 원격 이미지 최적화는 안전 읽기 예외가 아니다. 프레임워크의 잘못된 경로·미지원 메서드 거부는 앱 503과 구분한다. Next 16.4.5의 고정 <code>/globe.svg</code> POST fixture는 내부 405 렌더에서 plain 500으로 끝나며, Local·Production 대조와 요청별 앱 함수 실행·외부 IO 0을 별도로 검사한다. 또한 고정 <code>/api/health</code>·<code>/resources</code>의 TRACE는 Next Request adapter가 handler 전에 거부하면서 plain 500을 반환한다. 정확한 미지원 메서드 진단과 Local·Production 대조·외부 IO 0을 함께 검사한다. 이 한정된 프레임워크 거부를 일반 500 허용이나 지원하는 일곱 메서드의 503 성공으로 확대 해석하지 않는다. 이 장치는 네트워크 수신·Next의 본문 clone/buffer 자체가 없다는 보장이 아니다.</p>
+<p>이미지 경계는 배포의 <code>images</code> 출력과 실제 응답을 함께 확인한다. 기존 배포의 최적화 경로가 비개인 정적 아이콘을 HTTP 200으로 제공하고 실제 decode되는 양성 대조를 먼저 확보한 뒤, 변경 배포의 원격 패턴0·배포 domains0·정확한 두 빌드 정적 경로와 빈 query 조건, 캐시된 같은 아이콘의 검증 거부·직접 정적 읽기 보존을 비교한다. 이미지 서비스의 완전 제거나 모든 로컬 경로 거부를 주장하지 않는다. 운영 Blob 합성 주소와 로컬 업무 주소·절대 자기 주소·인코딩된 경로 조작도 실제로 거부돼야 한다. 플랫폼의 패턴 검증 거부는 업무 API의 503과 구분하며, 400/404만으로 NoIO를 주장하지 않는다. 새 테스트 사진·운영 Blob 객체는 사용하지 않는다. 향후 Preview 페이지를 허용하면 <code>unoptimized</code>가 원본 이미지 URL을 직접 사용하는 경계도 다시 검토한다.</p>
+<p><strong>운영 적용 게이트:</strong> 일반 <code>next start</code>의 rewrite 검증만으로 Vercel을 승인하지 않는다. Vercel adapter/minimalMode의 routing artifact와 실제 Preview 응답에서 API·이미지 선행 거부, 최종 시스템 환경값·override·secret scope를 별도로 확인한다. <code>VERCEL_ENV=preview</code>만 있는 로컬은 이 차단 대상이 아니다. 빌드와 실행의 tuple이 달라지면 API rewrite와 Proxy 조건이 불일치하므로 <strong>prebuilt 재사용·Preview artifact의 Production 승격을 지원하지 않는다. 대상 환경에서 다시 빌드한다.</strong></p>
+<p>코드 503와 별개로 Preview에 Production DB·Blob·OAuth·세션·Cron 자격정보를 공급하지 않는다. 실제 플랫폼 경계가 불명확하거나 업무 handler·외부 IO가 실행되면 Preview 공유·기능 검증을 중단하고, 권한 있는 운영자가 선택적 Preview 중단 또는 독립 정적 안내 배포를 적용한다. 이 문서의 코드 계약은 실제 Vercel 격리·#279 종료를 선언하지 않는다.</p>
 <h2 id="2-db">2. DB와 파일<a class="headerlink" href="#2-db" title="Permanent link">&para;</a></h2>
 <ul>
 <li><strong>Production DB가 유일한 실사용 정본</strong>이다. 개발·PR에서 운영 데이터를 조회·수정하거나 데이터베이스를 복제해 테스트하지 않는다.</li>

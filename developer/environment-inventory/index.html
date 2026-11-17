@@ -3804,11 +3804,11 @@
 </tr>
 <tr>
 <td><code>VERCEL</code></td>
-<td>Vercel 신뢰 프록시 경계 표시</td>
+<td>Vercel 신뢰 프록시·선택적 Preview 경계 표시</td>
 <td>Development / Preview / Production; 플랫폼이 해당 실행에 제공; 직접 복제하지 않음</td>
 <td>아니요</td>
 <td>Vercel 플랫폼에서 제공</td>
-<td>1이면 x-vercel-forwarded-for만 신뢰; 아니면 검증된 일반 프록시 헤더도 순서대로 확인</td>
+<td>1이면 x-vercel-forwarded-for만 신뢰; 아니면 검증된 일반 프록시 헤더도 순서대로 확인. 정확한 VERCEL=1 + VERCEL_ENV=preview만 업무 요청 503; 미설정·다른 값은 Preview 차단 조건 아님</td>
 <td>앱 예시에 넣지 않음</td>
 </tr>
 <tr>
@@ -3817,7 +3817,7 @@
 <td>Development / Preview / Production; 플랫폼이 해당 실행에 제공; 직접 복제하지 않음</td>
 <td>아니요</td>
 <td>Vercel에서 제공하는 경우만</td>
-<td>정확한 production일 때만 운영 canonical·검색 색인 허용; 다른 값이나 미설정이면 noindex와 robots 전체 차단</td>
+<td>정확한 production만 운영 canonical·색인 허용; 다른 값이나 미설정은 noindex·robots 전체 차단. 정확한 VERCEL=1과 preview 조합은 업무 503. API/image rewrite는 빌드 시 생성하므로 실행 tuple 동일 필수; promotion/prebuilt 재사용 금지</td>
 <td>앱 예시에 넣지 않음</td>
 </tr>
 <tr>
@@ -4308,6 +4308,11 @@
 <tr>
 <td><code>scripts/verify-site-routes.mjs</code></td>
 <td>기존 여섯 시스템 값만 새 격리 자식 환경으로 복사</td>
+<td><code>PATH</code>, <code>HOME</code>, <code>TMPDIR</code>, <code>TMP</code>, <code>TEMP</code>, <code>SYSTEMROOT</code></td>
+</tr>
+<tr>
+<td><code>scripts/verify-preview-boundary-http.mjs</code></td>
+<td>Preview HTTP 실행기의 기존 여섯 시스템 값만 복사; 앱·운영 secret 상속 금지</td>
 <td><code>PATH</code>, <code>HOME</code>, <code>TMPDIR</code>, <code>TMP</code>, <code>TEMP</code>, <code>SYSTEMROOT</code></td>
 </tr>
 <tr>
