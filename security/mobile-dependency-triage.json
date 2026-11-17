@@ -339,27 +339,6 @@
       ]
     },
     {
-      "name": "deepmerge",
-      "severity": "low",
-      "range": ">=4.2.0",
-      "nodes": [
-        {
-          "path": "node_modules/deepmerge",
-          "version": "4.3.1",
-          "development": false
-        }
-      ],
-      "via": [
-        {
-          "source": 1243505,
-          "id": "GHSA-gcqx-w48m-w2h4",
-          "severity": "low",
-          "range": ">=4.2.0 <=4.3.1",
-          "title": "deepmerge mergeObject() allows prototype poisoning of returned objects"
-        }
-      ]
-    },
-    {
       "name": "expo",
       "severity": "moderate",
       "range": ">=52.0.0-canary-20240625-2333e70",
@@ -512,9 +491,6 @@
       "via": [
         {
           "dependency": "babel-jest"
-        },
-        {
-          "dependency": "deepmerge"
         },
         {
           "dependency": "glob"
@@ -798,14 +774,14 @@
       "id": "expo-cli-config-glob",
       "usedApi": "Expo SDK 58.0.23의 @expo/cli 58.1.19·@expo/fingerprint 0.21.9 및 Jest 도구는 glob 13.0.6과 minimatch 10.2.6으로 프로젝트 파일을 탐색하고, 설정·테스트 도구의 deepmerge 4.3.1은 고정된 로컬 입력을 병합한다. 등록된 파일·glob 패턴을 외부 사용자 요청에서 받지 않는다. 새 설치 npm audit에서는 @expo/config, @expo/config-plugins, @expo/metro-config의 기존 상위 취약 경로 및 CLI Zod high 경로가 더는 보고되지 않는다.",
       "callLocations": "apps/mobile의 app.config.ts, plugins/ 로컬 설정 및 expo start·export·prebuild·expo-doctor·Jest 실행; node_modules/glob, node_modules/glob/node_modules/minimatch, node_modules/@expo/fingerprint/node_modules/minimatch, node_modules/deepmerge. 모바일 앱 릴리스 번들에서 외부 입력을 받아 파일 탐색하거나 병합하는 API 경로가 아니다.",
-      "assessment": "glob GHSA-3g3m-2fjr-6pw4는 호출자가 AbortSignal로 순회를 취소한 뒤에도 파일 처리가 이어지는 문제이고, minimatch GHSA-g3hv-75wg-m249는 공격자가 통제하는 패턴의 확장 폭주로 인한 DoS, deepmerge GHSA-gcqx-w48m-w2h4는 신뢰하지 않는 객체를 병합할 때의 prototype 오염이다. 이 경로의 패턴과 병합 입력은 저장소가 소유한 설정이며 외부 요청 본문이 도달하지 않으므로 영향은 개발·CI 빌드 시간의 가용성으로 한정된다.",
-      "residualAssumptions": "2026-11-08 npm audit의 Expo SDK 58.0.23 설치본은 CLI의 zod high advisory 및 기존 config/metro-config meta advisory를 더는 보고하지 않는다. 남은 glob/minimatch/deepmerge는 npm 보고 범위와 로컬 입력 가정에 따라 P2로 유지한다. 수정본 glob 14 전이를 포함한 SDK 지원성과 외부 입력 연결 여부는 원래 기한인 2026-11-25까지 재검토한다. 외부 요청에서 탐색 패턴이나 병합 객체를 받게 되면 즉시 재분류한다."
+      "assessment": "glob GHSA-3g3m-2fjr-6pw4는 호출자가 AbortSignal로 순회를 취소한 뒤에도 파일 처리가 이어지는 문제이고, minimatch GHSA-g3hv-75wg-m249는 공격자가 통제하는 패턴의 확장 폭주로 인한 DoS다. deepmerge GHSA-gcqx-w48m-w2h4는 보안 취약점이 아니라는 사유로 2026-11-16(UTC) 철회되어 평가 대상에서 제외했다. deepmerge 4.3.1의 설치·사용은 그대로이며 수정 버전 적용이나 라이브러리 제거가 아니다. 이 경로의 패턴과 병합 입력은 저장소가 소유한 설정이며 외부 요청 본문이 도달하지 않으므로 영향은 개발·CI 빌드 시간의 가용성으로 한정된다.",
+      "residualAssumptions": "2026-11-08 npm audit의 Expo SDK 58.0.23 설치본은 CLI의 zod high advisory 및 기존 config/metro-config meta advisory를 더는 보고하지 않는다. 남은 glob/minimatch는 npm 보고 범위와 로컬 입력 가정에 따라 P2로 유지한다. 수정본 glob 14 전이를 포함한 SDK 지원성과 외부 입력 연결 여부는 원래 기한인 2026-11-25까지 재검토한다. 외부 요청에서 탐색 패턴이나 병합 객체를 받게 되면 즉시 재분류한다."
     },
     {
       "id": "jest-test-runner",
       "usedApi": "jest 30.5.2·jest-expo 58.0.13·babel-jest·babel-plugin-istanbul·test-exclude가 테스트 파일 탐색과 커버리지 계측에 glob 10.5.0·13.0.6, minimatch 9.0.9·10.2.6, deepmerge를 쓴다. expo-router의 선택적 peer(@testing-library/react-native) 때문에 npm lock의 dev 값이 false로 기록됐을 뿐 앱 소스는 jest 계열을 import하지 않는다.",
       "callLocations": "apps/mobile package.json의 test 명령, jest.config.cjs·jest.e2e.config.cjs, tests/·e2e/의 테스트; node_modules/jest*, node_modules/@jest/*, node_modules/*/node_modules/test-exclude/node_modules/glob. CI와 개발자 로컬 테스트 실행에서만 로드된다.",
-      "assessment": "남은 공격 조건은 glob·minimatch·deepmerge 권고와 같고 입력은 저장소가 소유한 jest 설정의 testMatch·coverage 패턴과 테스트 파일 경로다. 외부 요청이나 앱 사용자 입력이 도달하지 않으며 영향은 테스트 실행 시간의 가용성으로 한정된다. Metro release 번들에는 jest 계열이 들어가지 않는다.",
+      "assessment": "남은 공격 조건은 glob·minimatch 권고와 같고 입력은 저장소가 소유한 jest 설정의 testMatch·coverage 패턴과 테스트 파일 경로다. 외부 요청이나 앱 사용자 입력이 도달하지 않으며 영향은 테스트 실행 시간의 가용성으로 한정된다. Metro release 번들에는 jest 계열이 들어가지 않는다.",
       "residualAssumptions": "2026-11-04 기준 test-exclude는 glob ^10.4.1, jest-config·jest-runtime은 glob ^13.0.6을 요구해 수정본(14.0.2 이상)이 범위 밖이다. npm dev=false로 기록된 테스트 도구 DoS이므로 3주 뒤 2026-11-25까지 jest·jest-expo 갱신을 재검토한다. 테스트가 외부에서 받은 패턴을 쓰게 되면 즉시 재분류한다."
     },
     {
@@ -1043,15 +1019,6 @@
       "attackCondition": "test-exclude 전이 advisory의 공격 조건을 해당 패키지 항목에서 별도로 검토한다. 2026-11-04 모바일 lock 최초 등록 시 확인한 경로이며 2026-11-25까지 함께 재검토한다."
     },
     {
-      "key": "deepmerge:1243505",
-      "contextId": "expo-cli-config-glob",
-      "priority": "P2",
-      "owner": "repo-maintainers",
-      "reviewedOn": "2026-11-04",
-      "reviewBy": "2026-11-25",
-      "attackCondition": "GHSA-gcqx-w48m-w2h4: 신뢰하지 않는 객체를 deepmerge로 병합해 prototype을 오염시켜야 한다. @expo/config와 jest-config는 저장소가 소유한 설정 객체만 병합한다."
-    },
-    {
       "key": "expo:@expo/fingerprint",
       "contextId": "expo-cli-config-glob",
       "priority": "P2",
@@ -1149,15 +1116,6 @@
       "reviewedOn": "2026-11-04",
       "reviewBy": "2026-11-25",
       "attackCondition": "babel-jest 전이 advisory의 공격 조건을 해당 패키지 항목에서 별도로 검토한다. 2026-11-04 모바일 lock 최초 등록 시 확인한 경로이며 2026-11-25까지 함께 재검토한다."
-    },
-    {
-      "key": "jest-config:deepmerge",
-      "contextId": "jest-test-runner",
-      "priority": "P2",
-      "owner": "repo-maintainers",
-      "reviewedOn": "2026-11-04",
-      "reviewBy": "2026-11-25",
-      "attackCondition": "deepmerge 전이 advisory의 공격 조건을 해당 패키지 항목에서 별도로 검토한다. 2026-11-04 모바일 lock 최초 등록 시 확인한 경로이며 2026-11-25까지 함께 재검토한다."
     },
     {
       "key": "jest-config:glob",
