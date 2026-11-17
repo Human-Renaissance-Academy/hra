@@ -27,9 +27,23 @@ node --test scripts/tests/secret-scan.test.mjs scripts/tests/dependency-policy.t
 
 실행기는 credential 환경을 전달하지 않고, 소유 임시 디렉터리의 package/lock 복사본과 비어 있는 npm 설정으로 `npm audit --json --package-lock-only --ignore-scripts`를 실행한다. registry는 `https://registry.npmjs.org`로 고정한다. exit 1의 발견과 통신/구문 오류를 구분하며 raw npm 오류는 출력하지 않는다. 설치 파일을 수정하거나 자동 업데이트하지 않는다.
 
-현행 exact metadata와 권고별 평가·context·기한의 정본은 루트 `security/dependency-triage.json`과 모바일 `security/mobile-dependency-triage.json`이다. 현재 결과는 위 CLI(`npm run verify:dependencies`)의 대상별 출력과 원장을 함께 확인한다. 아래 숫자는 관측일의 기록이며 원장 갱신 때마다 수작업으로 유지하는 별도 정본이 아니다.
+현행 schema v3 정본은 루트 `security/dependency-triage.json`과 모바일 `security/mobile-dependency-triage.json`이다. 현재 검토 정본은 root **28 package·44평가·4맥락**, mobile **82·223·4**이며 이는 새 registry 감사 성공을 뜻하지 않는다. 현재267개 평가/8개 맥락과 그 안의 원래72개 평가/6개 맥락의 값·담당자·날짜는 전환 때 바꾸지 않는다. 원장은 schema/mode와 검토된 전체 manifest/lock의 SHA256 binding header만 추가한다. 결과는 같은 CLI의 실제 종료값과 함께 확인한다.
 
-2026-11-14 실제 registry audit는 루트 **17 affected package·3 object-advisory entry·24 평가·4 공유 context**, 모바일 **29·3·54·3**으로 두 원장과 정확히 일치했다. 현행 가장 이른 기한은 모바일 **2026-11-25(47평가)**, 루트 **2026-11-26(3평가)**이다. object-advisory와 전이 링크를 포함한 평가 수는 서로 다르다. 동일 GHSA의 여러 영향 범위/source ID도 별도로 보존한다. package nodes+lock 버전과 advisory ID/source/range 집합은 독립적이다. 모든 nodes×advisory 조합을 실제 영향 경로라고 해석하지 않는다. npm의 `dev` 값도 실제 운영 도달성을 대신하지 않는다.
+### v3 입력 binding과 qualified reporting identity
+
+`manifestBinding`은 package.json 전체 raw bytes, `lockBinding`은 package-lock.json 전체 raw bytes의 reviewed SHA256이다. `verifyDependencyPolicy`는 authoritative `{manifestBytes, lockBytes}` Buffer pair를 요구한다. 누락/다른 algorithm/input-tag/형식·schema2 downgrade는 실패하며 parsed-object fallback이나 digest 자동 갱신은 없다. dependency 관계 외 metadata·공백·LF/CRLF만 달라도 재검토가 필요하다. Windows에서만 normalize하거나 canonical-JSON hash로 바꾸지 않는다.
+
+CLI는 첫 audit 전에 양 target의 source package/lock/policy bytes를 capture한다. 이 두 입력의 temp copy와 captured policy만 검증에 쓰고 후읽기는 equality 확인에만 사용한다. source3개와 temp2개를 cleanup 전에 확인하고 모든 target의 source3개를 다시 확인한 뒤에야 target 성공행/overall exit를 확정한다. 변경·재읽기 실패는 `DEPENDENCY_INPUT_CHANGED`이며 초기 capture 실패도 다른 target 검사를 생략하지 않는다. 입력을 새 bytes로 덮어써 성공시키지 않는다. 이 검사는 악의적인 same-user의 A→B→A transient 변조나 mutable registry/caller 전체를 봉인하지 않는다.
+
+검토한 입력과 affected package/severity·node path/version/development 및 direct advisory의 현재5필드 `source/id/severity/range/title`을 정확히 보존한다. raw report의 isDirect/effects/fixAvailable 및 direct name/dependency/CWE/CVSS는 기존 비보호 필드이며 새로 보호한다고 주장하지 않는다. reference package/node/direct container의 unknown key는 projection 전에 실패한다. known container/list 순서만 고정하고 node/direct copy 수와 opaque version 내부 literal은 보존한다.
+
+모든 string via는 닫힌 보고 graph에 사용한다. direct 객체를 가진 보고 package를 origin으로 `(originPackage,source,id,severity,range,title)` qualified label을 만들고 **각 package의** 전체 도달집합을 reference와 비교한다. 같은5라도 origin이 바뀌면 실패한다. dangling target·leaf 없는 cycle은 실패하며 npm의 node×advisory 인과를 추론하지 않는다. string target의 exact copy와 같은 origin의 redundant 경로는 다른 모든 조건과 qualified 도달집합이 같을 때만 같은 reporting class다. 특정 두 edge 예외나 meta string 일괄 무시는 없다.
+
+동등성 검증 **뒤에만** reference의 모든267개 key/8맥락을 검증한다. 새 raw edge에 P2/담당자/날짜를 만들거나 일부 경로의 더 느슨한 판단만 고르지 않는다. 현행 기한11/25와 P1·미분류·중복평가·unused context 차단은 유지한다. 값 보존은 의미 승인을 대신하지 않는다. 이 전환의 독립 수동 위험 검토는 raw 경로 trigger 일부를 포기하는 명시적 로컬 판단이며 npm 보안 동등성·전체 모바일 runtime0·취약점 패치가 아니다. 새 remote pattern/serve/public tool/caller·실제 bundle 반례는 입력 hash가 같아도 재검토해야 한다.
+
+아래 변경 이력의 수치와 기한은 그 날짜의 관측이며 현행 정본의 별도 사본이 아니다.
+
+2026-11-14 실제 registry audit는 루트 **17 affected package·3 object-advisory entry·24 평가·4 공유 context**, 모바일 **29·3·54·3**으로 두 원장과 정확히 일치했다. 당시 원장의 가장 이른 기한은 모바일 **2026-11-25(47평가)**, 루트 **2026-11-26(3평가)**였다. object-advisory와 전이 링크를 포함한 평가 수는 서로 다르다. 동일 GHSA의 여러 영향 범위/source ID도 별도로 보존한다. package nodes+lock 버전과 advisory ID/source/range 집합은 독립적이다. 모든 nodes×advisory 조합을 실제 영향 경로라고 해석하지 않는다. npm의 `dev` 값도 실제 운영 도달성을 대신하지 않는다.
 
 `package-lock.json`의 모든 `resolved`는 `https://registry.npmjs.org/`로 시작해야 한다(워크스페이스 link 제외). 개인 `~/.npmrc`나 사내 미러가 만든 외부 피드 주소가 섞이면 `DEPENDENCY_LOCK_REGISTRY_INVALID`와 설치 경로만 출력하고 차단한다(#432). 외부 주소 자체는 로그에 남기지 않는다.
 
@@ -49,12 +63,12 @@ UTC 2026-11-05에는 실제 audit가 `DEPENDENCY_TRIAGE_CHANGED`로 바뀐 원�
 
 아래 표는 2026-11-05 당시의 평가 기록이다. 현행 평가·기한은 위 원장을 확인한다.
 
-| context | 평가 | 남은 권고 | 위험 판단 | 재검토 기한 |
-| --- | --- | --- | --- | --- |
-| `shadcn-ts-morph-glob` | 3 | [minimatch globParts 증폭](https://github.com/advisories/GHSA-g3hv-75wg-m249) | CLI 전이 경로의 DoS, 제품 호출 없음(2026-11-04부터 dev=true, 기한은 유지) | 2026-11-26 |
-| `shadcn-registry-cli` | 4 | [deepmerge prototype 상속](https://github.com/advisories/GHSA-gcqx-w48m-w2h4) | shadcn devDependencies 이동으로 dev=true, 공식 패치 없음(2026-11-04 재확인). 제품은 빌드 시 CSS만 읽는다 | 2026-12-02 |
-| `build-esbuild` | 4 | [esbuild serve cross-origin 응답](https://github.com/advisories/GHSA-67mh-4wv8-2f99) | dev=true, drizzle-kit의 esbuild 0.18.20 transform만 사용하고 serve 미사용 | 2026-12-03 |
-| `tooling-minimatch-glob` | 15 | [minimatch globParts 증폭](https://github.com/advisories/GHSA-g3hv-75wg-m249) | dev=true TypeScript-ESLint·맞춤법 도구의 minimatch 10.2.5, 고정 저장소 glob만 입력(2026-11-05 재검토) | 2026-12-03 |
+| context                  | 평가 | 남은 권고                                                                            | 위험 판단                                                                                                | 재검토 기한 |
+| ------------------------ | ---- | ------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------- | ----------- |
+| `shadcn-ts-morph-glob`   | 3    | [minimatch globParts 증폭](https://github.com/advisories/GHSA-g3hv-75wg-m249)        | CLI 전이 경로의 DoS, 제품 호출 없음(2026-11-04부터 dev=true, 기한은 유지)                                | 2026-11-26  |
+| `shadcn-registry-cli`    | 4    | [deepmerge prototype 상속](https://github.com/advisories/GHSA-gcqx-w48m-w2h4)        | shadcn devDependencies 이동으로 dev=true, 공식 패치 없음(2026-11-04 재확인). 제품은 빌드 시 CSS만 읽는다 | 2026-12-02  |
+| `build-esbuild`          | 4    | [esbuild serve cross-origin 응답](https://github.com/advisories/GHSA-67mh-4wv8-2f99) | dev=true, drizzle-kit의 esbuild 0.18.20 transform만 사용하고 serve 미사용                                | 2026-12-03  |
+| `tooling-minimatch-glob` | 15   | [minimatch globParts 증폭](https://github.com/advisories/GHSA-g3hv-75wg-m249)        | dev=true TypeScript-ESLint·맞춤법 도구의 minimatch 10.2.5, 고정 저장소 glob만 입력(2026-11-05 재검토)    | 2026-12-03  |
 
 한국 시간 2026-11-03에는 신규 공개된 [minimatch globParts 증폭 권고](https://github.com/advisories/GHSA-g3hv-75wg-m249)(`<11.0.1`, source `1244012`)와 ESLint·TypeScript-ESLint·hanspell·`shadcn → ts-morph → @ts-morph/common` 전이 경로를 재검토했다. 설치본 `3.1.5`·`10.2.5`는 기존 `^3.x`·`^10.x` 범위 안에 수정 백포트가 없고, `11.0.1` major 강제 override는 ESLint 3.x CommonJS 기본 함수 호출 호환을 깨뜨린다. 이에 lockfile과 기존 29평가·5context는 바꾸지 않고 개발 린트·맞춤법 경로(`tooling-minimatch-glob`)와 CSS만 import하는 CLI 전이 경로(`shadcn-ts-morph-glob`)를 분리한 평가 **40건**·공유 맥락 **2건**을 추가했으며, 재검토 기한은 연장 없이 **2026-11-05**로 맞췄다.
 
@@ -72,37 +86,37 @@ UTC 2026-11-05에는 실제 audit가 `DEPENDENCY_TRIAGE_CHANGED`로 바뀐 원�
 
 공유 context 하나를 수정하면 이를 참조하는 권고 3~15건의 판단문이 함께 바뀐다. PR에서 참조하는 `key` 목록과 권고별 공격 조건·날짜를 함께 검토한다. 비어 있거나 중복된 context, 없는 참조, 미사용 context, 누락된 권고별 평가와 예전 중복 필드는 실패한다. 담당자 표시는 P1 위험 수용 승인이 아니다. 패치된 js-yaml의 사용면은 내장 기본본의 JSON_SCHEMA 파싱과 저장소 YAML 검사이며, 남은 glob/esbuild/deepmerge는 도구 입력을 따로 검토한다. Blob의 undici 6과 jsdom 내부 undici 7은 위 패치 버전으로 잠가 현재 원장에서 빠졌지만, 이후 새 권고는 같은 exact gate에서 다시 차단한다. 신뢰 HTTPS만으로 모든 fetch 위험이 배제되지는 않는다.
 
-새 advisory·source·개별 권고의 영향 범위·심각도·전이 의존성·패키지 경로·설치 버전, 누락/잘못된 원장, 만료는 실패한다. 불일치 진단은 정제된 패키지·GHSA ID·숫자 source·설치 경로만 출력하고 감사 원문의 제목·범위·버전은 출력하지 않는다. npm audit가 계산하는 **상위(meta-vulnerable) 패키지의 파생 `range`만** 새 업스트림 릴리스·registry 상태 변화에 따라 바뀐 경우에는 모든 PR을 차단하지 않는다(#465). 해당 `range`는 원장에 최근 관측 값으로 기록하되 정확 일치 게이트에서는 제외한다. 반면 **실제 설치된 lock 노드의 버전·경로·dev 분류, 상위 패키지 심각도, 권고 ID/source/severity/range/title, 전이 링크, 권고별 평가·기한·P1 차단**은 기존처럼 정확히 비교한다. npm audit는 여전히 매 실행 실제 registry에 조회하고, 파생 `range`가 누락되거나 빈 문자열인 입력은 차단한다. 상위 `range`가 바뀌었다는 사실만으로 취약점이 해소되었다고 주장하지 않는다.
+새 advisory/source·현재 direct5·package/node/version/development/severity·package별 qualified leaf 변화, 누락/잘못된 reference, P1/미분류/만료는 실패한다. 새 manifest/lock 관계는 node/leaf가 같아도 reviewed raw-byte binding에서 차단한다. 진단은 정제한 package/GHSA/source와 고정 구조 위치·개수·해시만 추가하며 원문 title/range/version값이나 private key를 출력하지 않는다. 기존20건+MORE 제한을 유지한다. npm meta package의 파생 `range` 값만 identity에서 제외하는 기존 #465 의미는 같고 nonempty shape는 계속 검사한다. raw topology가 달라도 자동 허용하는 것이 아니라 앞 절의 모든 v3 조건을 먼저 증명해야 한다. 변화나 상위 range만으로 취약점이 해소됐다고 주장하지 않는다.
 
-현재 P2는 독립 코드 검토를 거치는 사용면 평가이며 모든 high 항목을 면제하는 정책이 아니다. 루트의 재검토 기한은 사용면 위험에 따라 **2026-11-26**(CLI DoS, 2026-11-03 판단 당시 dev=false)·**2026-12-02**·**2026-12-03**(개발 도구 전용 4주)으로 나뉜다. 기한 전에 패치 또는 새 근거를 검토하고 실제 재검토일과 기한을 갱신한다. 단순히 기한을 늘리지 않는다. 확인된 P1은 이 게이트에서 항상 차단하며 수정이 필요하다. 권한 있는 owner의 개별 예외가 필요하다면 별도 검토로 정책을 확장해야 하며 에이전트가 승인 사실을 만들어 통과시키지 않는다.
+현재 P2는 독립 source 사용면 검토이며 high 항목 전체 면제가 아니다. picomatch GHSA-fc5q-39xc-vjpf는 2026-11-17 검토 기준 정식 비영향 패치가 없어 기존 호스트 DoS·mobile coverage 한계를 포함해11/25까지 한시 검토된 상태다. 원래 root11/26·12/03, mobile11/25·12/02를 포함한 모든 평가 날짜는 그대로다. hash/schema 전환은 재검토일·기한을 갱신하거나 연장하지 않는다. 확인된 P1은 차단하며 별도 위험 수용 권한을 에이전트가 만들어 통과시키지 않는다.
 
 공식 근거: [npm audit 동작](https://docs.npmjs.com/cli/v11/commands/npm-audit/), 각 원장 항목의 GHSA ID. 원장의 source 번호와 범위는 registry 관측 시점 자료이므로 upstream advisory 변경은 재검토를 유발한다.
 
 ### 모바일 앱 lockfile (#446)
 
-`apps/mobile`은 루트와 별도로 설치하는 독립 프로젝트이므로 `apps/mobile/package-lock.json`을 **별도 원장** `security/mobile-dependency-triage.json`으로 검사한다. `npm run verify:dependencies`는 루트와 모바일 대상을 차례로 같은 방식(소유 임시 디렉터리·빈 npm 설정·공식 registry 고정 audit)으로 검사하고, 대상별 결과를 `{"target":"root"|"mobile",...}` 한 줄로 출력한다. 한 대상이 실패해도 다른 대상을 계속 검사한 뒤 종료 코드 1로 차단하며, 실패 진단 앞에는 고정된 대상 이름 `DEPENDENCY_TARGET <이름>`만 붙인다. 공식 registry 검사(#432)·정확 일치·만료·P1 차단 규칙은 루트와 같다. 두 lock의 같은 패키지 이름이 서로 다른 버전·경로를 가지므로 원장을 합치지 않는다.
+`apps/mobile`은 루트와 별도로 설치하는 독립 프로젝트이므로 `apps/mobile/package-lock.json`을 **별도 원장** `security/mobile-dependency-triage.json`으로 검사한다. `npm run verify:dependencies`는 루트와 모바일 대상을 차례로 같은 방식(소유 임시 디렉터리·빈 npm 설정·공식 registry 고정 audit)으로 검사하고, 대상별 결과를 `{"target":"root"|"mobile",...}` 한 줄로 출력한다. 한 대상이 실패해도 다른 대상을 계속 검사한 뒤 종료 코드 1로 차단하며, 실패 진단 앞에는 고정된 대상 이름 `DEPENDENCY_TARGET <이름>`만 붙인다. 공식 registry 검사(#432)·v3 입력 binding·qualified identity·만료·P1 차단 규칙은 루트와 같다. 두 lock의 같은 패키지 이름이 서로 다른 버전·경로를 가지므로 원장을 합치지 않는다.
 
-모바일 원장의 `packages`는 사람이 쓰지 않고 실제 audit와 lock으로 `dependencySnapshot()`을 실행한 결과를 그대로 기록한다. 전이 패키지의 `range`는 registry의 최신 배포 목록에 따라 달라지므로 개인 npm 캐시가 아니라 빈 캐시(게이트와 같은 조건)로 얻은 audit를 사용한다. 한 패키지가 같은 이름의 전이 패키지를 여러 버전으로 두면(예: 최초 등록 시 `test-exclude`의 glob 7·10) npm이 같은 링크를 중복 보고한다. 링크 목록은 snapshot 정확 일치로 그대로 고정하고, 평가 키(`test-exclude:glob`)는 한 번만 요구한다.
+모바일 `packages`는 검토된 reference graph다. 매 실행의 raw meta 표현에 맞춰 원장을 포함/제외 형태로 뒤집지 않는다. 실제 새로운 영향/설치 입력과 위험 조건은 별도로 검토하고 source/field 보존·qualified class 의미를 독립 검증한다. 같은 target string copy는 graph 도달집합에서만 set 의미로 처리하며 node/direct copy 수는 유지한다. 평가 key는 reference의 unique key를 모두 요구하고 자동 추가·P2 분류·기한 연장은 하지 않는다.
 
 #### 모바일 최초 등록·변경 이력
 
 다음 표의 기한과 사용면은 최초 등록 당시 기록이며 현행 미해결 목록이 아니다. 한국 시간 2026-11-04 최초 등록 시 audit는 high 3·moderate 41·low 1이었다. 처리 결과는 다음과 같다(`reviewedOn`은 게이트 기준 UTC 날짜 2026-11-04).
 
-| 권고 | 경로 | 처리 | 재검토 기한 |
-| --- | --- | --- | --- |
-| sharp(high) GHSA-f88m-g3jw-g9cj·GHSA-rgj7-g3m4-5g8c·GHSA-wq5f-xc86-pv6w | 아이콘 생성 devDependency | `sharp` 0.35.5로 갱신해 해소. `scripts/generate-icons.mjs` 출력(1024×1024 RGBA PNG 3개) 확인 | 해당 없음 |
-| zod(high) GHSA-mrhx-c7xc-m3w5 | `expo` → `@expo/cli`(zod ^3.25.76) DevTools 플러그인 manifest 검증 | zod 3.x 수정본 없음. zod 4 override는 CLI 호환성을 깨뜨릴 수 있어 미적용. 사용면 평가(`expo-cli-devtools-zod`) | 2026-11-18, Play 업로드(#283) 전 |
-| glob·minimatch·deepmerge(moderate·low) | Expo CLI·config·metro-config·fingerprint | 범위 안 수정본 없음(glob ^13, 수정본 14.0.2 이상). `expo-cli-config-glob` | 2026-11-25 |
-| 같은 권고의 jest 경로 | jest·jest-expo·babel-jest·test-exclude | expo-router 선택적 peer 때문에 npm `dev=false`로 기록된 테스트 도구. `jest-test-runner` | 2026-11-25 |
-| 같은 권고의 lint·코드 생성 경로 | eslint·typescript-eslint, openapi-typescript·Redocly | 개발 도구 전용(`dev=true`). `eslint-lint-tooling`·`openapi-codegen-redocly`(2026-11-05 권고 정정으로 제거) | 2026-12-02 |
+| 권고                                                                    | 경로                                                               | 처리                                                                                                           | 재검토 기한                      |
+| ----------------------------------------------------------------------- | ------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------- | -------------------------------- |
+| sharp(high) GHSA-f88m-g3jw-g9cj·GHSA-rgj7-g3m4-5g8c·GHSA-wq5f-xc86-pv6w | 아이콘 생성 devDependency                                          | `sharp` 0.35.5로 갱신해 해소. `scripts/generate-icons.mjs` 출력(1024×1024 RGBA PNG 3개) 확인                   | 해당 없음                        |
+| zod(high) GHSA-mrhx-c7xc-m3w5                                           | `expo` → `@expo/cli`(zod ^3.25.76) DevTools 플러그인 manifest 검증 | zod 3.x 수정본 없음. zod 4 override는 CLI 호환성을 깨뜨릴 수 있어 미적용. 사용면 평가(`expo-cli-devtools-zod`) | 2026-11-18, Play 업로드(#283) 전 |
+| glob·minimatch·deepmerge(moderate·low)                                  | Expo CLI·config·metro-config·fingerprint                           | 범위 안 수정본 없음(glob ^13, 수정본 14.0.2 이상). `expo-cli-config-glob`                                      | 2026-11-25                       |
+| 같은 권고의 jest 경로                                                   | jest·jest-expo·babel-jest·test-exclude                             | expo-router 선택적 peer 때문에 npm `dev=false`로 기록된 테스트 도구. `jest-test-runner`                        | 2026-11-25                       |
+| 같은 권고의 lint·코드 생성 경로                                         | eslint·typescript-eslint, openapi-typescript·Redocly               | 개발 도구 전용(`dev=true`). `eslint-lint-tooling`·`openapi-codegen-redocly`(2026-11-05 권고 정정으로 제거)     | 2026-12-02                       |
 
 등록 시 결과는 44 affected package·4 object-advisory entry·92 평가 키·5 공유 context였다.
 
 UTC 2026-11-05에는 루트 원장과 같은 원인으로 모바일 대상이 `DEPENDENCY_TRIAGE_CHANGED`로 실패했다. GitHub가 [minimatch globParts 증폭 권고](https://github.com/advisories/GHSA-g3hv-75wg-m249)를 2026-11-04T16:50Z에 `<11.0.1`에서 `>=7.0.0 <11.0.1`로 정정해 npm audit source가 `1244012`에서 `1244623`으로 바뀌었다. 이에 minimatch 3.1.5(`node_modules/minimatch`, eslint 본체)·5.1.9(Redocly)와 이를 통해서만 영향받던 `eslint`·`@eslint/config-array`·`@eslint/eslintrc`·`@eslint-community/eslint-utils`·`eslint-plugin-import`·`eslint-plugin-react`·`@react-native/jest-preset`·`@redocly/openapi-core`·`openapi-typescript` 9개 패키지, glob 7 경로(`node_modules/test-exclude`)와 그 전이 링크가 audit에서 빠졌다. `packages`는 빈 캐시 audit에 `dependencySnapshot()`을 적용해 다시 생성했고, 평가 **26건**(`minimatch:1244012` 포함)과 참조가 없어진 `openapi-codegen-redocly` context를 제거한 뒤 `minimatch:1244623` 1건을 추가했다(44패키지·4 object-advisory·92평가·5context → 35·4·67·4). lockfile과 `package.json`은 바꾸지 않았다. 남은 minimatch 9.0.9·10.2.6 경로는 그대로 영향 범위이며 10.x 최신 10.2.6에도 수정본이 없다. 새 `minimatch:1244623`(`expo-cli-config-glob`)과 사실 서술을 고친 `eslint-lint-tooling` 평가 12건은 검토일을 `2026-11-05`로 갱신하고 기존 기한(각각 2026-11-25·2026-12-02)을 늘리지 않았다. 경로가 줄기만 하고 판단문을 바꾸지 않은 `jest-test-runner`와 나머지 context의 검토일·기한도 그대로 뒀다. 당시 가장 이른 기한은 **2026-11-18**(`expo-cli-devtools-zod`)이었다.
 
-#### 모바일 현행 관측
+#### 모바일 관측 이력
 
-2026-11-14 관측 결과는 위 현행 원장 요약과 같다. [Zod 공식 권고](https://github.com/advisories/GHSA-mrhx-c7xc-m3w5)는 `<4.6.6`에 영향을 주며 수정본은 `4.6.6`이다. 현재 루트·모바일 lock은 Zod `4.6.7`이고 모바일 `@expo/cli` `58.1.19`에는 Zod 전이 링크가 없어 해당 권고가 현재 audit에 보고되지 않는다. 이는 권고 철회가 아니라 설치 경로 해소다. `expo-cli-devtools-zod` context와 그 2026-11-18 기한도 현행 원장에 없다. 모바일의 가장 이른 현행 기한은 2026-11-25이며 최초 등록 기한을 연장한 서술이 아니다.
+2026-11-14 당시 관측은 위 이력 수치이며 현재 reference 집계와 구분한다. [Zod 공식 권고](https://github.com/advisories/GHSA-mrhx-c7xc-m3w5)는 `<4.6.6`에 영향을 주며 수정본은 `4.6.6`이다. 현재 루트·모바일 lock은 Zod `4.6.7`이고 모바일 `@expo/cli` `58.1.19`에는 Zod 전이 링크가 없어 해당 권고가 현재 audit에 보고되지 않는다. 이는 권고 철회가 아니라 설치 경로 해소다. `expo-cli-devtools-zod` context와 그 2026-11-18 기한도 현행 원장에 없다. 모바일의 가장 이른 현행 기한은 2026-11-25이며 최초 등록 기한을 연장한 서술이 아니다.
 
 모바일 release JS 번들(Metro)에는 위 패키지가 포함되지 않는다는 점은 [모바일 앱 문서](mobile-app.md)의 소스 맵 점검을 근거로 하며 운영 도달성 보증은 아니다. Dependabot은 `/apps/mobile` npm 의존성도 매주 검토하고 Expo SDK가 함께 고정하는 패키지를 `expo-sdk` 그룹으로 묶는다. TypeScript major만 루트(#436)와 같은 이유(Expo SDK 요구 6.0.3 고정·openapi-typescript override 호환성)로 자동 제안에서 제외하고 minor/patch는 계속 받는다. Android 네이티브(Gradle/Maven) 라이브러리는 npm audit 대상이 아니며 이 게이트 범위 밖이다.
 
