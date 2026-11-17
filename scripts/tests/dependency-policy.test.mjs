@@ -31,9 +31,9 @@ const audit = {
   ),
 };
 test("현재 정확한 집합은 package 수와 advisory 수를 구분한다", () => {
-  assert.deepEqual(verifyDependencyPolicy(audit, lock, policy, "2026-11-06"), {
-    affectedPackages: 15,
-    advisoryEntries: 2,
+  assert.deepEqual(verifyDependencyPolicy(audit, lock, policy, "2026-11-17"), {
+    affectedPackages: 28,
+    advisoryEntries: 3,
     p1: 0,
   });
 });
@@ -49,7 +49,7 @@ for (const [name, change] of [
   test(name + " 차단", () => {
     const input = structuredClone(audit);
     change(input);
-    assert.throws(() => verifyDependencyPolicy(input, lock, policy, "2026-11-06"), /DEPENDENCY_/);
+    assert.throws(() => verifyDependencyPolicy(input, lock, policy, "2026-11-17"), /DEPENDENCY_/);
   });
 for (const [name, change] of [
   ["미분류", (p) => p.assessments.pop()],
@@ -61,19 +61,19 @@ for (const [name, change] of [
   test(name + " 원장 차단", () => {
     const input = structuredClone(policy);
     change(input);
-    assert.throws(() => verifyDependencyPolicy(audit, lock, input, "2026-11-06"), /DEPENDENCY_/);
+    assert.throws(() => verifyDependencyPolicy(audit, lock, input, "2026-11-17"), /DEPENDENCY_/);
   });
-// 가장 이른 재검토 기한(2026-11-26) 다음 날부터는 실제 원장 전체가 만료로 차단된다.
+// 가장 이른 재검토 기한(2026-11-25) 다음 날부터는 실제 원장 전체가 만료로 차단된다.
 test("검토 기한 만료 차단", () =>
   assert.throws(
-    () => verifyDependencyPolicy(audit, lock, policy, "2026-11-27"),
+    () => verifyDependencyPolicy(audit, lock, policy, "2026-11-26"),
     /DEPENDENCY_TRIAGE_INVALID/,
   ));
 test("lock 설치 버전 변경 차단", () => {
   const input = structuredClone(lock);
   input.packages["node_modules/@esbuild-kit/core-utils/node_modules/esbuild"].version = "99.0.0";
   assert.throws(
-    () => verifyDependencyPolicy(audit, input, policy, "2026-11-06"),
+    () => verifyDependencyPolicy(audit, input, policy, "2026-11-17"),
     /DEPENDENCY_TRIAGE_CHANGED/,
   );
 });
@@ -85,7 +85,7 @@ test("깨진 audit는 정상 0건이 아니다", () => {
 // 감사 응답의 제목·영향 범위는 원문에 민감한 문자열이 섞일 수 있으므로 진단에는 식별자만 남긴다.
 function capturePolicyError(inputAudit, inputLock = lock) {
   try {
-    verifyDependencyPolicy(inputAudit, inputLock, policy, "2026-11-06");
+    verifyDependencyPolicy(inputAudit, inputLock, policy, "2026-11-17");
   } catch (error) {
     return error;
   }
@@ -126,7 +126,7 @@ test("권고 제거는 철회로 단정하지 않고 원장에만 남은 ID를 �
   input.packages.find((item) => item.name === "esbuild").via.push(removed);
   let error;
   try {
-    verifyDependencyPolicy(audit, lock, input, "2026-11-06");
+    verifyDependencyPolicy(audit, lock, input, "2026-11-17");
   } catch (caught) {
     error = caught;
   }
@@ -174,7 +174,7 @@ test("새 설치 경로는 경로만 진단하고 실제 lock 일치 검사를 �
   ]);
   assert.doesNotMatch(JSON.stringify(error.diagnostics), /99\.0\.0/);
   assert.throws(
-    () => verifyDependencyPolicy(input, lock, policy, "2026-11-06"),
+    () => verifyDependencyPolicy(input, lock, policy, "2026-11-17"),
     /DEPENDENCY_LOCK_MISMATCH/,
   );
 });
@@ -213,7 +213,7 @@ test("손상된 원장은 원문 없이 실패 차단한다", () => {
   input.packages[0].via = [null];
   let error;
   try {
-    verifyDependencyPolicy(audit, lock, input, "2026-11-06");
+    verifyDependencyPolicy(audit, lock, input, "2026-11-17");
   } catch (caught) {
     error = caught;
   }
@@ -221,20 +221,20 @@ test("손상된 원장은 원문 없이 실패 차단한다", () => {
   assert.deepEqual(dependencyDiagnosticLines(error), ["DEPENDENCY_TRIAGE_CHANGED"]);
 });
 
-test("v2 원장은 20개 권고별 판단과 3개 공유 사용 맥락을 유지한다", () => {
+test("v2 원장은 44개 명시 판단과 4개 공유 사용 맥락을 유지한다", () => {
   assert.equal(policy.schemaVersion, 2);
-  assert.equal(policy.assessments.length, 20);
-  assert.equal(policy.contexts.length, 3);
-  assert.equal(new Set(policy.assessments.map((item) => item.contextId)).size, 3);
+  assert.equal(policy.assessments.length, 44);
+  assert.equal(policy.contexts.length, 4);
+  assert.equal(new Set(policy.assessments.map((item) => item.contextId)).size, 4);
   assert.deepEqual(
     policy.contexts
       .map((context) => policy.assessments.filter((item) => item.contextId === context.id).length)
       .sort((a, b) => a - b),
-    [3, 4, 13],
+    [3, 4, 13, 24],
   );
-  assert.deepEqual(verifyDependencyPolicy(audit, lock, policy, "2026-11-06"), {
-    affectedPackages: 15,
-    advisoryEntries: 2,
+  assert.deepEqual(verifyDependencyPolicy(audit, lock, policy, "2026-11-17"), {
+    affectedPackages: 28,
+    advisoryEntries: 3,
     p1: 0,
   });
 });
@@ -260,14 +260,14 @@ for (const [name, change] of [
   test(name + " 차단", () => {
     const input = structuredClone(policy);
     change(input);
-    assert.throws(() => verifyDependencyPolicy(audit, lock, input, "2026-11-06"), /DEPENDENCY_/);
+    assert.throws(() => verifyDependencyPolicy(audit, lock, input, "2026-11-17"), /DEPENDENCY_/);
   });
 
 test("구 schema v1은 새 검토 원장으로 자동 승인하지 않는다", () => {
   const input = structuredClone(policy);
   input.schemaVersion = 1;
   assert.throws(
-    () => verifyDependencyPolicy(audit, lock, input, "2026-11-06"),
+    () => verifyDependencyPolicy(audit, lock, input, "2026-11-17"),
     /DEPENDENCY_TRIAGE_CHANGED/,
   );
 });
@@ -312,9 +312,9 @@ test("패치된 YAML 설치본은 임시 평가·공유 맥락 없이 확인한�
     policy.contexts.filter((item) => item.id === "shadcn-registry-cli"),
     [],
   );
-  assert.deepEqual(verifyDependencyPolicy(audit, lock, policy, "2026-11-06"), {
-    affectedPackages: 15,
-    advisoryEntries: 2,
+  assert.deepEqual(verifyDependencyPolicy(audit, lock, policy, "2026-11-17"), {
+    affectedPackages: 28,
+    advisoryEntries: 3,
     p1: 0,
   });
 });
@@ -322,7 +322,7 @@ test("패치된 YAML 설치본은 임시 평가·공유 맥락 없이 확인한�
 // 2026-11-04(KST) 재검토: lock 범위 안 수정본으로 해소한 권고는 원장에서 제거하고, 남은 평가는 일괄 연장 없이
 // 사용면 위험에 따라 기한을 다르게 둡니다. reviewedOn은 게이트 기준 시계인 UTC 날짜(2026-11-03)입니다.
 test("수정본으로 해소한 권고는 제거하고 남은 평가는 위험별 기한을 둔다", () => {
-  for (const name of ["brace-expansion", "source-map-js", "vite"])
+  for (const name of ["brace-expansion", "source-map-js"])
     assert.equal(
       policy.packages.some((item) => item.name === name),
       false,
@@ -330,7 +330,7 @@ test("수정본으로 해소한 권고는 제거하고 남은 평가는 위험�
   assert.deepEqual(
     policy.assessments.filter(
       (item) =>
-        /^(brace-expansion|source-map-js|vite):/.test(item.key) || item.key === "esbuild:1120680",
+        /^(brace-expansion|source-map-js):/.test(item.key) || item.key === "esbuild:1120680",
     ),
     [],
   );
@@ -345,35 +345,38 @@ test("수정본으로 해소한 권고는 제거하고 남은 평가는 위험�
   };
   // drizzle-kit 설치 노드만 추가 재검토했으며 제거된 eslint-config-next 항목은 복원하지 않는다.
   assert.ok(
-    policy.assessments.every(
-      (item) =>
-        item.reviewedOn ===
-        (item.key === "drizzle-kit:@esbuild-kit/esm-loader"
-          ? "2026-11-06"
-          : (reviewedOn[item.contextId] ?? "2026-11-03")),
-    ),
+    policy.assessments
+      .filter((item) => item.contextId !== "tooling-picomatch-extglob")
+      .every(
+        (item) =>
+          item.reviewedOn ===
+          (item.key === "drizzle-kit:@esbuild-kit/esm-loader"
+            ? "2026-11-06"
+            : (reviewedOn[item.contextId] ?? "2026-11-03")),
+      ),
   );
   // dev=false이거나 수정본이 있는데 적용되지 못한 사용면은 2주, dev=false CLI DoS는 3주, 개발 도구 전용은 4주다.
   const deadlines = {
     "shadcn-ts-morph-glob": "2026-11-26",
     "build-esbuild": "2026-12-03",
     "tooling-minimatch-glob": "2026-12-03",
+    "tooling-picomatch-extglob": "2026-11-25",
   };
   assert.deepEqual(Object.keys(deadlines).sort(), policy.contexts.map((item) => item.id).sort());
   assert.ok(policy.assessments.every((item) => item.reviewBy === deadlines[item.contextId]));
-  // 기존 기한 다음 날(2026-11-06)에도 통과하고, 가장 이른 기한 다음 날부터는 다시 차단한다.
-  assert.deepEqual(verifyDependencyPolicy(audit, lock, policy, "2026-11-06"), {
-    affectedPackages: 15,
-    advisoryEntries: 2,
+  // 새 권고를 검토한 UTC 날짜에도 통과하고, 새 최단 기한 다음 날부터는 다시 차단한다.
+  assert.deepEqual(verifyDependencyPolicy(audit, lock, policy, "2026-11-17"), {
+    affectedPackages: 28,
+    advisoryEntries: 3,
     p1: 0,
   });
-  assert.deepEqual(verifyDependencyPolicy(audit, lock, policy, "2026-11-26"), {
-    affectedPackages: 15,
-    advisoryEntries: 2,
+  assert.deepEqual(verifyDependencyPolicy(audit, lock, policy, "2026-11-25"), {
+    affectedPackages: 28,
+    advisoryEntries: 3,
     p1: 0,
   });
   assert.throws(
-    () => verifyDependencyPolicy(audit, lock, policy, "2026-11-27"),
+    () => verifyDependencyPolicy(audit, lock, policy, "2026-11-26"),
     /DEPENDENCY_TRIAGE_INVALID/,
   );
 });
@@ -425,9 +428,14 @@ test("shadcn CLI 경로는 개발 의존성으로만 설치되어 개발 도구 
     [true],
   );
   assert.deepEqual(
-    policy.packages.filter((item) => ["deepmerge", "@shadcn/registry"].includes(item.name)),
+    policy.packages.filter((item) => item.name === "deepmerge"),
     [],
   );
+  // registry는 철회된 deepmerge 대신 새 picomatch 전이 링크로 다시 보고됩니다.
+  assert.deepEqual(policy.packages.find((item) => item.name === "@shadcn/registry").via, [
+    { dependency: "@dotenvx/dotenvx" },
+    { dependency: "fast-glob" },
+  ]);
 });
 
 // minimatch 권고는 CLI dev=false 경로와 개발 도구 경로를 계속 분리해 서로 다른 기한으로 재검토합니다.
@@ -442,7 +450,6 @@ test("minimatch 권고는 사용면을 분리해 위험별 기한으로 재검�
     "@eslint/config-array",
     "@eslint/eslintrc",
     "@eslint-community/eslint-utils",
-    "@next/eslint-plugin-next",
     "eslint-plugin-import",
     "eslint-plugin-jsx-a11y",
     "eslint-plugin-react",
@@ -473,14 +480,14 @@ test("minimatch 권고는 사용면을 분리해 위험별 기한으로 재검�
 // 실제 원장의 기한을 늘리지 않고 합성 평가만 만료시켜 일반 실패 차단이 남아 있음을 확인합니다.
 test("YAML 예외를 제거해도 다른 평가의 만료는 계속 차단한다", () => {
   const input = structuredClone(policy);
-  input.assessments[0].reviewBy = "2026-11-06";
-  assert.deepEqual(verifyDependencyPolicy(audit, lock, input, "2026-11-06"), {
-    affectedPackages: 15,
-    advisoryEntries: 2,
+  input.assessments[0].reviewBy = "2026-11-17";
+  assert.deepEqual(verifyDependencyPolicy(audit, lock, input, "2026-11-17"), {
+    affectedPackages: 28,
+    advisoryEntries: 3,
     p1: 0,
   });
   assert.throws(
-    () => verifyDependencyPolicy(audit, lock, input, "2026-11-07"),
+    () => verifyDependencyPolicy(audit, lock, input, "2026-11-18"),
     /DEPENDENCY_TRIAGE_INVALID/,
   );
 });
@@ -505,12 +512,11 @@ test("Blob SDK는 cli-config의 Zod 취약 버전을 수정본으로만 해석�
   assert.equal(lock.packages["node_modules/zod"]?.version, "4.6.7");
 });
 
-test("더는 취약하지 않은 Next ESLint 경로는 원장에서 빠지고 재등장은 차단한다", () => {
+test("Next ESLint의 새 picomatch 링크와 제거된 예전 링크를 구분한다", () => {
   assert.equal(lock.packages["node_modules/eslint-config-next"].version, "16.4.5");
-  assert.equal(
-    policy.packages.some((item) => item.name === "eslint-config-next"),
-    false,
-  );
+  assert.deepEqual(policy.packages.find((item) => item.name === "eslint-config-next").via, [
+    { dependency: "@next/eslint-plugin-next" },
+  ]);
   assert.equal(
     policy.assessments.some((item) => item.key === "eslint-config-next:typescript-eslint"),
     false,
@@ -529,7 +535,7 @@ test("더는 취약하지 않은 Next ESLint 경로는 원장에서 빠지고 �
     via: ["typescript-eslint"],
   };
   assert.throws(
-    () => verifyDependencyPolicy(input, lock, policy, "2026-11-06"),
+    () => verifyDependencyPolicy(input, lock, policy, "2026-11-17"),
     /DEPENDENCY_TRIAGE_CHANGED/,
   );
 });
@@ -549,7 +555,7 @@ test("외부 피드 resolved는 주소 없이 설치 경로만 진단하고 차�
   );
   let thrown;
   try {
-    verifyDependencyPolicy(audit, input, policy, "2026-11-06");
+    verifyDependencyPolicy(audit, input, policy, "2026-11-17");
   } catch (error) {
     thrown = error;
   }
@@ -586,7 +592,7 @@ const mobileAudit = {
     ]),
   ),
 };
-const mobileResult = { affectedPackages: 28, advisoryEntries: 2, p1: 0 };
+const mobileResult = { affectedPackages: 82, advisoryEntries: 3, p1: 0 };
 
 // npm의 상위 패키지 meta range는 새 upstream 릴리스만으로 바뀔 수 있다.
 // 실제 위험 평가에 쓰는 severity, via의 advisory range/ID/source와 lock nodes의 정확 일치는 유지한다.
@@ -595,42 +601,42 @@ test("상위 패키지 파생 range만 바뀌면 통과하지만 실제 권고·
   changedDerived.vulnerabilities["@expo/cli"].range += " || 999.0.0";
   changedDerived.vulnerabilities["@expo/fingerprint"].range += " || 999.0.0";
   assert.deepEqual(
-    verifyDependencyPolicy(changedDerived, mobileLock, mobilePolicy, "2026-11-08"),
+    verifyDependencyPolicy(changedDerived, mobileLock, mobilePolicy, "2026-11-17"),
     mobileResult,
   );
 
   const severityChanged = structuredClone(changedDerived);
   severityChanged.vulnerabilities["@expo/cli"].severity = "critical";
   assert.throws(
-    () => verifyDependencyPolicy(severityChanged, mobileLock, mobilePolicy, "2026-11-08"),
+    () => verifyDependencyPolicy(severityChanged, mobileLock, mobilePolicy, "2026-11-17"),
     /DEPENDENCY_TRIAGE_CHANGED/,
   );
 
   const advisoryChanged = structuredClone(changedDerived);
   advisoryChanged.vulnerabilities.minimatch.via[0].range += " || 999.0.0";
   assert.throws(
-    () => verifyDependencyPolicy(advisoryChanged, mobileLock, mobilePolicy, "2026-11-08"),
+    () => verifyDependencyPolicy(advisoryChanged, mobileLock, mobilePolicy, "2026-11-17"),
     /DEPENDENCY_TRIAGE_CHANGED/,
   );
 
   const linkChanged = structuredClone(changedDerived);
   linkChanged.vulnerabilities["@expo/cli"].via.push("previously-unreviewed-dependency");
   assert.throws(
-    () => verifyDependencyPolicy(linkChanged, mobileLock, mobilePolicy, "2026-11-08"),
+    () => verifyDependencyPolicy(linkChanged, mobileLock, mobilePolicy, "2026-11-17"),
     /DEPENDENCY_TRIAGE_CHANGED/,
   );
 
   const versionChanged = structuredClone(mobileLock);
   versionChanged.packages["node_modules/@expo/cli"].version = "99.0.0";
   assert.throws(
-    () => verifyDependencyPolicy(changedDerived, versionChanged, mobilePolicy, "2026-11-08"),
+    () => verifyDependencyPolicy(changedDerived, versionChanged, mobilePolicy, "2026-11-17"),
     /DEPENDENCY_TRIAGE_CHANGED/,
   );
 
   const invalidRange = structuredClone(mobilePolicy);
   invalidRange.packages.find((item) => item.name === "@expo/cli").range = "";
   assert.throws(
-    () => verifyDependencyPolicy(mobileAudit, mobileLock, invalidRange, "2026-11-08"),
+    () => verifyDependencyPolicy(mobileAudit, mobileLock, invalidRange, "2026-11-17"),
     /DEPENDENCY_TRIAGE_CHANGED/,
   );
 });
@@ -639,7 +645,7 @@ test("모바일 원장은 lock 스냅샷과 정확히 일치하고 모든 resolv
   assert.deepEqual(dependencySnapshot(mobileAudit, mobileLock), mobilePolicy.packages);
   assert.deepEqual(lockRegistryViolations(mobileLock), []);
   assert.deepEqual(
-    verifyDependencyPolicy(mobileAudit, mobileLock, mobilePolicy, "2026-11-08"),
+    verifyDependencyPolicy(mobileAudit, mobileLock, mobilePolicy, "2026-11-17"),
     mobileResult,
   );
 });
@@ -657,18 +663,15 @@ test("Expo 58 패치의 호환 버전과 Zod high audit 제거를 정확히 검�
     assert.equal(mobileLock.packages["node_modules/" + name].version, version);
   }
   assert.equal(mobileLock.packages["node_modules/@expo/cli"].version, "58.1.19");
-  assert.equal(
-    mobilePolicy.packages.find((item) => item.name === "@expo/cli").severity,
-    "moderate",
-  );
+  assert.equal(mobilePolicy.packages.find((item) => item.name === "@expo/cli").severity, "high");
   assert.deepEqual(
-    mobilePolicy.packages.filter((item) =>
-      ["zod", "@expo/config", "@expo/config-plugins", "@expo/metro-config"].includes(item.name),
-    ),
+    mobilePolicy.packages.filter((item) => item.name === "zod"),
     [],
   );
+  // 새 high leaf의 존재는 이전 Zod 패치의 되돌림이 아니며 미검토 high는 별도 정확 집합 검사로 차단합니다.
+  assert.equal(mobilePolicy.packages.find((item) => item.name === "picomatch").severity, "high");
   assert.equal(
-    mobilePolicy.packages.some((item) => item.severity === "high" || item.severity === "critical"),
+    mobilePolicy.packages.some((item) => item.severity === "critical"),
     false,
   );
   assert.equal(
@@ -709,7 +712,7 @@ test("모바일 node-forge는 보안 패치 1.4.3을 사용하며 새 권고가 
     ],
   };
   assert.throws(
-    () => verifyDependencyPolicy(changed, mobileLock, mobilePolicy, "2026-11-06"),
+    () => verifyDependencyPolicy(changed, mobileLock, mobilePolicy, "2026-11-17"),
     /DEPENDENCY_TRIAGE_CHANGED/,
   );
 });
@@ -727,7 +730,17 @@ test("모바일 감사에서 사라진 린트 경로와 CLI 링크는 원장에�
   }
   assert.deepEqual(
     mobilePolicy.packages.find((item) => item.name === "expo").via.map((item) => item.dependency),
-    ["@expo/fingerprint"],
+    [
+      "@expo/cli",
+      "@expo/config-plugins",
+      "@expo/config",
+      "@expo/fingerprint",
+      "@expo/local-build-cache-provider",
+      "@expo/metro-config",
+      "@expo/metro",
+      "babel-preset-expo",
+      "expo-modules-core",
+    ],
   );
   assert.deepEqual(
     mobilePolicy.packages
@@ -756,6 +769,7 @@ test("모바일 평가는 사용면 위험별 기한을 두고 가장 이른 기
     "expo-cli-config-glob": "2026-11-25",
     "jest-test-runner": "2026-11-25",
     "eslint-lint-tooling": "2026-12-02",
+    "mobile-picomatch-host-tools": "2026-11-25",
   };
   const rechecked = (item) =>
     item.contextId === "eslint-lint-tooling" || item.key === "minimatch:1244623";
@@ -771,17 +785,24 @@ test("모바일 평가는 사용면 위험별 기한을 두고 가장 이른 기
     mobilePolicy.contexts.map((item) => item.id).sort(),
     Object.keys(deadlines).sort(),
   );
-  assert.equal(mobilePolicy.assessments.length, 52);
+  assert.equal(mobilePolicy.assessments.length, 225);
+  assert.equal(
+    mobilePolicy.assessments.filter((item) => item.contextId !== "mobile-picomatch-host-tools")
+      .length,
+    52,
+  );
   assert.ok(
-    mobilePolicy.assessments.every(
-      (item) =>
-        item.reviewedOn ===
-          (updatedSdk.has(item.key)
-            ? "2026-11-08"
-            : rechecked(item)
-              ? "2026-11-05"
-              : "2026-11-04") && item.reviewBy === deadlines[item.contextId],
-    ),
+    mobilePolicy.assessments
+      .filter((item) => item.contextId !== "mobile-picomatch-host-tools")
+      .every(
+        (item) =>
+          item.reviewedOn ===
+            (updatedSdk.has(item.key)
+              ? "2026-11-08"
+              : rechecked(item)
+                ? "2026-11-05"
+                : "2026-11-04") && item.reviewBy === deadlines[item.contextId],
+      ),
   );
   assert.deepEqual(
     mobilePolicy.assessments.filter(
@@ -837,17 +858,17 @@ test("중복 전이 링크는 평가 하나로 받되 링크 수 변경과 중�
     .find((item) => item.name === "test-exclude")
     .via.unshift({ dependency: "glob" });
   assert.deepEqual(
-    verifyDependencyPolicy(audited, mobileLock, recorded, "2026-11-08"),
+    verifyDependencyPolicy(audited, mobileLock, recorded, "2026-11-17"),
     mobileResult,
   );
   assert.throws(
-    () => verifyDependencyPolicy(mobileAudit, mobileLock, recorded, "2026-11-08"),
+    () => verifyDependencyPolicy(mobileAudit, mobileLock, recorded, "2026-11-17"),
     /DEPENDENCY_TRIAGE_CHANGED/,
   );
   const extra = structuredClone(recorded);
   extra.assessments.push({ ...extra.assessments.find((item) => item.key === "test-exclude:glob") });
   assert.throws(
-    () => verifyDependencyPolicy(audited, mobileLock, extra, "2026-11-08"),
+    () => verifyDependencyPolicy(audited, mobileLock, extra, "2026-11-17"),
     /DEPENDENCY_TRIAGE_MISSING/,
   );
 });
@@ -862,14 +883,51 @@ test("모바일 lock의 새 권고·외부 피드 resolved는 차단한다", () 
     title: "SENSITIVE_SENTINEL",
   });
   assert.throws(
-    () => verifyDependencyPolicy(input, mobileLock, mobilePolicy, "2026-11-08"),
+    () => verifyDependencyPolicy(input, mobileLock, mobilePolicy, "2026-11-17"),
     /DEPENDENCY_TRIAGE_CHANGED/,
   );
   const lockInput = structuredClone(mobileLock);
   lockInput.packages["node_modules/expo"].resolved =
     "https://registry.npmjs.org.evil.example/expo/-/expo-58.0.23.tgz";
   assert.throws(
-    () => verifyDependencyPolicy(mobileAudit, lockInput, mobilePolicy, "2026-11-08"),
+    () => verifyDependencyPolicy(mobileAudit, lockInput, mobilePolicy, "2026-11-17"),
     /DEPENDENCY_LOCK_REGISTRY_INVALID/,
   );
+});
+
+// 새 high 권고의 명시 검토는 기존 평가의 날짜·기한을 연장하지 않으며 P1 차단도 유지합니다.
+test("picomatch 새 leaf와 호스트 도구 전이 평가를 정확히 검토한다", () => {
+  for (const [current, response, currentLock, contextId, count, nodeCount] of [
+    [policy, audit, lock, "tooling-picomatch-extglob", 24, 5],
+    [mobilePolicy, mobileAudit, mobileLock, "mobile-picomatch-host-tools", 173, 26],
+  ]) {
+    const leaf = current.packages.find((item) => item.name === "picomatch");
+    assert.deepEqual(leaf.via, [
+      {
+        source: 1247710,
+        id: "GHSA-fc5q-39xc-vjpf",
+        severity: "high",
+        range: "<=4.0.7",
+        title: "picomatch vulnerable to ReDoS through single-branch repeated extglobs",
+      },
+    ]);
+    assert.equal(leaf.nodes.length, nodeCount);
+    const added = current.assessments.filter((item) => item.contextId === contextId);
+    assert.equal(added.length, count);
+    assert.ok(
+      added.every(
+        (item) =>
+          item.reviewedOn === "2026-11-17" &&
+          item.reviewBy === "2026-11-25" &&
+          item.priority === "P2" &&
+          item.owner === "repo-maintainers",
+      ),
+    );
+    const p1 = structuredClone(current);
+    p1.assessments.find((item) => item.key === "picomatch:1247710").priority = "P1";
+    assert.throws(
+      () => verifyDependencyPolicy(response, currentLock, p1, "2026-11-17"),
+      /DEPENDENCY_TRIAGE_INVALID/,
+    );
+  }
 });

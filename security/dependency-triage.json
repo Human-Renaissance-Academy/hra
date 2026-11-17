@@ -3,6 +3,26 @@
   "note": "P2는 코드 사용면 평가이며 owner의 P1 위험 수용 승인이 아니다. advisory 집합과 nodes는 독립적이며 모든 조합이 실제 영향 경로라는 뜻이 아니다. 독립 리뷰에서 재검토한다.",
   "packages": [
     {
+      "name": "@dotenvx/dotenvx",
+      "severity": "high",
+      "range": "1.2.0 - 2.3.3",
+      "nodes": [
+        {
+          "path": "node_modules/@dotenvx/dotenvx",
+          "version": "1.71.2",
+          "development": true
+        }
+      ],
+      "via": [
+        {
+          "dependency": "fdir"
+        },
+        {
+          "dependency": "picomatch"
+        }
+      ]
+    },
+    {
       "name": "@esbuild-kit/core-utils",
       "severity": "moderate",
       "range": "*",
@@ -37,9 +57,46 @@
       ]
     },
     {
+      "name": "@next/eslint-plugin-next",
+      "severity": "high",
+      "range": ">=14.3.0-canary.0",
+      "nodes": [
+        {
+          "path": "node_modules/@next/eslint-plugin-next",
+          "version": "16.4.5",
+          "development": true
+        }
+      ],
+      "via": [
+        {
+          "dependency": "fast-glob"
+        }
+      ]
+    },
+    {
+      "name": "@shadcn/registry",
+      "severity": "high",
+      "range": "<=0.0.0-rc-20261007105214 || >=0.1.0",
+      "nodes": [
+        {
+          "path": "node_modules/@shadcn/registry",
+          "version": "0.2.0",
+          "development": true
+        }
+      ],
+      "via": [
+        {
+          "dependency": "@dotenvx/dotenvx"
+        },
+        {
+          "dependency": "fast-glob"
+        }
+      ]
+    },
+    {
       "name": "@ts-morph/common",
-      "severity": "moderate",
-      "range": ">=0.19.0",
+      "severity": "high",
+      "range": "0.2.0 - 0.29.0",
       "nodes": [
         {
           "path": "node_modules/@ts-morph/common",
@@ -49,6 +106,9 @@
       ],
       "via": [
         {
+          "dependency": "fast-glob"
+        },
+        {
           "dependency": "minimatch"
         }
       ]
@@ -56,7 +116,7 @@
     {
       "name": "@typescript-eslint/eslint-plugin",
       "severity": "moderate",
-      "range": ">=6.16.0",
+      "range": "6.16.0 - 8.72.2",
       "nodes": [
         {
           "path": "node_modules/@typescript-eslint/eslint-plugin",
@@ -76,7 +136,7 @@
     {
       "name": "@typescript-eslint/parser",
       "severity": "moderate",
-      "range": ">=6.16.0",
+      "range": "6.16.0 - 8.72.2",
       "nodes": [
         {
           "path": "node_modules/@typescript-eslint/parser",
@@ -93,7 +153,7 @@
     {
       "name": "@typescript-eslint/type-utils",
       "severity": "moderate",
-      "range": ">=6.16.0",
+      "range": "6.16.0 - 8.72.2",
       "nodes": [
         {
           "path": "node_modules/@typescript-eslint/type-utils",
@@ -112,7 +172,7 @@
     },
     {
       "name": "@typescript-eslint/typescript-estree",
-      "severity": "moderate",
+      "severity": "high",
       "range": ">=6.16.0",
       "nodes": [
         {
@@ -124,13 +184,16 @@
       "via": [
         {
           "dependency": "minimatch"
+        },
+        {
+          "dependency": "tinyglobby"
         }
       ]
     },
     {
       "name": "@typescript-eslint/utils",
       "severity": "moderate",
-      "range": ">=6.16.0",
+      "range": "6.16.0 - 8.72.2",
       "nodes": [
         {
           "path": "node_modules/@typescript-eslint/utils",
@@ -141,6 +204,23 @@
       "via": [
         {
           "dependency": "@typescript-eslint/typescript-estree"
+        }
+      ]
+    },
+    {
+      "name": "@vitejs/plugin-react",
+      "severity": "high",
+      "range": ">=6.0.0-beta.0",
+      "nodes": [
+        {
+          "path": "node_modules/@vitejs/plugin-react",
+          "version": "6.3.0",
+          "development": true
+        }
+      ],
+      "via": [
+        {
+          "dependency": "vite"
         }
       ]
     },
@@ -183,6 +263,94 @@
       ]
     },
     {
+      "name": "eslint-config-next",
+      "severity": "high",
+      "range": ">=14.3.0-canary.0",
+      "nodes": [
+        {
+          "path": "node_modules/eslint-config-next",
+          "version": "16.4.5",
+          "development": true
+        }
+      ],
+      "via": [
+        {
+          "dependency": "@next/eslint-plugin-next"
+        }
+      ]
+    },
+    {
+      "name": "eslint-import-resolver-typescript",
+      "severity": "high",
+      "range": ">=3.8.0",
+      "nodes": [
+        {
+          "path": "node_modules/eslint-import-resolver-typescript",
+          "version": "3.10.1",
+          "development": true
+        }
+      ],
+      "via": [
+        {
+          "dependency": "tinyglobby"
+        }
+      ]
+    },
+    {
+      "name": "fast-glob",
+      "severity": "high",
+      "range": ">=3.0.0",
+      "nodes": [
+        {
+          "path": "node_modules/@shadcn/registry/node_modules/fast-glob",
+          "version": "3.3.3",
+          "development": true
+        },
+        {
+          "path": "node_modules/@ts-morph/common/node_modules/fast-glob",
+          "version": "3.3.3",
+          "development": true
+        },
+        {
+          "path": "node_modules/fast-glob",
+          "version": "3.3.1",
+          "development": true
+        },
+        {
+          "path": "node_modules/shadcn/node_modules/fast-glob",
+          "version": "3.3.3",
+          "development": true
+        }
+      ],
+      "via": [
+        {
+          "dependency": "micromatch"
+        }
+      ]
+    },
+    {
+      "name": "fdir",
+      "severity": "high",
+      "range": ">=5.2.1",
+      "nodes": [
+        {
+          "path": "node_modules/@dotenvx/dotenvx/node_modules/fdir",
+          "version": "6.5.0",
+          "development": true
+        },
+        {
+          "path": "node_modules/tinyglobby/node_modules/fdir",
+          "version": "6.5.0",
+          "development": true
+        }
+      ],
+      "via": [
+        {
+          "dependency": "picomatch"
+        }
+      ]
+    },
+    {
       "name": "hanspell",
       "severity": "moderate",
       "range": ">=0.10.0",
@@ -196,6 +364,23 @@
       "via": [
         {
           "dependency": "minimatch"
+        }
+      ]
+    },
+    {
+      "name": "micromatch",
+      "severity": "high",
+      "range": ">=4.0.0",
+      "nodes": [
+        {
+          "path": "node_modules/micromatch",
+          "version": "4.0.8",
+          "development": true
+        }
+      ],
+      "via": [
+        {
+          "dependency": "picomatch"
         }
       ]
     },
@@ -231,8 +416,49 @@
       ]
     },
     {
+      "name": "picomatch",
+      "severity": "high",
+      "range": "*",
+      "nodes": [
+        {
+          "path": "node_modules/@dotenvx/dotenvx/node_modules/picomatch",
+          "version": "4.0.4",
+          "development": true
+        },
+        {
+          "path": "node_modules/picomatch",
+          "version": "2.3.2",
+          "development": true
+        },
+        {
+          "path": "node_modules/tinyglobby/node_modules/picomatch",
+          "version": "4.0.4",
+          "development": true
+        },
+        {
+          "path": "node_modules/vite/node_modules/picomatch",
+          "version": "4.0.7",
+          "development": true
+        },
+        {
+          "path": "node_modules/vitest/node_modules/picomatch",
+          "version": "4.0.7",
+          "development": true
+        }
+      ],
+      "via": [
+        {
+          "source": 1247710,
+          "id": "GHSA-fc5q-39xc-vjpf",
+          "severity": "high",
+          "range": "<=4.0.7",
+          "title": "picomatch vulnerable to ReDoS through single-branch repeated extglobs"
+        }
+      ]
+    },
+    {
       "name": "shadcn",
-      "severity": "moderate",
+      "severity": "high",
       "range": "<=0.0.0-rc-20261007105214 || >=2.0.0",
       "nodes": [
         {
@@ -243,14 +469,43 @@
       ],
       "via": [
         {
+          "dependency": "@dotenvx/dotenvx"
+        },
+        {
+          "dependency": "@shadcn/registry"
+        },
+        {
+          "dependency": "fast-glob"
+        },
+        {
           "dependency": "ts-morph"
+        }
+      ]
+    },
+    {
+      "name": "tinyglobby",
+      "severity": "high",
+      "range": "*",
+      "nodes": [
+        {
+          "path": "node_modules/tinyglobby",
+          "version": "0.2.17",
+          "development": true
+        }
+      ],
+      "via": [
+        {
+          "dependency": "fdir"
+        },
+        {
+          "dependency": "picomatch"
         }
       ]
     },
     {
       "name": "ts-morph",
       "severity": "moderate",
-      "range": ">=18.0.0",
+      "range": "18.0.0 - 27.0.2",
       "nodes": [
         {
           "path": "node_modules/ts-morph",
@@ -267,7 +522,7 @@
     {
       "name": "typescript-eslint",
       "severity": "moderate",
-      "range": "*",
+      "range": "<=8.72.2",
       "nodes": [
         {
           "path": "node_modules/typescript-eslint",
@@ -287,6 +542,49 @@
         },
         {
           "dependency": "@typescript-eslint/utils"
+        }
+      ]
+    },
+    {
+      "name": "vite",
+      "severity": "high",
+      "range": ">=6.3.0-beta.0",
+      "nodes": [
+        {
+          "path": "node_modules/vite",
+          "version": "8.3.5",
+          "development": true
+        }
+      ],
+      "via": [
+        {
+          "dependency": "picomatch"
+        },
+        {
+          "dependency": "tinyglobby"
+        }
+      ]
+    },
+    {
+      "name": "vitest",
+      "severity": "high",
+      "range": ">=3.1.2",
+      "nodes": [
+        {
+          "path": "node_modules/vitest",
+          "version": "5.0.5",
+          "development": true
+        }
+      ],
+      "via": [
+        {
+          "dependency": "picomatch"
+        },
+        {
+          "dependency": "tinyglobby"
+        },
+        {
+          "dependency": "vite"
         }
       ]
     }
@@ -312,6 +610,13 @@
       "callLocations": "src/app/globals.css:3의 CSS @import; node_modules/shadcn, node_modules/ts-morph, node_modules/@ts-morph/common. src/·packages/·scripts/ 및 운영 런타임에서 해당 JavaScript 모듈을 import하지 않는다.",
       "assessment": "2026-11-04 shadcn을 devDependencies로 옮겨 npm lock의 dev 표시가 true가 됐고, 이전에도 운영 Next.js 요청이 shadcn·ts-morph·minimatch 코드에 도달하는 경로는 발견되지 않았다. 공식 https://github.com/advisories/GHSA-g3hv-75wg-m249 조건과 CLI 실행 위험을 분리 검토해 P2로 추적하며 npm dev=false 표시를 자동 면제나 P1 수용으로 취급하지 않는다.",
       "residualAssumptions": "2026-11-04(KST) 기준 minimatch ^10.0.1 범위 내 수정본은 없으며 최신 @ts-morph/common도 ^10.0.1을 사용한다. 신뢰할 수 없는 프로젝트 경로·글롭·원격 registry로 shadcn CLI를 실행하지 않고, 제품 코드에서 ts-morph·shadcn JS를 연결하면 즉시 재분류하며 2026-11-26까지 패치 여부를 재검토한다."
+    },
+    {
+      "id": "tooling-picomatch-extglob",
+      "usedApi": "picomatch/micromatch의 glob 정규식과 fast-glob/tinyglobby/fdir를 사용하는 Vitest/Vite·ESLint/TypeScript 설정 검색 및 shadcn/dotenvx CLI다. GHSA-fc5q-39xc-vjpf는 공격자 제어 반복 extglob 패턴을 컴파일한 뒤 특정 문자열과 매칭할 때 Node 이벤트 루프를 고갈시킨다.",
+      "callLocations": "vitest.config.mts의 고정 tests/unit include, eslint.config.mjs·tsconfig.json, scripts/verify-editor-preview.mjs가 도구 진입점이다. 설치 Vite8.3.5 createFilter는 include/exclude, Vitest5.0.5 getGlobMatchers는 coverage 설정, eslint-import-resolver-typescript3.10.1은 tsconfig 패턴, dotenvx1.71.2 Ls는 CLI envFile 패턴을 컴파일한다. 앱 src에 직접 matcher import/호출은 확인하지 않았다.",
+      "assessment": "현재 확인한 패턴 공급자는 저장소 설정·도구 옵션·의존 metadata이며 운영 HTTP 사용자 데이터가 새 영향 경로의 패턴 인자로 도달하는 경로는 확인하지 않았다. 따라서 개발·CI·CLI 호스트 가용성의 P2 후보로 판단한다. 외부 PR이나 악성 프로젝트의 패턴 처리로 CI/로컬 작업이 정지할 위험은 남는다. npm high/dev 표시는 이 판단의 대체 근거가 아니며 P1 위험 수용 승인이 아니다.",
+      "residualAssumptions": "영향 설치본2.3.2/4.0.4/4.0.7은 남고 정식 비영향 패치가 없다. 신규 원격 패턴 입력·도구 서버 공개·배포 사용면 변경 시 즉시 재검토한다. Next vendored matcher는 별도이며 현재 이미지 설정의 고정 패턴에 URL을 매칭한다. 운영 bundle 전체 미포함·악용 불가능을 보장하지 않는다. 기존 평가 기한을 연장하지 않고 2026-11-25까지 정식 수정본과 노출 경계를 다시 검토한다."
     }
   ],
   "assessments": [
@@ -494,6 +799,222 @@
       "reviewedOn": "2026-11-05",
       "reviewBy": "2026-12-03",
       "attackCondition": "typescript-eslint 8.61.0이 @typescript-eslint/utils을 통해 minimatch 10.2.5(>=7.0.0 <11.0.1, GHSA-g3hv-75wg-m249)의 고정 저장소 린트 glob 매칭으로 이어지는 개발 도구 전이 경로다. 해당 패키지 항목의 공격 조건과 2026-12-03 기한을 함께 검토한다. 2026-11-05(UTC) 빈 캐시 registry audit 재확인에서 권고 범위가 >=7.0.0 <11.0.1로 정정된 뒤에도 이 경로의 minimatch 10.2.5가 영향 범위에 남고 10.x 백포트가 없음을 확인했다."
+    },
+    {
+      "key": "@dotenvx/dotenvx:fdir",
+      "contextId": "tooling-picomatch-extglob",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "@dotenvx/dotenvx:fdir — 현재 확인한 Vitest/Vite·린트/설정 검색·shadcn/dotenvx 호스트 도구의 전이 링크다. 공격자가 도구 설정/프로젝트/의존 metadata의 반복 extglob 패턴과 매칭 문자열을 함께 공급하면 빌드·테스트·CLI 작업이 멈출 수 있다. 앱의 원격 요청을 패턴으로 컴파일하는 경로는 확인하지 않았으며 새 입력 경로가 생기면 재검토한다."
+    },
+    {
+      "key": "@dotenvx/dotenvx:picomatch",
+      "contextId": "tooling-picomatch-extglob",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "@dotenvx/dotenvx:picomatch — 현재 확인한 Vitest/Vite·린트/설정 검색·shadcn/dotenvx 호스트 도구의 전이 링크다. 공격자가 도구 설정/프로젝트/의존 metadata의 반복 extglob 패턴과 매칭 문자열을 함께 공급하면 빌드·테스트·CLI 작업이 멈출 수 있다. 앱의 원격 요청을 패턴으로 컴파일하는 경로는 확인하지 않았으며 새 입력 경로가 생기면 재검토한다."
+    },
+    {
+      "key": "@next/eslint-plugin-next:fast-glob",
+      "contextId": "tooling-picomatch-extglob",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "@next/eslint-plugin-next:fast-glob — 현재 확인한 Vitest/Vite·린트/설정 검색·shadcn/dotenvx 호스트 도구의 전이 링크다. 공격자가 도구 설정/프로젝트/의존 metadata의 반복 extglob 패턴과 매칭 문자열을 함께 공급하면 빌드·테스트·CLI 작업이 멈출 수 있다. 앱의 원격 요청을 패턴으로 컴파일하는 경로는 확인하지 않았으며 새 입력 경로가 생기면 재검토한다."
+    },
+    {
+      "key": "@shadcn/registry:@dotenvx/dotenvx",
+      "contextId": "tooling-picomatch-extglob",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "@shadcn/registry:@dotenvx/dotenvx — 현재 확인한 Vitest/Vite·린트/설정 검색·shadcn/dotenvx 호스트 도구의 전이 링크다. 공격자가 도구 설정/프로젝트/의존 metadata의 반복 extglob 패턴과 매칭 문자열을 함께 공급하면 빌드·테스트·CLI 작업이 멈출 수 있다. 앱의 원격 요청을 패턴으로 컴파일하는 경로는 확인하지 않았으며 새 입력 경로가 생기면 재검토한다."
+    },
+    {
+      "key": "@shadcn/registry:fast-glob",
+      "contextId": "tooling-picomatch-extglob",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "@shadcn/registry:fast-glob — 현재 확인한 Vitest/Vite·린트/설정 검색·shadcn/dotenvx 호스트 도구의 전이 링크다. 공격자가 도구 설정/프로젝트/의존 metadata의 반복 extglob 패턴과 매칭 문자열을 함께 공급하면 빌드·테스트·CLI 작업이 멈출 수 있다. 앱의 원격 요청을 패턴으로 컴파일하는 경로는 확인하지 않았으며 새 입력 경로가 생기면 재검토한다."
+    },
+    {
+      "key": "@ts-morph/common:fast-glob",
+      "contextId": "tooling-picomatch-extglob",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "@ts-morph/common:fast-glob — 현재 확인한 Vitest/Vite·린트/설정 검색·shadcn/dotenvx 호스트 도구의 전이 링크다. 공격자가 도구 설정/프로젝트/의존 metadata의 반복 extglob 패턴과 매칭 문자열을 함께 공급하면 빌드·테스트·CLI 작업이 멈출 수 있다. 앱의 원격 요청을 패턴으로 컴파일하는 경로는 확인하지 않았으며 새 입력 경로가 생기면 재검토한다."
+    },
+    {
+      "key": "@typescript-eslint/typescript-estree:tinyglobby",
+      "contextId": "tooling-picomatch-extglob",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "@typescript-eslint/typescript-estree:tinyglobby — 현재 확인한 Vitest/Vite·린트/설정 검색·shadcn/dotenvx 호스트 도구의 전이 링크다. 공격자가 도구 설정/프로젝트/의존 metadata의 반복 extglob 패턴과 매칭 문자열을 함께 공급하면 빌드·테스트·CLI 작업이 멈출 수 있다. 앱의 원격 요청을 패턴으로 컴파일하는 경로는 확인하지 않았으며 새 입력 경로가 생기면 재검토한다."
+    },
+    {
+      "key": "@vitejs/plugin-react:vite",
+      "contextId": "tooling-picomatch-extglob",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "@vitejs/plugin-react:vite — 현재 확인한 Vitest/Vite·린트/설정 검색·shadcn/dotenvx 호스트 도구의 전이 링크다. 공격자가 도구 설정/프로젝트/의존 metadata의 반복 extglob 패턴과 매칭 문자열을 함께 공급하면 빌드·테스트·CLI 작업이 멈출 수 있다. 앱의 원격 요청을 패턴으로 컴파일하는 경로는 확인하지 않았으며 새 입력 경로가 생기면 재검토한다."
+    },
+    {
+      "key": "eslint-config-next:@next/eslint-plugin-next",
+      "contextId": "tooling-picomatch-extglob",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "eslint-config-next:@next/eslint-plugin-next — 현재 확인한 Vitest/Vite·린트/설정 검색·shadcn/dotenvx 호스트 도구의 전이 링크다. 공격자가 도구 설정/프로젝트/의존 metadata의 반복 extglob 패턴과 매칭 문자열을 함께 공급하면 빌드·테스트·CLI 작업이 멈출 수 있다. 앱의 원격 요청을 패턴으로 컴파일하는 경로는 확인하지 않았으며 새 입력 경로가 생기면 재검토한다."
+    },
+    {
+      "key": "eslint-import-resolver-typescript:tinyglobby",
+      "contextId": "tooling-picomatch-extglob",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "eslint-import-resolver-typescript:tinyglobby — 현재 확인한 Vitest/Vite·린트/설정 검색·shadcn/dotenvx 호스트 도구의 전이 링크다. 공격자가 도구 설정/프로젝트/의존 metadata의 반복 extglob 패턴과 매칭 문자열을 함께 공급하면 빌드·테스트·CLI 작업이 멈출 수 있다. 앱의 원격 요청을 패턴으로 컴파일하는 경로는 확인하지 않았으며 새 입력 경로가 생기면 재검토한다."
+    },
+    {
+      "key": "fast-glob:micromatch",
+      "contextId": "tooling-picomatch-extglob",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "fast-glob:micromatch — 현재 확인한 Vitest/Vite·린트/설정 검색·shadcn/dotenvx 호스트 도구의 전이 링크다. 공격자가 도구 설정/프로젝트/의존 metadata의 반복 extglob 패턴과 매칭 문자열을 함께 공급하면 빌드·테스트·CLI 작업이 멈출 수 있다. 앱의 원격 요청을 패턴으로 컴파일하는 경로는 확인하지 않았으며 새 입력 경로가 생기면 재검토한다."
+    },
+    {
+      "key": "fdir:picomatch",
+      "contextId": "tooling-picomatch-extglob",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "fdir:picomatch — 현재 확인한 Vitest/Vite·린트/설정 검색·shadcn/dotenvx 호스트 도구의 전이 링크다. 공격자가 도구 설정/프로젝트/의존 metadata의 반복 extglob 패턴과 매칭 문자열을 함께 공급하면 빌드·테스트·CLI 작업이 멈출 수 있다. 앱의 원격 요청을 패턴으로 컴파일하는 경로는 확인하지 않았으며 새 입력 경로가 생기면 재검토한다."
+    },
+    {
+      "key": "micromatch:picomatch",
+      "contextId": "tooling-picomatch-extglob",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "micromatch:picomatch — 현재 확인한 Vitest/Vite·린트/설정 검색·shadcn/dotenvx 호스트 도구의 전이 링크다. 공격자가 도구 설정/프로젝트/의존 metadata의 반복 extglob 패턴과 매칭 문자열을 함께 공급하면 빌드·테스트·CLI 작업이 멈출 수 있다. 앱의 원격 요청을 패턴으로 컴파일하는 경로는 확인하지 않았으며 새 입력 경로가 생기면 재검토한다."
+    },
+    {
+      "key": "picomatch:1247710",
+      "contextId": "tooling-picomatch-extglob",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "picomatch:1247710 — 현재 확인한 Vitest/Vite·린트/설정 검색·shadcn/dotenvx 호스트 도구의 전이 링크다. 공격자가 도구 설정/프로젝트/의존 metadata의 반복 extglob 패턴과 매칭 문자열을 함께 공급하면 빌드·테스트·CLI 작업이 멈출 수 있다. 앱의 원격 요청을 패턴으로 컴파일하는 경로는 확인하지 않았으며 새 입력 경로가 생기면 재검토한다."
+    },
+    {
+      "key": "shadcn:@dotenvx/dotenvx",
+      "contextId": "tooling-picomatch-extglob",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "shadcn:@dotenvx/dotenvx — 현재 확인한 Vitest/Vite·린트/설정 검색·shadcn/dotenvx 호스트 도구의 전이 링크다. 공격자가 도구 설정/프로젝트/의존 metadata의 반복 extglob 패턴과 매칭 문자열을 함께 공급하면 빌드·테스트·CLI 작업이 멈출 수 있다. 앱의 원격 요청을 패턴으로 컴파일하는 경로는 확인하지 않았으며 새 입력 경로가 생기면 재검토한다."
+    },
+    {
+      "key": "shadcn:@shadcn/registry",
+      "contextId": "tooling-picomatch-extglob",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "shadcn:@shadcn/registry — 현재 확인한 Vitest/Vite·린트/설정 검색·shadcn/dotenvx 호스트 도구의 전이 링크다. 공격자가 도구 설정/프로젝트/의존 metadata의 반복 extglob 패턴과 매칭 문자열을 함께 공급하면 빌드·테스트·CLI 작업이 멈출 수 있다. 앱의 원격 요청을 패턴으로 컴파일하는 경로는 확인하지 않았으며 새 입력 경로가 생기면 재검토한다."
+    },
+    {
+      "key": "shadcn:fast-glob",
+      "contextId": "tooling-picomatch-extglob",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "shadcn:fast-glob — 현재 확인한 Vitest/Vite·린트/설정 검색·shadcn/dotenvx 호스트 도구의 전이 링크다. 공격자가 도구 설정/프로젝트/의존 metadata의 반복 extglob 패턴과 매칭 문자열을 함께 공급하면 빌드·테스트·CLI 작업이 멈출 수 있다. 앱의 원격 요청을 패턴으로 컴파일하는 경로는 확인하지 않았으며 새 입력 경로가 생기면 재검토한다."
+    },
+    {
+      "key": "tinyglobby:fdir",
+      "contextId": "tooling-picomatch-extglob",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "tinyglobby:fdir — 현재 확인한 Vitest/Vite·린트/설정 검색·shadcn/dotenvx 호스트 도구의 전이 링크다. 공격자가 도구 설정/프로젝트/의존 metadata의 반복 extglob 패턴과 매칭 문자열을 함께 공급하면 빌드·테스트·CLI 작업이 멈출 수 있다. 앱의 원격 요청을 패턴으로 컴파일하는 경로는 확인하지 않았으며 새 입력 경로가 생기면 재검토한다."
+    },
+    {
+      "key": "tinyglobby:picomatch",
+      "contextId": "tooling-picomatch-extglob",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "tinyglobby:picomatch — 현재 확인한 Vitest/Vite·린트/설정 검색·shadcn/dotenvx 호스트 도구의 전이 링크다. 공격자가 도구 설정/프로젝트/의존 metadata의 반복 extglob 패턴과 매칭 문자열을 함께 공급하면 빌드·테스트·CLI 작업이 멈출 수 있다. 앱의 원격 요청을 패턴으로 컴파일하는 경로는 확인하지 않았으며 새 입력 경로가 생기면 재검토한다."
+    },
+    {
+      "key": "vite:picomatch",
+      "contextId": "tooling-picomatch-extglob",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "vite:picomatch — 현재 확인한 Vitest/Vite·린트/설정 검색·shadcn/dotenvx 호스트 도구의 전이 링크다. 공격자가 도구 설정/프로젝트/의존 metadata의 반복 extglob 패턴과 매칭 문자열을 함께 공급하면 빌드·테스트·CLI 작업이 멈출 수 있다. 앱의 원격 요청을 패턴으로 컴파일하는 경로는 확인하지 않았으며 새 입력 경로가 생기면 재검토한다."
+    },
+    {
+      "key": "vite:tinyglobby",
+      "contextId": "tooling-picomatch-extglob",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "vite:tinyglobby — 현재 확인한 Vitest/Vite·린트/설정 검색·shadcn/dotenvx 호스트 도구의 전이 링크다. 공격자가 도구 설정/프로젝트/의존 metadata의 반복 extglob 패턴과 매칭 문자열을 함께 공급하면 빌드·테스트·CLI 작업이 멈출 수 있다. 앱의 원격 요청을 패턴으로 컴파일하는 경로는 확인하지 않았으며 새 입력 경로가 생기면 재검토한다."
+    },
+    {
+      "key": "vitest:picomatch",
+      "contextId": "tooling-picomatch-extglob",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "vitest:picomatch — 현재 확인한 Vitest/Vite·린트/설정 검색·shadcn/dotenvx 호스트 도구의 전이 링크다. 공격자가 도구 설정/프로젝트/의존 metadata의 반복 extglob 패턴과 매칭 문자열을 함께 공급하면 빌드·테스트·CLI 작업이 멈출 수 있다. 앱의 원격 요청을 패턴으로 컴파일하는 경로는 확인하지 않았으며 새 입력 경로가 생기면 재검토한다."
+    },
+    {
+      "key": "vitest:tinyglobby",
+      "contextId": "tooling-picomatch-extglob",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "vitest:tinyglobby — 현재 확인한 Vitest/Vite·린트/설정 검색·shadcn/dotenvx 호스트 도구의 전이 링크다. 공격자가 도구 설정/프로젝트/의존 metadata의 반복 extglob 패턴과 매칭 문자열을 함께 공급하면 빌드·테스트·CLI 작업이 멈출 수 있다. 앱의 원격 요청을 패턴으로 컴파일하는 경로는 확인하지 않았으며 새 입력 경로가 생기면 재검토한다."
+    },
+    {
+      "key": "vitest:vite",
+      "contextId": "tooling-picomatch-extglob",
+      "priority": "P2",
+      "owner": "repo-maintainers",
+      "reviewedOn": "2026-11-17",
+      "reviewBy": "2026-11-25",
+      "attackCondition": "vitest:vite — 현재 확인한 Vitest/Vite·린트/설정 검색·shadcn/dotenvx 호스트 도구의 전이 링크다. 공격자가 도구 설정/프로젝트/의존 metadata의 반복 extglob 패턴과 매칭 문자열을 함께 공급하면 빌드·테스트·CLI 작업이 멈출 수 있다. 앱의 원격 요청을 패턴으로 컴파일하는 경로는 확인하지 않았으며 새 입력 경로가 생기면 재검토한다."
     }
   ]
 }
