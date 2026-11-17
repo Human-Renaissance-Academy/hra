@@ -32,8 +32,8 @@ const audit = {
 };
 test("현재 정확한 집합은 package 수와 advisory 수를 구분한다", () => {
   assert.deepEqual(verifyDependencyPolicy(audit, lock, policy, "2026-11-06"), {
-    affectedPackages: 17,
-    advisoryEntries: 3,
+    affectedPackages: 15,
+    advisoryEntries: 2,
     p1: 0,
   });
 });
@@ -221,20 +221,20 @@ test("손상된 원장은 원문 없이 실패 차단한다", () => {
   assert.deepEqual(dependencyDiagnosticLines(error), ["DEPENDENCY_TRIAGE_CHANGED"]);
 });
 
-test("v2 원장은 24개 권고별 판단과 4개 공유 사용 맥락을 유지한다", () => {
+test("v2 원장은 20개 권고별 판단과 3개 공유 사용 맥락을 유지한다", () => {
   assert.equal(policy.schemaVersion, 2);
-  assert.equal(policy.assessments.length, 24);
-  assert.equal(policy.contexts.length, 4);
-  assert.equal(new Set(policy.assessments.map((item) => item.contextId)).size, 4);
+  assert.equal(policy.assessments.length, 20);
+  assert.equal(policy.contexts.length, 3);
+  assert.equal(new Set(policy.assessments.map((item) => item.contextId)).size, 3);
   assert.deepEqual(
     policy.contexts
       .map((context) => policy.assessments.filter((item) => item.contextId === context.id).length)
       .sort((a, b) => a - b),
-    [3, 4, 4, 13],
+    [3, 4, 13],
   );
   assert.deepEqual(verifyDependencyPolicy(audit, lock, policy, "2026-11-06"), {
-    affectedPackages: 17,
-    advisoryEntries: 3,
+    affectedPackages: 15,
+    advisoryEntries: 2,
     p1: 0,
   });
 });
@@ -289,8 +289,8 @@ test("동일 GHSA의 다른 source ID는 각각 진단하고 차단한다", () =
   assert.doesNotMatch(dependencyDiagnosticLines(error).join("\n"), /title|range|version/);
 });
 
-// 수정 버전으로 대체한 YAML의 임시 예외는 다시 나타나지 않습니다. shadcn CLI 평가는 2026-11-04(UTC) 재검토에서
-// 공식 패치가 여전히 없지만 shadcn을 devDependencies로 옮겨 dev=true 개발 도구 경로가 됐으므로 4주 주기(2026-12-02)를 따릅니다.
+// 수정 버전으로 대체한 YAML의 임시 예외는 다시 나타나지 않습니다.
+// 철회된 deepmerge 권고의 CLI 평가·전용 맥락도 남기지 않으며 설치 의존성은 그대로 둡니다.
 test("패치된 YAML 설치본은 임시 평가·공유 맥락 없이 확인한다", () => {
   assert.equal(
     policy.packages.some((item) => item.name === "js-yaml"),
@@ -307,15 +307,14 @@ test("패치된 YAML 설치본은 임시 평가·공유 맥락 없이 확인한�
   const cliAssessments = policy.assessments.filter(
     (item) => item.contextId === "shadcn-registry-cli",
   );
-  assert.equal(cliAssessments.length, 4);
-  assert.ok(
-    cliAssessments.every(
-      (item) => item.reviewedOn === "2026-11-04" && item.reviewBy === "2026-12-02",
-    ),
+  assert.deepEqual(cliAssessments, []);
+  assert.deepEqual(
+    policy.contexts.filter((item) => item.id === "shadcn-registry-cli"),
+    [],
   );
   assert.deepEqual(verifyDependencyPolicy(audit, lock, policy, "2026-11-06"), {
-    affectedPackages: 17,
-    advisoryEntries: 3,
+    affectedPackages: 15,
+    advisoryEntries: 2,
     p1: 0,
   });
 });
@@ -339,10 +338,9 @@ test("수정본으로 해소한 권고는 제거하고 남은 평가는 위험�
     policy.contexts.filter((item) => ["tooling-brace-expansion", "vitest-vite"].includes(item.id)),
     [],
   );
-  // 2026-11-04(UTC)에 다시 검토한 shadcn CLI 평가와 2026-11-05(UTC) 권고 범위 정정 후 다시 검토한
-  // tooling-minimatch-glob 평가만 검토일이 바뀌고, 나머지는 2026-11-03 검토일을 유지한다.
+  // 철회된 deepmerge 평가는 제외하고, 2026-11-05(UTC) 권고 범위 정정 후 다시 검토한
+  // tooling-minimatch-glob 평가만 검토일이 바뀌며 나머지는 2026-11-03 검토일을 유지한다.
   const reviewedOn = {
-    "shadcn-registry-cli": "2026-11-04",
     "tooling-minimatch-glob": "2026-11-05",
   };
   // drizzle-kit 설치 노드만 추가 재검토했으며 제거된 eslint-config-next 항목은 복원하지 않는다.
@@ -356,9 +354,7 @@ test("수정본으로 해소한 권고는 제거하고 남은 평가는 위험�
     ),
   );
   // dev=false이거나 수정본이 있는데 적용되지 못한 사용면은 2주, dev=false CLI DoS는 3주, 개발 도구 전용은 4주다.
-  // shadcn-registry-cli는 dev=true가 되어 검토일(2026-11-04)부터 4주를 넘지 않는 2026-12-02다.
   const deadlines = {
-    "shadcn-registry-cli": "2026-12-02",
     "shadcn-ts-morph-glob": "2026-11-26",
     "build-esbuild": "2026-12-03",
     "tooling-minimatch-glob": "2026-12-03",
@@ -367,13 +363,13 @@ test("수정본으로 해소한 권고는 제거하고 남은 평가는 위험�
   assert.ok(policy.assessments.every((item) => item.reviewBy === deadlines[item.contextId]));
   // 기존 기한 다음 날(2026-11-06)에도 통과하고, 가장 이른 기한 다음 날부터는 다시 차단한다.
   assert.deepEqual(verifyDependencyPolicy(audit, lock, policy, "2026-11-06"), {
-    affectedPackages: 17,
-    advisoryEntries: 3,
+    affectedPackages: 15,
+    advisoryEntries: 2,
     p1: 0,
   });
   assert.deepEqual(verifyDependencyPolicy(audit, lock, policy, "2026-11-26"), {
-    affectedPackages: 17,
-    advisoryEntries: 3,
+    affectedPackages: 15,
+    advisoryEntries: 2,
     p1: 0,
   });
   assert.throws(
@@ -412,8 +408,8 @@ test("typography의 postcss-selector-parser는 수정본으로 고정하고 해�
   );
 });
 
-// shadcn-registry-cli의 4주 기한은 shadcn이 devDependencies이고 deepmerge 경로가 dev=true라는 전제에만 기댄다.
-// shadcn을 dependencies로 되돌리면 이 테스트와 audit 스냅샷(development)이 함께 실패해 재분류를 강제한다.
+// deepmerge 권고는 철회됐어도 shadcn·registry·deepmerge의 설치와 dev=true 분류는 유지합니다.
+// shadcn을 dependencies로 되돌리면 이 테스트와 남은 shadcn audit 스냅샷이 함께 실패합니다.
 test("shadcn CLI 경로는 개발 의존성으로만 설치되어 개발 도구 기한을 따른다", () => {
   const manifest = JSON.parse(readFileSync(new URL("../../package.json", import.meta.url)));
   assert.equal(manifest.dependencies.shadcn, undefined);
@@ -425,13 +421,12 @@ test("shadcn CLI 경로는 개발 의존성으로만 설치되어 개발 도구 
   ])
     assert.equal(lock.packages[path].dev, true);
   assert.deepEqual(
-    policy.packages.find((item) => item.name === "deepmerge").nodes.map((node) => node.development),
+    policy.packages.find((item) => item.name === "shadcn").nodes.map((node) => node.development),
     [true],
   );
-  assert.ok(
-    policy.assessments
-      .filter((item) => item.contextId === "shadcn-registry-cli")
-      .every((item) => item.reviewBy <= "2026-12-02"),
+  assert.deepEqual(
+    policy.packages.filter((item) => ["deepmerge", "@shadcn/registry"].includes(item.name)),
+    [],
   );
 });
 
@@ -480,8 +475,8 @@ test("YAML 예외를 제거해도 다른 평가의 만료는 계속 차단한다
   const input = structuredClone(policy);
   input.assessments[0].reviewBy = "2026-11-06";
   assert.deepEqual(verifyDependencyPolicy(audit, lock, input, "2026-11-06"), {
-    affectedPackages: 17,
-    advisoryEntries: 3,
+    affectedPackages: 15,
+    advisoryEntries: 2,
     p1: 0,
   });
   assert.throws(
@@ -591,7 +586,7 @@ const mobileAudit = {
     ]),
   ),
 };
-const mobileResult = { affectedPackages: 29, advisoryEntries: 3, p1: 0 };
+const mobileResult = { affectedPackages: 28, advisoryEntries: 2, p1: 0 };
 
 // npm의 상위 패키지 meta range는 새 upstream 릴리스만으로 바뀔 수 있다.
 // 실제 위험 평가에 쓰는 severity, via의 advisory range/ID/source와 lock nodes의 정확 일치는 유지한다.
@@ -612,7 +607,7 @@ test("상위 패키지 파생 range만 바뀌면 통과하지만 실제 권고·
   );
 
   const advisoryChanged = structuredClone(changedDerived);
-  advisoryChanged.vulnerabilities.deepmerge.via[0].range += " || 999.0.0";
+  advisoryChanged.vulnerabilities.minimatch.via[0].range += " || 999.0.0";
   assert.throws(
     () => verifyDependencyPolicy(advisoryChanged, mobileLock, mobilePolicy, "2026-11-08"),
     /DEPENDENCY_TRIAGE_CHANGED/,
@@ -776,7 +771,7 @@ test("모바일 평가는 사용면 위험별 기한을 두고 가장 이른 기
     mobilePolicy.contexts.map((item) => item.id).sort(),
     Object.keys(deadlines).sort(),
   );
-  assert.equal(mobilePolicy.assessments.length, 54);
+  assert.equal(mobilePolicy.assessments.length, 52);
   assert.ok(
     mobilePolicy.assessments.every(
       (item) =>
@@ -859,7 +854,7 @@ test("중복 전이 링크는 평가 하나로 받되 링크 수 변경과 중�
 
 test("모바일 lock의 새 권고·외부 피드 resolved는 차단한다", () => {
   const input = structuredClone(mobileAudit);
-  input.vulnerabilities.deepmerge.via.push({
+  input.vulnerabilities.minimatch.via.push({
     source: 999999,
     url: "https://github.com/advisories/GHSA-test-1234",
     severity: "critical",
