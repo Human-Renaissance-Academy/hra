@@ -52,5 +52,17 @@
     "rule": "SOURCE_EMAIL",
     "sha256": "284add6fba6fb171ec6f650bc7136ecf87fb7d5a8839d9191ab744f19a7aca85",
     "reason": "동일 Neon 저장소의 pooler 연결 URL을 식별하는 단발성 스크립트 안전성 테스트의 합성 poolerUrl입니다."
+  },
+  {
+    "file": "tests/unit/auth-email.test.ts",
+    "rule": "SOURCE_EMAIL",
+    "sha256": "756e2f4534c7ca769714fb66a2c0b641a90933d6b3ebd0054b15d352d55efee8",
+    "reason": "Gmail 주소의 점을 별칭으로 합치지 않고 대소문자만 바꾸는 입력·예상값으로 직접 작성한 합성 표본입니다."
+  },
+  {
+    "file": "tests/unit/auth-email.test.ts",
+    "rule": "SOURCE_EMAIL",
+    "sha256": "ae273bb5d4ed96c09c161bb6d64bea59a7367ea28bf9ceb22cc102a3bdf40884",
+    "reason": "Gmail 주소의 점을 별칭으로 합치지 않고 대소문자만 바꾸는 입력·예상값으로 직접 작성한 합성 표본입니다."
   }
 ]
