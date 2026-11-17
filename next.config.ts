@@ -97,6 +97,10 @@ const nextConfig: NextConfig = {
     },
   },
   images: {
+    // Preview는 플랫폼 이미지 최적화 출력도 만들지 않아 별도 CDN 경로의 조회를 차단합니다.
+    ...(isRestrictedPreview(process.env.VERCEL, process.env.VERCEL_ENV)
+      ? { unoptimized: true }
+      : {}),
     remotePatterns: [
       {
         protocol: "https",

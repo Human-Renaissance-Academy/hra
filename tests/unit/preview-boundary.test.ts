@@ -165,3 +165,21 @@ describe("빌드 전용 rewrite", () => {
     }
   });
 });
+
+it.each([
+  ["1", "preview", true],
+  ["1", "production", false],
+  ["", "preview", false],
+  ["", "", false],
+] as const)(
+  "이미지 최적화 출력은 정확한 Preview 빌드에서만 비활성화한다 (%s/%s)",
+  async (vercel, environment, restricted) => {
+    vi.stubEnv("VERCEL", vercel);
+    vi.stubEnv("VERCEL_ENV", environment);
+    vi.resetModules();
+    const { default: config } = await import("../../next.config");
+    const original = { ...nextConfig.images };
+    expect(config.images).toEqual(restricted ? { ...original, unoptimized: true } : original);
+    if (!restricted) expect(config.images).not.toHaveProperty("unoptimized");
+  },
+);

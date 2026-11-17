@@ -29,7 +29,7 @@
 
 Preview 배포가 준비됐다는 이유만으로 운영 자원을 연결하지 않습니다. 2026-11-14 기존 Preview 홈페이지에서 HTTP 500이 관찰됐으며 운영 DB 연결로 해결하지 않습니다. Preview를 사용할 때 비운영 데이터 준비 여부부터 확인합니다([#279](https://github.com/Human-Renaissance-Academy/hra-website/issues/279)).
 
-자원이 없는 Preview는 정확한 `VERCEL=1` + `VERCEL_ENV=preview`에서 업무 요청을 한국어 503(`no-store`, `noindex, nofollow`)으로 거부합니다. HTML/Action은 인증 전 Proxy, API·이미지 최적화는 Preview 빌드 전용 rewrite를 사용합니다. **빌드와 실행 환경은 같아야 하며 prebuilt 재사용·Preview artifact의 Production 승격 대신 대상 환경에서 다시 빌드합니다.** 일반 `next start` 검증은 Vercel adapter/minimalMode의 선행 거부·실제 시스템 환경값·최종 secret scope를 입증하지 않습니다. 실제 플랫폼 경계가 검증되지 않으면 Preview 공유를 중단하고 선택적 Preview 중단·독립 정적 안내를 검토합니다. 안전 읽기 목록과 운영 cutoff는 [환경 전략](developer/environment-strategy.md)을 따릅니다. Production 자격정보를 Preview에 넣어 503을 해제하지 않습니다.
+자원이 없는 Preview는 정확한 `VERCEL=1` + `VERCEL_ENV=preview`에서 업무 요청을 한국어 503(`no-store`, `noindex, nofollow`)으로 거부합니다. HTML/Action은 인증 전 Proxy, API는 Preview 빌드 전용 rewrite를 사용합니다. 플랫폼 이미지 최적화는 같은 Preview에서만 `images.unoptimized=true`로 출력을 제외하며, 실제 배포의 이미지 설정과 비개인 정적 아이콘 양성 대조로 확인합니다. 이미지 경로의 404만으로 차단 성공을 판단하지 않습니다. **빌드와 실행 환경은 같아야 하며 prebuilt 재사용·Preview artifact의 Production 승격 대신 대상 환경에서 다시 빌드합니다.** 일반 `next start` 검증은 Vercel adapter/minimalMode의 선행 거부·실제 시스템 환경값·최종 secret scope를 입증하지 않습니다. 실제 플랫폼 경계가 검증되지 않으면 Preview 공유를 중단하고 선택적 Preview 중단·독립 정적 안내를 검토합니다. 안전 읽기 목록과 운영 cutoff는 [환경 전략](developer/environment-strategy.md)을 따릅니다. Production 자격정보를 Preview에 넣어 503을 해제하지 않습니다.
 
 앱은 Neon HTTP 드라이버를 사용하므로 일반 로컬 PostgreSQL URL을 앱에 그대로 넣으면 동작한다고 가정하지 않습니다. 로컬 PostgreSQL은 지원된 격리 테스트 경로에 사용합니다. 환경별 비밀값이 불분명하면 업로드/삭제 작업을 수행하지 않습니다.
 
