@@ -2,6 +2,7 @@
  * 공개 수료생 상세의 본문·이웃 링크·사이드바를 렌더링합니다.
  * UUID 검사와 조회 순서·표시 열은 수료생 Application Service/Repository에 맡깁니다.
  */
+import { getSiteConfig } from "@/lib/site-url";
 import { cache } from "react";
 import { getPublicAlumniDetail } from "@/features/alumni/detail/service";
 import { notFound } from "next/navigation";
@@ -67,9 +68,7 @@ export default async function AlumniDetailPage({ params }: PageProps) {
 
         <div className="mb-8">
           <h2 className="text-2xl font-bold text-[#1a1a1a] mb-2">{story.name}</h2>
-          {story.title && (
-            <p className="text-[#666666] font-medium">{story.title}</p>
-          )}
+          {story.title && <p className="text-[#666666] font-medium">{story.title}</p>}
         </div>
 
         {story.quote && (
@@ -80,7 +79,7 @@ export default async function AlumniDetailPage({ params }: PageProps) {
           </div>
         )}
         <div className="mb-24">
-          <MarkdownViewer body={story.content} />
+          <MarkdownViewer trustedSiteOrigin={getSiteConfig().url} body={story.content} />
         </div>
 
         <div className="pt-16 border-t border-[#D9D9D9]">

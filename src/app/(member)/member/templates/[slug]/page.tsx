@@ -5,6 +5,7 @@
  *       데이터는 DB → content/ 순으로 자동 조회한다.
  */
 
+import { getSiteConfig } from "@/lib/site-url";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -66,10 +67,7 @@ export default async function MemberTemplateDetailPage({ params }: Props) {
 
       <header className="mb-8 space-y-3 border-b border-[#D9D9D9] pb-6">
         <div className="flex flex-wrap items-center gap-2">
-          <Badge
-            variant="outline"
-            className="border-[#D9D9D9] bg-white text-[#666666]"
-          >
+          <Badge variant="outline" className="border-[#D9D9D9] bg-white text-[#666666]">
             v{template.version}
           </Badge>
           {template.reportCategory ? (
@@ -83,26 +81,22 @@ export default async function MemberTemplateDetailPage({ params }: Props) {
           ) : null}
           {template.createdAt ? (
             <span className="text-xs text-[#666666]">
-              등록일:{" "}
-              {formatKstDate(template.createdAt)}
+              등록일: {formatKstDate(template.createdAt)}
             </span>
           ) : null}
           {template.updatedAt ? (
             <span className="text-xs text-[#666666]">
-              최종 수정:{" "}
-              {formatKstDate(template.updatedAt)}
+              최종 수정: {formatKstDate(template.updatedAt)}
             </span>
           ) : null}
         </div>
-        <h1 className="text-3xl font-semibold tracking-tight text-[#1a1a1a]">
-          {template.title}
-        </h1>
+        <h1 className="text-3xl font-semibold tracking-tight text-[#1a1a1a]">{template.title}</h1>
         {template.description ? (
           <p className="text-sm text-[#666666]">{template.description}</p>
         ) : null}
       </header>
 
-      <MarkdownViewer body={template.body} />
+      <MarkdownViewer trustedSiteOrigin={getSiteConfig().url} body={template.body} />
     </div>
   );
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import { useSiteImageOrigin } from "@/components/markdown/site-image-origin-provider";
 import { useCspNonce } from "@/components/security/csp-nonce-provider";
 
 /**
@@ -21,9 +22,9 @@ type Props = {
   body: string;
 };
 
-
 export function PrintView({ title, fileTitle, classDate, authorName, body }: Props) {
   const nonce = useCspNonce();
+  const trustedSiteOrigin = useSiteImageOrigin();
   const printedRef = useRef(false);
 
   useEffect(() => {
@@ -57,7 +58,8 @@ export function PrintView({ title, fileTitle, classDate, authorName, body }: Pro
       <div className="print-page mx-auto max-w-4xl px-6 py-12 print:px-0 print:py-0">
         <div className="no-print mb-6 flex flex-wrap items-center justify-between gap-3 rounded-md border border-[#D9D9D9] bg-white p-4">
           <p className="text-sm text-[#666666]">
-            인쇄 다이얼로그가 자동으로 열립니다. 대상에서 <strong className="text-[#1a1a1a]">PDF로 저장</strong>을 선택하세요.
+            인쇄 다이얼로그가 자동으로 열립니다. 대상에서{" "}
+            <strong className="text-[#1a1a1a]">PDF로 저장</strong>을 선택하세요.
           </p>
           <button
             type="button"
@@ -74,12 +76,10 @@ export function PrintView({ title, fileTitle, classDate, authorName, body }: Pro
             <span>·</span>
             <span>{authorName ?? "삭제된 사용자"}</span>
           </div>
-          <h1 className="text-2xl font-semibold tracking-tight text-[#1a1a1a]">
-            {title}
-          </h1>
+          <h1 className="text-2xl font-semibold tracking-tight text-[#1a1a1a]">{title}</h1>
         </header>
 
-        <MarkdownViewer body={body} />
+        <MarkdownViewer trustedSiteOrigin={trustedSiteOrigin} body={body} />
       </div>
     </>
   );
