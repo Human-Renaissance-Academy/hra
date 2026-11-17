@@ -1,0 +1,3738 @@
+
+<!doctype html>
+<html lang="ko" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="처음 참여하는 개발자를 위한 HRA 실행, 코드 이해, 협업 및 운영 안내">
+      
+      
+      
+        <link rel="canonical" href="https://human-renaissance-academy.github.io/hra-website/developer/document-review-ledger/">
+      
+      
+        <link rel="prev" href="../site-route-audit/">
+      
+      
+        <link rel="next" href="../p1-security-rollout/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.1">
+    
+    
+      
+        <title>문서별 검토 기록 - HRA 개발 가이드</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="blue" data-md-color-accent="blue">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#pr-301" class="md-skip">
+          콘텐츠로 이동
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="상단/헤더">
+    <a href="../.." title="HRA 개발 가이드" class="md-header__button md-logo" aria-label="HRA 개발 가이드" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            HRA 개발 가이드
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              문서별 검토 기록
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="blue" data-md-color-accent="blue"  aria-label="다크 모드로 전환"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="다크 모드로 전환" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="blue" data-md-color-accent="blue"  aria-label="라이트 모드로 전환"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="라이트 모드로 전환" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="검색" placeholder="검색" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="검색">
+        
+        <button type="reset" class="md-search__icon md-icon" title="지우기" aria-label="지우기" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            검색 초기화
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/Human-Renaissance-Academy/hra-website" title="저장소로 이동" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    Human-Renaissance-Academy/hra-website
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="네비게이션" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="HRA 개발 가이드" class="md-nav__button md-logo" aria-label="HRA 개발 가이드" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    HRA 개발 가이드
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/Human-Renaissance-Academy/hra-website" title="저장소로 이동" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    Human-Renaissance-Academy/hra-website
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    개발 가이드
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    시작하기
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    시작하기
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/prerequisites/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    사전 준비
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/clone-and-setup/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    코드 받아오기와 설정
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/first-run/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    첫 실행
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/project-tour/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    화면부터 DB까지 따라가기
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/glossary/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    용어집
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../GUIDE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    현재 폴더와 기능
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    수정하고 기여하기
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    수정하고 기여하기
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../CUSTOMIZATION/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    화면과 내용 수정
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../contributing/workflow/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    협업 순서
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../contributing/conventions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    코드 작성 규칙
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../contributing/tasks-by-level/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    작업 난이도와 첫 기여
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../contributing/ai-tools/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AI 도구 사용
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../QUALITY-GATE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    품질 검사와 CI 범위
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../expanded-e2e-quality-gate/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    확장 E2E 회귀
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../authentication-measurement/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    인증 비용·권한 회수
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../browser-security-policy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    브라우저 CSP·HSTS
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../repository-security-gates/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    저장소 secret·dependency 게이트
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../public-artifact-safety/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    공개 산출물 안전 검사
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../github-actions-security/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    GitHub Actions 보안
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../contributing/build-and-deploy-safety/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    빌드·배포 안전 가이드
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../contributing/releasing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    버전과 릴리스
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    관리자와 운영
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    관리자와 운영
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ADMIN-GUIDE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    관리자 메뉴
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../DATABASE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    데이터베이스
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../DEPLOYMENT/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    배포와 문제 해결
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/production-smoke/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    운영 공개 경로 점검
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/public-repository-security/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    공개 저장소 보안 확인표
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../database-change-procedure/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    DB 변경 절차
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../db-contract-responsibilities/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    DB 변경 검증 정본별 책임
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/rate-limits/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    요청 제한
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../rate-limit-reservation-index/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    예약 ID 인덱스 변경
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/markdown-image-ownership/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    업로드 파일 원장과 정리
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../KAKAO-LOGIN-SETUP/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    카카오 로그인 설정
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/kakao-email-consent/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    카카오 이메일 동의
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/kakao-legacy-binding/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    카카오 기존 계정 연결
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    자료실과 모집
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    자료실과 모집
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../resource-access-policy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    자료실 조회 권한
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../resource-file-access-policy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    자료 파일 접근
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../REPORT-ARCHIVE-SCOPE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    보고서 자료실 범위
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../REPORT-STORAGE-DECISION/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    보고서 저장 방식 결정
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../recruitment-intake-policy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    모집과 지원 접수
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../recruitment-singleton/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    모집 설정 한 행 규칙
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../application-form-concurrency/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    질문 편집과 지원서 제출
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    학사 G1
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    학사 G1
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ACADEMIC-MANAGEMENT-ROADMAP/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    현재 범위와 로드맵
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ASSIGNMENT-SUBMISSION-SCOPE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    개인 과제 제출 범위
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ACADEMIC-DATA-MODEL/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    데이터 모델
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_6_4" id="__nav_6_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    학생과 수강
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    학생과 수강
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../academic-students-migration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    학생 모델 SQL 적용
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../academic-enrollment-backfill/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    기존 수강 데이터 연결
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../academic-roster/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    학사 명단 관리
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_6_5" id="__nav_6_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    과제와 대상
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    과제와 대상
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../academic-assignments-migration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    과제 모델 SQL 적용
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../academic-assignment-actions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    과제 변경 액션
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../academic-assignment-admin/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    관리자 화면
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6_6" id="__nav_6_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    학생 화면
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    학생 화면
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../academic-student-queries/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    학생 조회 계약
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../academic-submission-statuses/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    제출 상태 계산
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../academic-student-ui/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    학생 화면과 검증 기록
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_6_7" id="__nav_6_7_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    파일 제출
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    파일 제출
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../academic-submissions-migration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    제출 모델 SQL 적용
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../academic-assignment-uploads/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    업로드·검증·정리
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../academic-submission-finalization/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    최종 제출 확정
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../academic-submission-files/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    파일 다운로드와 삭제
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_6_8" id="__nav_6_8_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    운영과 검증
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6_8">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    운영과 검증
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../academic-observability/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    로그·지표·기능 설정
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../academic-g1-quality-gate/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    G1 통합 품질 검사
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ACADEMIC-PRIVACY-RETENTION-POLICY/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    개인정보 정책 초안
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    앞으로의 플랫폼
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    앞으로의 플랫폼
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../platform-architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    목표 아키텍처
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../PLATFORM-ROADMAP/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    전환 로드맵
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api-v1/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    공용 API v1 계약
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../mobile-app/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    모바일 앱 개발
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../mobile-auth-routes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    모바일 인증 HTTP 경계
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../mobile-principal-adapter/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    모바일 요청 주체 어댑터
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../mobile-session-migration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    모바일 세션 DB 검토
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../mobile-bearer-verification/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    모바일 Bearer 검증
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../environment-strategy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    환경 분리와 배포 전략
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../environment-inventory/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    환경변수 계약 목록
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../seo-indexing-policy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    검색 색인·canonical 정책
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    기록과 문서 관리
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_8">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    기록과 문서 관리
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../site-route-audit/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    전체 경로 감사 기록
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    문서별 검토 기록
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    문서별 검토 기록
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="목차">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      목차
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        원래 범위 밖의 추가 문서
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../p1-security-rollout/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    초기 P1 변경 적용 기록
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../PRESS-ARTICLES/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    언론 기사 조사 기록
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../documentation-map/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    전체 문서 지도
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="목차">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      목차
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        원래 범위 밖의 추가 문서
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="pr-301">PR #301 문서별 검토 기록<a class="headerlink" href="#pr-301" title="Permanent link">&para;</a></h1>
+<p>이 기록은 <a href="https://github.com/Human-Renaissance-Academy/hra-website/issues/299">문서 정비 이슈 #299</a>의 문서별 검토 범위를 보여 준다. 원래 PR #301의 비교 기준 <code>0e59d362</code>에 있던 <strong>추적 Markdown 66개</strong>를 파일별로 대조했다. 그중 <strong>59개를 수정하고 7개는 보존</strong>했다. 표의 근거는 읽은 코드·설정·이슈 또는 해당 시점의 기록이며, 배포 환경에서 그 기능을 새로 실행했다는 뜻이 아니다. <code>main</code> <code>15665df</code>와 검증된 로컬 통합 <code>04a35a7</code>의 코드를 대조했다. 로컬 #317·#310·#320은 <code>main</code> 병합이나 운영 적용을 완료한 것으로 적지 않는다.</p>
+<p><code>현재</code>는 저장소 코드·작업 규칙, <code>목표</code>는 향후 설계, <code>승인 대기</code>는 정책 결정이 필요한 내용, <code>운영 미확인</code>은 실제 환경의 DB·Blob·OAuth·Preview 설정을 이번 문서 검토에서 확인하지 않았다는 뜻이다. <code>과거 기록</code>은 해당 날짜의 조사·테스트 수치를 유지한다. 표의 <code>수정</code>은 내용이나 읽기 경로를 고쳤다는 뜻이며, 코드·DB·운영 데이터를 바꿨다는 뜻이 아니다.</p>
+<table>
+<thead>
+<tr>
+<th>기존 문서</th>
+<th>처리와 문서별 판단</th>
+<th>대조 근거</th>
+<th>경계</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>.github/AGENTS.md</code></td>
+<td>보존: 이슈·PR 자동화 규칙의 소유 문서라 안내 문장 정비로 정책을 바꾸지 않았다.</td>
+<td><code>scripts/_lib/process-format.mjs</code>, <code>scripts/_lib/release-policy.mjs</code></td>
+<td>현재 규칙</td>
+</tr>
+<tr>
+<td><code>.github/PULL_REQUEST_TEMPLATE.md</code></td>
+<td>보존: 네 섹션과 관련 이슈 표기는 CI 형식 계약이므로 유지했다.</td>
+<td><code>scripts/_lib/process-format.mjs</code>, <code>.github/workflows/process-format.yml</code></td>
+<td>현재 규칙</td>
+</tr>
+<tr>
+<td><code>AGENTS.md</code></td>
+<td>수정: 공개/회원 경로, 학사 역할, CI와 목표 플랫폼의 범위를 현재 코드에 맞춰 구분했다.</td>
+<td><code>src/lib/db/schema.ts</code>, <code>src/lib/auth.ts</code>, <code>.github/workflows/ci.yml</code></td>
+<td>현재·목표</td>
+</tr>
+<tr>
+<td><code>CHANGELOG.md</code></td>
+<td>보존: 기존 릴리스 이력을 현재 기능 설명으로 다시 쓰지 않았다.</td>
+<td>문서의 날짜·PR 번호, <code>docs/contributing/releasing.md</code></td>
+<td>과거 기록</td>
+</tr>
+<tr>
+<td><code>CLAUDE.md</code></td>
+<td>보존: <code>AGENTS.md</code>로 연결하는 한 줄 진입 파일이다.</td>
+<td><code>AGENTS.md</code></td>
+<td>현재 규칙</td>
+</tr>
+<tr>
+<td><code>README.md</code></td>
+<td>수정: 작업별 읽기 순서, Node 24 설치, G1 코드와 모바일 목표, 운영 미확인을 처음 보이게 했다.</td>
+<td><code>package.json</code>, <code>.nvmrc</code>, <code>src/app/</code></td>
+<td>현재·목표·운영 미확인</td>
+</tr>
+<tr>
+<td><code>content/member/guides/markdown-guide.md</code></td>
+<td>수정: Markdown 작성 안내의 버전·링크와 화면 사용 조건을 정리했다. 내장 기본본의 지위를 유지한다.</td>
+<td><code>src/lib/markdown/resolve.ts</code>, <code>src/app/(member)/member/guides/[slug]/page.tsx</code></td>
+<td>현재 기본 콘텐츠</td>
+</tr>
+<tr>
+<td><code>content/member/guides/report-writing-guide.md</code></td>
+<td>수정: 작성 순서와 양식 PDF/작성본의 차이를 현재 자료실 흐름에 맞췄다.</td>
+<td><code>src/lib/markdown/resolve.ts</code>, <code>docs/REPORT-ARCHIVE-SCOPE.md</code></td>
+<td>현재 기본 콘텐츠</td>
+</tr>
+<tr>
+<td><code>content/member/guides/submission-guide.md</code></td>
+<td>수정: 개인 보고서 제출 경로·마감 확인을 현재 G1과 분리해 설명했다. 실제 마감은 과제 공지에 따른다.</td>
+<td><code>src/lib/markdown/resolve.ts</code>, <code>docs/ASSIGNMENT-SUBMISSION-SCOPE.md</code></td>
+<td>현재 기본 콘텐츠·운영 확인</td>
+</tr>
+<tr>
+<td><code>content/member/templates/business-practice-template.md</code></td>
+<td>보존: 승인된 경영 실습 양식 항목을 문장 정비만으로 바꾸지 않았다.</td>
+<td><code>docs/REPORT-STORAGE-DECISION.md</code>, <code>src/lib/markdown/resolve.ts</code></td>
+<td>기존 기본 콘텐츠</td>
+</tr>
+<tr>
+<td><code>content/member/templates/classic-book-template.md</code></td>
+<td>보존: 고전 독후감의 장·제목 구조를 유지했다.</td>
+<td><code>docs/REPORT-STORAGE-DECISION.md</code>, <code>src/lib/markdown/resolve.ts</code></td>
+<td>기존 기본 콘텐츠</td>
+</tr>
+<tr>
+<td><code>content/member/templates/management-book-template.md</code></td>
+<td>보존: 경영 서적 독후감의 장·발표 정보 구조를 유지했다.</td>
+<td><code>docs/REPORT-STORAGE-DECISION.md</code>, <code>src/lib/markdown/resolve.ts</code></td>
+<td>기존 기본 콘텐츠</td>
+</tr>
+<tr>
+<td><code>docs/ACADEMIC-DATA-MODEL.md</code></td>
+<td>수정: 구현된 G1 표와 G2/G3 설계, 운영 미적용 SQL을 분리했다.</td>
+<td><code>src/lib/db/schema.ts</code>, <code>scripts/migrate-academic-*.sql</code></td>
+<td>현재·목표·운영 미확인</td>
+</tr>
+<tr>
+<td><code>docs/ACADEMIC-MANAGEMENT-ROADMAP.md</code></td>
+<td>수정: G1 코드 현황과 G2 어드바이저·조교 출결, G3 수료 목표를 단계별로 정리했다.</td>
+<td><code>src/features/academics/</code>, 이슈 #143·#165</td>
+<td>현재·목표·승인 대기</td>
+</tr>
+<tr>
+<td><code>docs/ACADEMIC-PRIVACY-RETENTION-POLICY.md</code></td>
+<td>수정: 구현된 데이터 경계와 보존기간·파기·백업 승인 대기를 먼저 구분했다.</td>
+<td><code>src/lib/db/schema.ts</code>, 이슈 #142</td>
+<td>현재·승인 대기</td>
+</tr>
+<tr>
+<td><code>docs/ADMIN-GUIDE.md</code></td>
+<td>수정: 실제 관리자 메뉴, 로그인 경로, 저장 후 공개 확인을 다시 안내했다. 학사 승인자는 별개로 적었다.</td>
+<td><code>src/app/(admin)/admin/admin-shell.tsx</code>, <code>src/lib/academic-admin.ts</code></td>
+<td>현재·운영 확인</td>
+</tr>
+<tr>
+<td><code>docs/ASSIGNMENT-SUBMISSION-SCOPE.md</code></td>
+<td>수정: G1 개인 제출과 기수 공동 자료를 분리하고 구현·기능 설정·운영 승인을 구분했다.</td>
+<td><code>src/features/academics/</code>, <code>src/features/weekly-texts/actions/index.ts</code></td>
+<td>현재·운영 미확인</td>
+</tr>
+<tr>
+<td><code>docs/CUSTOMIZATION.md</code></td>
+<td>수정: DB 콘텐츠 수정과 배포할 화면 코드 수정을 나눠 시작 위치를 찾게 했다.</td>
+<td><code>src/app/(public)/</code>, <code>src/features/</code>, <code>src/lib/db/schema.ts</code></td>
+<td>현재</td>
+</tr>
+<tr>
+<td><code>docs/DATABASE.md</code></td>
+<td>수정: DB 표·관계·회원 역할과 새 개발 DB/운영 DB의 다른 절차를 설명했다.</td>
+<td><code>src/lib/db/index.ts</code>, <code>src/lib/db/schema.ts</code>, <code>docs/developer/database-change-procedure.md</code></td>
+<td>현재·운영 확인</td>
+</tr>
+<tr>
+<td><code>docs/DEPLOYMENT.md</code></td>
+<td>수정: 환경별 설정·검증·실패 행동과 Preview 성공의 한계를 정리했다. 실제 자원 격리는 별도 확인이다.</td>
+<td><code>package.json</code>, <code>vercel.json</code>, <code>.env.example</code></td>
+<td>현재 절차·운영 미확인</td>
+</tr>
+<tr>
+<td><code>docs/GUIDE.md</code></td>
+<td>수정: 처음 참여자의 파일 탐색과 작은 화면 변경·검증 순서를 현재 폴더 구조로 바꿨다.</td>
+<td><code>src/app/</code>, <code>src/components/</code>, <code>src/features/</code></td>
+<td>현재</td>
+</tr>
+<tr>
+<td><code>docs/KAKAO-LOGIN-SETUP.md</code></td>
+<td>수정: 카카오 콘솔, 환경별 callback, 앱 로그인 확인을 순서대로 나눴다.</td>
+<td><code>src/lib/auth.ts</code>, <code>src/lib/kakao-provider.ts</code></td>
+<td>현재 코드·운영 미확인</td>
+</tr>
+<tr>
+<td><code>docs/PLATFORM-ROADMAP.md</code></td>
+<td>수정: monorepo·모바일을 현재 파일 구조로 오해하지 않도록 단계와 선행 조건을 덧붙였다.</td>
+<td><code>docs/developer/platform-architecture.md</code>, <code>src/app/</code></td>
+<td>목표·운영 미확인</td>
+</tr>
+<tr>
+<td><code>docs/PRESS-ARTICLES.md</code></td>
+<td>수정: 2026-04-26 기사 조사를 당시 기록으로 표시하고 현재 등록 전 원문 재확인을 안내했다.</td>
+<td>문서의 조사 날짜, <code>src/app/(admin)/admin/press/page.tsx</code></td>
+<td>과거 기록</td>
+</tr>
+<tr>
+<td><code>docs/QUALITY-GATE.md</code></td>
+<td>수정: 현재 CI 실행 순서와 선택되지 않은 E2E 범위를 구분하고 기존 보고서 점검표를 보존했다.</td>
+<td><code>.github/workflows/ci.yml</code>, <code>vitest.config.mts</code>, <code>playwright.config.ts</code></td>
+<td>현재 검사·운영 미확인</td>
+</tr>
+<tr>
+<td><code>docs/REPORT-ARCHIVE-SCOPE.md</code></td>
+<td>수정: 양식 목록·상세·인쇄 경로와 개인 과제 제출 경로를 나누었다.</td>
+<td><code>src/lib/markdown/resolve.ts</code>, <code>src/app/(member)/member/templates/</code></td>
+<td>현재</td>
+</tr>
+<tr>
+<td><code>docs/REPORT-STORAGE-DECISION.md</code></td>
+<td>수정: DB 행이 없을 때만 내장 파일을 쓰는 선택과 비공개 fallback 차단을 명시했다.</td>
+<td><code>src/lib/markdown/resolve.ts</code></td>
+<td>현재 결정</td>
+</tr>
+<tr>
+<td><code>docs/application-form-concurrency.md</code></td>
+<td>수정: 질문 저장·제출 경합의 기대 결과와 DB 함수 적용·검증 경계를 풀어 설명했다.</td>
+<td><code>scripts/migrate-atomic-application-questions.sql</code>, <code>src/features/applications/</code></td>
+<td>현재·운영 적용 확인</td>
+</tr>
+<tr>
+<td><code>docs/contributing/ai-tools.md</code></td>
+<td>수정: 도구별 설명보다 작은 작업·검증·리뷰의 공통 절차를 앞세웠다.</td>
+<td><code>AGENTS.md</code>, <code>.github/PULL_REQUEST_TEMPLATE.md</code></td>
+<td>현재 규칙</td>
+</tr>
+<tr>
+<td><code>docs/contributing/build-and-deploy-safety.md</code></td>
+<td>수정: Node 24, 깨끗한 설치, 현재 CI, 실제 Preview 실패·제한 대응을 한 순서로 묶었다.</td>
+<td><code>package.json</code>, <code>.github/workflows/ci.yml</code>, PR #325·#328</td>
+<td>현재 절차·운영 미확인</td>
+</tr>
+<tr>
+<td><code>docs/contributing/conventions.md</code></td>
+<td>수정: 입력 검증·권한과 현재 서버 액션에서 목표 서비스 경계로 넘어가는 기준을 분리했다.</td>
+<td><code>src/features/</code>, <code>docs/developer/platform-architecture.md</code></td>
+<td>현재·목표</td>
+</tr>
+<tr>
+<td><code>docs/contributing/releasing.md</code></td>
+<td>수정: 릴리스 PR·태그와 앱 배포의 차이, 자동화 활성화 조건을 명료화했다.</td>
+<td><code>.github/workflows/release-please.yml</code>, <code>scripts/_lib/release-policy.mjs</code></td>
+<td>현재 설정·운영 미확인</td>
+</tr>
+<tr>
+<td><code>docs/contributing/tasks-by-level.md</code></td>
+<td>수정: 쉬운 작업이라도 DB·권한 영향이 있으면 검증을 넓히도록 난이도를 다시 묶었다.</td>
+<td><code>docs/contributing/workflow.md</code>, <code>docs/QUALITY-GATE.md</code></td>
+<td>현재 절차</td>
+</tr>
+<tr>
+<td><code>docs/contributing/workflow.md</code></td>
+<td>수정: 이슈→PR→현재 커밋 CI·Preview→병합·완료의 실제 흐름을 설명했다.</td>
+<td><code>scripts/_lib/process-format.mjs</code>, <code>.github/workflows/ci.yml</code></td>
+<td>현재 규칙·운영 미확인</td>
+</tr>
+<tr>
+<td><code>docs/developer/academic-assignment-actions.md</code></td>
+<td>수정: 과제 관리 서버 액션·서비스·DB 함수의 책임과 재시도 조건을 먼저 설명했다.</td>
+<td><code>src/features/academics/assignments/actions.ts</code>, <code>scripts/migrate-academic-assignment-actions.sql</code></td>
+<td>현재·운영 적용 확인</td>
+</tr>
+<tr>
+<td><code>docs/developer/academic-assignment-admin.md</code></td>
+<td>수정: 지정 승인자의 초안→대상 확인→공개 흐름과 필요한 설정을 설명했다.</td>
+<td><code>src/app/(academic)/admin/academics/assignments/page.tsx</code>, <code>tests/e2e/academic-assignment-admin.spec.ts</code></td>
+<td>현재·운영 미확인</td>
+</tr>
+<tr>
+<td><code>docs/developer/academic-assignment-uploads.md</code></td>
+<td>수정: 전용 Private Blob 의도·검증·취소·정리 단계와 예산/재시도 결과를 구분했다.</td>
+<td><code>src/features/academics/assignment-uploads/</code>, <code>scripts/verify-academic-private-upload-http.mjs</code></td>
+<td>현재·운영 공급자 미확인</td>
+</tr>
+<tr>
+<td><code>docs/developer/academic-assignments-migration.md</code></td>
+<td>수정: 공개 대상 스냅샷 SQL의 선행·카탈로그·복구 조건을 안내했다.</td>
+<td><code>scripts/migrate-academic-assignments.sql</code>, <code>src/lib/db/academic-assignments.ts</code></td>
+<td>현재 SQL·운영 미적용</td>
+</tr>
+<tr>
+<td><code>docs/developer/academic-enrollment-backfill.md</code></td>
+<td>수정: 읽기 점검→승인 계획→명시적 적용 순서와 계정 자동 연결 금지를 앞에 뒀다.</td>
+<td><code>scripts/backfill-academic-enrollments.mjs</code>, <code>scripts/migrate-academic-enrollment-links.sql</code></td>
+<td>현재 명령·운영 승인 대기</td>
+</tr>
+<tr>
+<td><code>docs/developer/academic-g1-quality-gate.md</code></td>
+<td>수정: 실제 격리 G1 실행기와 공급자·운영 검증의 차이를 적었다.</td>
+<td><code>scripts/verify-academic-g1.mjs</code>, <code>.github/workflows/ci.yml</code></td>
+<td>현재 검사·운영 미확인</td>
+</tr>
+<tr>
+<td><code>docs/developer/academic-observability.md</code></td>
+<td>수정: 구현된 로그·상태 API와 아직 누적 원장이 없어 <code>null</code>인 지표를 구분했다.</td>
+<td><code>src/lib/academic-observability.ts</code>, <code>src/app/api/academics/health/route.ts</code></td>
+<td>현재·목표</td>
+</tr>
+<tr>
+<td><code>docs/developer/academic-roster.md</code></td>
+<td>수정: 학생 명부와 회원 계정의 차이, 지정 승인자의 등록·감사 절차를 설명했다.</td>
+<td><code>src/features/academics/roster/</code>, <code>scripts/migrate-academic-roster.sql</code></td>
+<td>현재·운영 적용 확인</td>
+</tr>
+<tr>
+<td><code>docs/developer/academic-student-queries.md</code></td>
+<td>수정: 본인 조회 DTO·권한과 미연결 학생의 결과를 설명했다.</td>
+<td><code>src/features/academics/student-assignments/queries.ts</code>, <code>src/lib/academic-permissions.ts</code></td>
+<td>현재</td>
+</tr>
+<tr>
+<td><code>docs/developer/academic-student-ui.md</code></td>
+<td>수정: 화면의 업로드·검증·최종화 상태를 분리하고 2026-10-16 QA를 과거 증거로 두었다.</td>
+<td><code>src/app/(member)/member/assignments/</code>, <code>scripts/verify-academic-student-ui.mjs</code></td>
+<td>현재·과거 기록·운영 미확인</td>
+</tr>
+<tr>
+<td><code>docs/developer/academic-students-migration.md</code></td>
+<td>수정: 학생/기수 SQL을 적용한 DB의 카탈로그 확인과 운영 적용의 분리를 적었다.</td>
+<td><code>scripts/migrate-academic-students.sql</code>, <code>src/lib/db/schema.ts</code></td>
+<td>현재 SQL·운영 미적용</td>
+</tr>
+<tr>
+<td><code>docs/developer/academic-submission-files.md</code></td>
+<td>수정: 파일 다운로드의 현재 권한 재검증·감사와 전용 저장소 조건을 설명했다.</td>
+<td><code>src/app/api/academic/submissions/</code>, <code>src/lib/db/academic-file-accesses.ts</code></td>
+<td>현재·운영 저장소 미확인</td>
+</tr>
+<tr>
+<td><code>docs/developer/academic-submission-finalization.md</code></td>
+<td>수정: 검증된 의도를 제출로 원자적으로 확정하는 순서와 재시도·복구를 풀었다.</td>
+<td><code>scripts/migrate-academic-submission-finalization.sql</code>, <code>src/features/academics/submissions/</code></td>
+<td>현재·운영 DB 미확인</td>
+</tr>
+<tr>
+<td><code>docs/developer/academic-submission-statuses.md</code></td>
+<td>수정: 공개 당시 대상 수를 분모로 쓰는 현황·CSV 권한을 설명했다.</td>
+<td><code>src/features/academics/submission-statuses/</code></td>
+<td>현재</td>
+</tr>
+<tr>
+<td><code>docs/developer/academic-submissions-migration.md</code></td>
+<td>수정: 제출·의도 표/함수의 잠금·권한 검증과 적용 순서를 연결했다.</td>
+<td><code>scripts/migrate-academic-submissions.sql</code>, <code>src/lib/db/schema.ts</code></td>
+<td>현재 SQL·운영 미적용</td>
+</tr>
+<tr>
+<td><code>docs/developer/database-change-procedure.md</code></td>
+<td>수정: 빈 개발 DB의 <code>db:push</code>와 기존 DB의 범위 SQL/카탈로그 검증을 구분하고 #320 예약 인덱스의 별도 안내를 연결했다.</td>
+<td><code>src/lib/db/schema.ts</code>, <code>scripts/migrate-287-rate-limit-reservation-index.sql</code></td>
+<td>현재 절차·운영 미적용</td>
+</tr>
+<tr>
+<td><code>docs/developer/environment-strategy.md</code></td>
+<td>수정: Preview 분리와 migration gate를 목표로 적고 실제 격리·자동화는 확인 대기로 남겼다.</td>
+<td><code>src/lib/db/index.ts</code>, 이슈 #279·#280</td>
+<td>목표·운영 미확인</td>
+</tr>
+<tr>
+<td><code>docs/developer/p1-security-rollout.md</code></td>
+<td>수정: 과거 P1 FK 적용 기록을 보존하고 Auth.js 보안 버전의 별도 운영 확인을 덧붙였다.</td>
+<td><code>scripts/migrate-protect-application-answers.sql</code>, <code>src/lib/auth.ts</code></td>
+<td>과거 기록·운영 미확인</td>
+</tr>
+<tr>
+<td><code>docs/developer/platform-architecture.md</code></td>
+<td>수정: Web 내부 서비스 호출과 향후 모바일 API, 기수별 어드바이저·조교 출결 인가를 구분했다.</td>
+<td><code>src/features/academics/</code>, 이슈 #143·#165</td>
+<td>목표·승인 대기</td>
+</tr>
+<tr>
+<td><code>docs/developer/site-route-audit.md</code></td>
+<td>수정: 2026-10-17의 검증 커밋·수치와 현재 재실행 절차를 분리했다.</td>
+<td><code>scripts/verify-site-routes.mjs</code>, 문서의 기준 SHA</td>
+<td>과거 기록</td>
+</tr>
+<tr>
+<td><code>docs/getting-started/clone-and-setup.md</code></td>
+<td>수정: Node 24·<code>npm ci</code>·개발용 설정·DB 준비의 순서를 현재 스크립트에 맞췄다.</td>
+<td><code>.nvmrc</code>, <code>package.json</code>, <code>.env.example</code></td>
+<td>현재·운영 미확인</td>
+</tr>
+<tr>
+<td><code>docs/getting-started/first-run.md</code></td>
+<td>수정: 홈 표시와 DB·인증 기능 확인을 분리하고 저장 반영·종료 절차를 적었다.</td>
+<td><code>package.json</code>의 <code>dev</code>, <code>src/app/(public)/</code></td>
+<td>현재·개발 환경 확인</td>
+</tr>
+<tr>
+<td><code>docs/getting-started/prerequisites.md</code></td>
+<td>수정: Git/Node 24/편집기 설치와 개발 서비스 접근 조건을 구분했다.</td>
+<td><code>.nvmrc</code>, <code>package.json</code>의 <code>engines</code></td>
+<td>현재·운영 미확인</td>
+</tr>
+<tr>
+<td><code>docs/index.md</code></td>
+<td>수정: 처음 참여하는 개발자·관리자·운영 담당자의 읽기 경로를 마련했다.</td>
+<td><code>README.md</code>, <code>mkdocs.yml</code></td>
+<td>현재·목표 분리</td>
+</tr>
+<tr>
+<td><code>docs/operations/kakao-email-consent.md</code></td>
+<td>수정: 콘솔 동의항목 확인과 기존 계정 주소 갱신의 적용·실패 행동을 나눴다.</td>
+<td><code>src/lib/auth-signin.ts</code>, <code>src/lib/auth-email.ts</code></td>
+<td>현재 코드·운영 미확인</td>
+</tr>
+<tr>
+<td><code>docs/operations/kakao-legacy-binding.md</code></td>
+<td>수정: 자동 이메일 연결을 피하는 과거 계정 복구의 대상·중단 조건을 명시했다.</td>
+<td><code>scripts/migrate-backfill-kakao-legacy-bindings.mjs</code></td>
+<td>현재 명령·운영 대상 확인</td>
+</tr>
+<tr>
+<td><code>docs/operations/markdown-image-ownership.md</code></td>
+<td>수정: 파일 원장·참조 뷰·삭제 전 dry-run과 복구 경계를 단계로 나눴다.</td>
+<td><code>src/lib/owned-blob.ts</code>, <code>scripts/sql/markdown-image-references.sql</code></td>
+<td>현재 코드·운영 미확인</td>
+</tr>
+<tr>
+<td><code>docs/operations/rate-limits.md</code></td>
+<td>수정: 예약 함수·정리 Cron의 적용·확인·실패 경계를 설명했다.</td>
+<td><code>src/lib/rate-limit.ts</code>, <code>vercel.json</code></td>
+<td>현재 코드·운영 적용 확인</td>
+</tr>
+<tr>
+<td><code>docs/recruitment-intake-policy.md</code></td>
+<td>수정: 내부 양식 공개 여부와 외부 버튼 날짜·링크가 다른 접수 스위치임을 설명했다.</td>
+<td><code>src/features/recruitment/status.ts</code>, <code>src/features/applications/actions/submissions.ts</code></td>
+<td>현재</td>
+</tr>
+<tr>
+<td><code>docs/recruitment-singleton.md</code></td>
+<td>수정: 단일 행 제약과 0·1·2행에 따른 migration 행동을 설명했다.</td>
+<td><code>scripts/migrate-recruitment-singleton.mjs</code>, <code>src/lib/db/schema.ts</code></td>
+<td>현재 SQL·운영 적용 확인</td>
+</tr>
+<tr>
+<td><code>docs/resource-access-policy.md</code></td>
+<td>수정: 공동 자료의 열람/작성 권한을 개인 과제 권한과 분리했다.</td>
+<td><code>src/lib/resource-access.ts</code>, <code>src/features/weekly-texts/actions/index.ts</code></td>
+<td>현재</td>
+</tr>
+<tr>
+<td><code>docs/resource-file-access-policy.md</code></td>
+<td>수정: 공개 파일 보호 전환과 현재 Private Blob 코드 지원을 구분했다.</td>
+<td><code>scripts/migrate-protected-resource-blobs.mjs</code>, <code>src/lib/resource-blob-store.ts</code></td>
+<td>현재 코드·운영 이전 미확인</td>
+</tr>
+</tbody>
+</table>
+<h2 id="_1">원래 범위 밖의 추가 문서<a class="headerlink" href="#_1" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>문서</th>
+<th>출처와 판단</th>
+<th>경계</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>docs/documentation-map.md</code></td>
+<td>PR #301 추가. 읽기 경로, 현재/목표/정책/과거 기록의 분류와 유지 기준을 제공한다.</td>
+<td>안내</td>
+</tr>
+<tr>
+<td><code>docs/getting-started/glossary.md</code></td>
+<td>PR #301 추가. 처음 등장하는 개발·운영 용어를 풀이한다.</td>
+<td>안내</td>
+</tr>
+<tr>
+<td><code>docs/getting-started/project-tour.md</code></td>
+<td>PR #301 추가. 화면→서버→DB의 현재 파일 경로를 따라간다.</td>
+<td>현재 예시</td>
+</tr>
+<tr>
+<td><code>docs/developer/github-actions-security.md</code></td>
+<td>후속 <code>main</code>에서 도입된 별도 CI 보안 안내. 원래 66개 집계에 넣지 않았고 원문 정책을 유지한다.</td>
+<td>현재 CI 규칙</td>
+</tr>
+<tr>
+<td><code>docs/developer/rate-limit-reservation-index.md</code></td>
+<td>#320의 로컬 통합 안내. 범위 SQL과 인덱스 카탈로그·합성 성능 증거를 설명하며 운영 적용은 미확인이다.</td>
+<td>로컬 코드·운영 미적용</td>
+</tr>
+</tbody>
+</table>
+<p><code>mkdocs.yml</code>의 메뉴와 <code>.env.example</code>은 Markdown 66개 집계 밖의 설정 파일이다. PR #301은 새 안내의 탐색 경로와 안전한 합성 설정 예시를 보강하지만 실제 환경값을 저장하지 않는다. 이 표의 근거 경로는 리뷰 시 실제 저장소와 다시 대조하고, 새 코드·SQL·정책이 병합되면 해당 행의 상태도 갱신한다.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  맨위로
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+        
+<div class="md-social">
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://github.com/Human-Renaissance-Academy/hra-website" target="_blank" rel="noopener" title="github.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+    </a>
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://instagram.com/hra_official_" target="_blank" rel="noopener" title="instagram.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M224.3 141a115 115 0 1 0-.6 230 115 115 0 1 0 .6-230m-.6 40.4a74.6 74.6 0 1 1 .6 149.2 74.6 74.6 0 1 1-.6-149.2m93.4-45.1a26.8 26.8 0 1 1 53.6 0 26.8 26.8 0 1 1-53.6 0m129.7 27.2c-1.7-35.9-9.9-67.7-36.2-93.9-26.2-26.2-58-34.4-93.9-36.2-37-2.1-147.9-2.1-184.9 0-35.8 1.7-67.6 9.9-93.9 36.1s-34.4 58-36.2 93.9c-2.1 37-2.1 147.9 0 184.9 1.7 35.9 9.9 67.7 36.2 93.9s58 34.4 93.9 36.2c37 2.1 147.9 2.1 184.9 0 35.9-1.7 67.7-9.9 93.9-36.2 26.2-26.2 34.4-58 36.2-93.9 2.1-37 2.1-147.8 0-184.8M399 388c-7.8 19.6-22.9 34.7-42.6 42.6-29.5 11.7-99.5 9-132.1 9s-102.7 2.6-132.1-9c-19.6-7.8-34.7-22.9-42.6-42.6-11.7-29.5-9-99.5-9-132.1s-2.6-102.7 9-132.1c7.8-19.6 22.9-34.7 42.6-42.6 29.5-11.7 99.5-9 132.1-9s102.7-2.6 132.1 9c19.6 7.8 34.7 22.9 42.6 42.6 11.7 29.5 9 99.5 9 132.1s2.7 102.7-9 132.1"/></svg>
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.instant", "navigation.tracking", "navigation.sections", "navigation.top", "search.suggest", "search.highlight", "content.code.copy", "content.code.annotate"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "\ud074\ub9bd\ubcf4\ub4dc\uc5d0 \ubcf5\uc0ac\ub428", "clipboard.copy": "\ud074\ub9bd\ubcf4\ub4dc\ub85c \ubcf5\uc0ac", "search.result.more.one": "\uc774 \ubb38\uc11c\uc5d0\uc11c 1\uac1c\uc758 \uac80\uc0c9 \uacb0\uacfc \ub354 \ubcf4\uae30", "search.result.more.other": "\uc774 \ubb38\uc11c\uc5d0\uc11c #\uac1c\uc758 \uac80\uc0c9 \uacb0\uacfc \ub354 \ubcf4\uae30", "search.result.none": "\uac80\uc0c9\uc5b4\uc640 \uc77c\uce58\ud558\ub294 \ubb38\uc11c\uac00 \uc5c6\uc2b5\ub2c8\ub2e4", "search.result.one": "1\uac1c\uc758 \uc77c\uce58\ud558\ub294 \ubb38\uc11c", "search.result.other": "#\uac1c\uc758 \uc77c\uce58\ud558\ub294 \ubb38\uc11c", "search.result.placeholder": "\uac80\uc0c9\uc5b4\ub97c \uc785\ub825\ud558\uc138\uc694", "search.result.term.missing": "\ud3ec\ud568\ub418\uc9c0 \uc54a\uc740 \uac80\uc0c9\uc5b4", "select.version": "\ubc84\uc804 \uc120\ud0dd"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>
