@@ -288,13 +288,182 @@ export function lockRegistryViolations(lock) {
     .map(([path]) => ({ kind: "RESOLVED_NOT_OFFICIAL_REGISTRY", path: safeLabel(path) }))
     .sort((a, b) => a.path.localeCompare(b.path));
 }
+// v3의 고정 container만 검사하며 opaque 값의 내부 키를 투영하지 않습니다.
+const hasFields = (value, fields) =>
+  value &&
+  typeof value === "object" &&
+  !Array.isArray(value) &&
+  Object.keys(value).length === fields.length &&
+  fields.every((field) => Object.hasOwn(value, field));
+const codeUnitOrder = (a, b) => (a < b ? -1 : a > b ? 1 : 0);
+const sha256 = (bytes) => createHash("sha256").update(bytes).digest("hex");
+/** 검토된 전체 manifest/lock bytes만 authoritative 입력으로 해석합니다. */
+function reviewedLock(input, policy) {
+  if (
+    !hasFields(policy, [
+      "schemaVersion",
+      "note",
+      "identityMode",
+      "manifestBinding",
+      "lockBinding",
+      "packages",
+      "contexts",
+      "assessments",
+    ]) ||
+    policy.schemaVersion !== 3 ||
+    policy.identityMode !== "reviewed-input-origin-leaf-v1" ||
+    typeof policy.note !== "string" ||
+    ![policy.packages, policy.contexts, policy.assessments].every(Array.isArray)
+  )
+    throw new Error("DEPENDENCY_TRIAGE_CHANGED");
+  if (!hasFields(input, ["manifestBytes", "lockBytes"]))
+    throw new Error("DEPENDENCY_INPUT_BINDING_INVALID");
+  for (const [field, tag, binding] of [
+    ["manifestBytes", "package-json.raw-bytes-v1", policy.manifestBinding],
+    ["lockBytes", "package-lock.raw-bytes-v1", policy.lockBinding],
+  ]) {
+    if (
+      !Buffer.isBuffer(input[field]) ||
+      !hasFields(binding, ["algorithm", "input", "digest"]) ||
+      binding.algorithm !== "sha256" ||
+      binding.input !== tag ||
+      !/^[a-f0-9]{64}$/.test(binding.digest) ||
+      sha256(input[field]) !== binding.digest
+    )
+      throw new Error("DEPENDENCY_INPUT_BINDING_INVALID");
+  }
+  let manifest;
+  let lock;
+  try {
+    manifest = JSON.parse(input.manifestBytes.toString("utf8"));
+    lock = JSON.parse(input.lockBytes.toString("utf8"));
+  } catch {
+    throw new Error("DEPENDENCY_REPORT_INVALID");
+  }
+  if (
+    !manifest ||
+    typeof manifest !== "object" ||
+    Array.isArray(manifest) ||
+    !lock ||
+    typeof lock !== "object" ||
+    Array.isArray(lock) ||
+    !lock.packages ||
+    typeof lock.packages !== "object" ||
+    Array.isArray(lock.packages)
+  )
+    throw new Error("DEPENDENCY_REPORT_INVALID");
+  return lock;
+}
+/** unknown reference field는 constructor 전에 실패시키고 node/direct copy 수는 보존합니다. */
+function securityView(packages) {
+  if (!Array.isArray(packages)) return null;
+  const graph = new Map();
+  const identities = [];
+  for (const pkg of packages) {
+    if (
+      !hasFields(pkg, ["name", "severity", "range", "nodes", "via"]) ||
+      typeof pkg.name !== "string" ||
+      !pkg.name ||
+      graph.has(pkg.name) ||
+      !severities.has(pkg.severity) ||
+      typeof pkg.range !== "string" ||
+      !pkg.range.trim() ||
+      !Array.isArray(pkg.nodes) ||
+      !pkg.nodes.length ||
+      !Array.isArray(pkg.via) ||
+      !pkg.via.length
+    )
+      return null;
+    const nodes = [];
+    const nodeValues = new Map();
+    const direct = [];
+    const advisoryValues = new Map();
+    const targets = new Set();
+    for (const node of pkg.nodes) {
+      if (
+        !hasFields(node, ["path", "version", "development"]) ||
+        typeof node.path !== "string" ||
+        !node.path.startsWith("node_modules/") ||
+        !node.version ||
+        typeof node.development !== "boolean"
+      )
+        return null;
+      const value = { path: node.path, version: node.version, development: node.development };
+      const bytes = canonical(value);
+      if (nodeValues.has(node.path) && nodeValues.get(node.path) !== bytes) return null;
+      nodeValues.set(node.path, bytes);
+      nodes.push(value);
+    }
+    for (const via of pkg.via) {
+      if (hasFields(via, ["dependency"]) && typeof via.dependency === "string" && via.dependency) {
+        targets.add(via.dependency);
+        continue;
+      }
+      if (
+        !hasFields(via, ["source", "id", "severity", "range", "title"]) ||
+        !Number.isSafeInteger(via.source) ||
+        typeof via.id !== "string" ||
+        !/^GHSA-[a-z0-9-]+$/.test(via.id) ||
+        !severities.has(via.severity) ||
+        typeof via.range !== "string" ||
+        typeof via.title !== "string"
+      )
+        return null;
+      const value = {
+        source: via.source,
+        id: via.id,
+        severity: via.severity,
+        range: via.range,
+        title: via.title,
+      };
+      const key = canonical([via.source, via.id]);
+      const bytes = canonical(value);
+      if (advisoryValues.has(key) && advisoryValues.get(key) !== bytes) return null;
+      advisoryValues.set(key, bytes);
+      direct.push(value);
+    }
+    nodes.sort((a, b) => codeUnitOrder(a.path, b.path));
+    direct.sort((a, b) => codeUnitOrder(canonical(a), canonical(b)));
+    identities.push({ name: pkg.name, severity: pkg.severity, nodes, direct });
+    // origin은 raw advisory.name이 아니라 direct 객체를 소유한 보고 package입니다.
+    graph.set(pkg.name, {
+      targets,
+      labels: direct.map((value) => canonical({ originPackage: pkg.name, ...value })),
+    });
+  }
+  for (const value of graph.values())
+    for (const target of value.targets) if (!graph.has(target)) return null;
+  identities.sort((a, b) => codeUnitOrder(a.name, b.name));
+  return { identities, graph };
+}
+/** identity exact 검사 뒤에만 origin-qualified 최소 도달 집합을 계산합니다. */
+function qualifiedClosures(view) {
+  const closures = [];
+  for (const { name } of view.identities) {
+    const pending = [name];
+    const visited = new Set();
+    const labels = new Set();
+    while (pending.length) {
+      const current = pending.pop();
+      if (visited.has(current)) continue;
+      visited.add(current);
+      const vertex = view.graph.get(current);
+      for (const label of vertex.labels) labels.add(label);
+      for (const target of vertex.targets) pending.push(target);
+    }
+    if (!labels.size) return null;
+    closures.push({ name, labels: [...labels].sort(codeUnitOrder) });
+  }
+  return closures;
+}
 /** 변경/누락/만료/미분류/P1은 차단한다. 공유 맥락은 검토 책임과 위험 수용 권한을 대체하지 않는다. */
 export function verifyDependencyPolicy(
   audit,
-  lock,
+  input,
   policy,
   today = new Date().toISOString().slice(0, 10),
 ) {
+  const lock = reviewedLock(input, policy);
   const registryViolations = lockRegistryViolations(lock);
   if (registryViolations.length) {
     const error = new Error("DEPENDENCY_LOCK_REGISTRY_INVALID");
@@ -302,17 +471,9 @@ export function verifyDependencyPolicy(
     throw error;
   }
   const snapshot = dependencySnapshot(audit, lock);
-  if (
-    !policy ||
-    policy.schemaVersion !== 2 ||
-    !Array.isArray(policy.packages) ||
-    !Array.isArray(policy.contexts) ||
-    !Array.isArray(policy.assessments)
-  )
-    throw new Error("DEPENDENCY_TRIAGE_CHANGED");
   // npm의 metavulnerability 분석이 만든 상위 패키지 range는 registry의 새 배포만으로 바뀔 수 있다.
-  // 실제 설치된 nodes, severity, via 권고·전이 링크는 정확 일치로 유지한다.
-  // via의 개별 advisory range가 바뀌면 그대로 차단하며 누락·손상된 원장 range도 허용하지 않는다.
+  // v3는 고정된 검토 입력과 영향 node/severity/direct5를 정확 비교하고 meta 경로는 qualified 도달성을 확인한다.
+  // direct advisory range는 그대로 보호하며 package range의 누락·손상도 허용하지 않는다.
   const stableSnapshot = (packages) =>
     packages.map((pkg) => {
       if (!pkg || typeof pkg.range !== "string" || !pkg.range.trim())
@@ -321,7 +482,18 @@ export function verifyDependencyPolicy(
       delete securityIdentity.range;
       return securityIdentity;
     });
-  if (canonical(stableSnapshot(snapshot)) !== canonical(stableSnapshot(policy.packages))) {
+  const actual = securityView(snapshot);
+  const reference = securityView(policy.packages);
+  const identitiesEqual =
+    actual && reference && canonical(actual.identities) === canonical(reference.identities);
+  const actualClosure = identitiesEqual ? qualifiedClosures(actual) : null;
+  const referenceClosure = identitiesEqual ? qualifiedClosures(reference) : null;
+  if (
+    !identitiesEqual ||
+    !actualClosure ||
+    !referenceClosure ||
+    canonical(actualClosure) !== canonical(referenceClosure)
+  ) {
     const error = new Error("DEPENDENCY_TRIAGE_CHANGED");
     error.diagnostics = dependencyChanges(snapshot, policy.packages);
     error[literalDifference] = snapshotDifference(
@@ -350,11 +522,11 @@ export function verifyDependencyPolicy(
     contexts.set(item.id, item);
   }
   // 한 패키지가 버전이 다른 같은 이름의 전이 패키지를 여러 경로에 두면 npm은 같은 `dependency` 링크를 중복해 보고한다.
-  // 링크 자체는 위의 snapshot 정확 일치로 이미 고정했으므로, 평가 키는 중복을 합쳐 한 번만 요구한다(#446 모바일 lock).
+  // reviewed 입력·identity·qualified closure를 검증한 뒤 reference graph의 평가 키만 요구한다.
   // advisory 키는 source 번호를 포함하므로 서로 다른 권고가 합쳐지지 않는다.
   const required = [
     ...new Set(
-      snapshot.flatMap((pkg) =>
+      policy.packages.flatMap((pkg) =>
         pkg.via.map((via) => `${pkg.name}:${via.source ?? via.dependency}`),
       ),
     ),

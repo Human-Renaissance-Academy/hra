@@ -1,17 +1,57 @@
 /** audit 네트워크/형식 실패와 새 advisory·설치 경로·만료·P1의 차단을 검증한다. */
 import { test } from "node:test";
+import { createHash } from "node:crypto";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import {
+  readFileSync,
+  writeFileSync,
+  mkdtempSync,
+  mkdirSync,
+  rmSync,
+  readdirSync,
+  existsSync,
+} from "node:fs";
+import { spawnSync } from "node:child_process";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import {
   dependencyDiagnosticLines,
   dependencySnapshot,
   lockRegistryViolations,
-  verifyDependencyPolicy,
+  verifyDependencyPolicy as verifyV3DependencyPolicy,
 } from "../_lib/dependency-policy.mjs";
 const policy = JSON.parse(
   readFileSync(new URL("../../security/dependency-triage.json", import.meta.url)),
 );
 const lock = JSON.parse(readFileSync(new URL("../../package-lock.json", import.meta.url)));
+
+// 기존 변이 matrix는 synthetic 입력을 명시 재승인해 binding 뒤의 gate를 검사합니다.
+// binding 자체의 실패는 아래 v3 direct-API case가 재승인 없이 따로 검사합니다.
+function verifyReviewedFixture(report, fixtureLock, fixturePolicy, today) {
+  const mobileManifest = readFileSync(new URL("../../apps/mobile/package.json", import.meta.url));
+  const isMobile =
+    (fixtureLock.packages[""]?.name ?? fixtureLock.name) === JSON.parse(mobileManifest).name;
+  const manifestBytes = isMobile
+    ? mobileManifest
+    : readFileSync(new URL("../../package.json", import.meta.url));
+  const lockBytes = Buffer.from(JSON.stringify(fixtureLock));
+  const reviewed = structuredClone(fixturePolicy);
+  if (reviewed && typeof reviewed === "object") {
+    const digest = (bytes) => createHash("sha256").update(bytes).digest("hex");
+    reviewed.manifestBinding = {
+      algorithm: "sha256",
+      input: "package-json.raw-bytes-v1",
+      digest: digest(manifestBytes),
+    };
+    reviewed.lockBinding = {
+      algorithm: "sha256",
+      input: "package-lock.raw-bytes-v1",
+      digest: digest(lockBytes),
+    };
+  }
+  return verifyV3DependencyPolicy(report, { manifestBytes, lockBytes }, reviewed, today);
+}
+
 // 실제 원장의 독립 nodes/via 집합으로 npm 응답을 복원한다. 공격 조건 설명은 응답 metadata와 분리한다.
 const audit = {
   auditReportVersion: 2,
@@ -31,7 +71,7 @@ const audit = {
   ),
 };
 test("현재 정확한 집합은 package 수와 advisory 수를 구분한다", () => {
-  assert.deepEqual(verifyDependencyPolicy(audit, lock, policy, "2026-11-17"), {
+  assert.deepEqual(verifyReviewedFixture(audit, lock, policy, "2026-11-17"), {
     affectedPackages: 28,
     advisoryEntries: 3,
     p1: 0,
@@ -49,7 +89,7 @@ for (const [name, change] of [
   test(name + " 차단", () => {
     const input = structuredClone(audit);
     change(input);
-    assert.throws(() => verifyDependencyPolicy(input, lock, policy, "2026-11-17"), /DEPENDENCY_/);
+    assert.throws(() => verifyReviewedFixture(input, lock, policy, "2026-11-17"), /DEPENDENCY_/);
   });
 for (const [name, change] of [
   ["미분류", (p) => p.assessments.pop()],
@@ -61,19 +101,19 @@ for (const [name, change] of [
   test(name + " 원장 차단", () => {
     const input = structuredClone(policy);
     change(input);
-    assert.throws(() => verifyDependencyPolicy(audit, lock, input, "2026-11-17"), /DEPENDENCY_/);
+    assert.throws(() => verifyReviewedFixture(audit, lock, input, "2026-11-17"), /DEPENDENCY_/);
   });
 // 가장 이른 재검토 기한(2026-11-25) 다음 날부터는 실제 원장 전체가 만료로 차단된다.
 test("검토 기한 만료 차단", () =>
   assert.throws(
-    () => verifyDependencyPolicy(audit, lock, policy, "2026-11-26"),
+    () => verifyReviewedFixture(audit, lock, policy, "2026-11-26"),
     /DEPENDENCY_TRIAGE_INVALID/,
   ));
 test("lock 설치 버전 변경 차단", () => {
   const input = structuredClone(lock);
   input.packages["node_modules/@esbuild-kit/core-utils/node_modules/esbuild"].version = "99.0.0";
   assert.throws(
-    () => verifyDependencyPolicy(audit, input, policy, "2026-11-17"),
+    () => verifyReviewedFixture(audit, input, policy, "2026-11-17"),
     /DEPENDENCY_TRIAGE_CHANGED/,
   );
 });
@@ -85,7 +125,7 @@ test("깨진 audit는 정상 0건이 아니다", () => {
 // 감사 응답의 제목·영향 범위는 원문에 민감한 문자열이 섞일 수 있으므로 진단에는 식별자만 남긴다.
 function capturePolicyError(inputAudit, inputLock = lock) {
   try {
-    verifyDependencyPolicy(inputAudit, inputLock, policy, "2026-11-17");
+    verifyReviewedFixture(inputAudit, inputLock, policy, "2026-11-17");
   } catch (error) {
     return error;
   }
@@ -129,7 +169,7 @@ test("권고 제거는 철회로 단정하지 않고 원장에만 남은 ID를 �
   input.packages.find((item) => item.name === "esbuild").via.push(removed);
   let error;
   try {
-    verifyDependencyPolicy(audit, lock, input, "2026-11-17");
+    verifyReviewedFixture(audit, lock, input, "2026-11-17");
   } catch (caught) {
     error = caught;
   }
@@ -177,7 +217,7 @@ test("새 설치 경로는 경로만 진단하고 실제 lock 일치 검사를 �
   ]);
   assert.doesNotMatch(JSON.stringify(error.diagnostics), /99\.0\.0/);
   assert.throws(
-    () => verifyDependencyPolicy(input, lock, policy, "2026-11-17"),
+    () => verifyReviewedFixture(input, lock, policy, "2026-11-17"),
     /DEPENDENCY_LOCK_MISMATCH/,
   );
 });
@@ -216,7 +256,7 @@ test("손상된 원장은 원문 없이 실패 차단한다", () => {
   input.packages[0].via = [null];
   let error;
   try {
-    verifyDependencyPolicy(audit, lock, input, "2026-11-17");
+    verifyReviewedFixture(audit, lock, input, "2026-11-17");
   } catch (caught) {
     error = caught;
   }
@@ -224,8 +264,8 @@ test("손상된 원장은 원문 없이 실패 차단한다", () => {
   assert.deepEqual(dependencyDiagnosticLines(error), ["DEPENDENCY_TRIAGE_CHANGED"]);
 });
 
-test("v2 원장은 44개 명시 판단과 4개 공유 사용 맥락을 유지한다", () => {
-  assert.equal(policy.schemaVersion, 2);
+test("v3 검토 정본은 44개 명시 판단과 4개 공유 사용 맥락을 유지한다", () => {
+  assert.equal(policy.schemaVersion, 3);
   assert.equal(policy.assessments.length, 44);
   assert.equal(policy.contexts.length, 4);
   assert.equal(new Set(policy.assessments.map((item) => item.contextId)).size, 4);
@@ -235,7 +275,7 @@ test("v2 원장은 44개 명시 판단과 4개 공유 사용 맥락을 유지한
       .sort((a, b) => a - b),
     [3, 4, 13, 24],
   );
-  assert.deepEqual(verifyDependencyPolicy(audit, lock, policy, "2026-11-17"), {
+  assert.deepEqual(verifyReviewedFixture(audit, lock, policy, "2026-11-17"), {
     affectedPackages: 28,
     advisoryEntries: 3,
     p1: 0,
@@ -263,14 +303,14 @@ for (const [name, change] of [
   test(name + " 차단", () => {
     const input = structuredClone(policy);
     change(input);
-    assert.throws(() => verifyDependencyPolicy(audit, lock, input, "2026-11-17"), /DEPENDENCY_/);
+    assert.throws(() => verifyReviewedFixture(audit, lock, input, "2026-11-17"), /DEPENDENCY_/);
   });
 
 test("구 schema v1은 새 검토 원장으로 자동 승인하지 않는다", () => {
   const input = structuredClone(policy);
   input.schemaVersion = 1;
   assert.throws(
-    () => verifyDependencyPolicy(audit, lock, input, "2026-11-17"),
+    () => verifyReviewedFixture(audit, lock, input, "2026-11-17"),
     /DEPENDENCY_TRIAGE_CHANGED/,
   );
 });
@@ -315,7 +355,7 @@ test("패치된 YAML 설치본은 임시 평가·공유 맥락 없이 확인한�
     policy.contexts.filter((item) => item.id === "shadcn-registry-cli"),
     [],
   );
-  assert.deepEqual(verifyDependencyPolicy(audit, lock, policy, "2026-11-17"), {
+  assert.deepEqual(verifyReviewedFixture(audit, lock, policy, "2026-11-17"), {
     affectedPackages: 28,
     advisoryEntries: 3,
     p1: 0,
@@ -368,18 +408,18 @@ test("수정본으로 해소한 권고는 제거하고 남은 평가는 위험�
   assert.deepEqual(Object.keys(deadlines).sort(), policy.contexts.map((item) => item.id).sort());
   assert.ok(policy.assessments.every((item) => item.reviewBy === deadlines[item.contextId]));
   // 새 권고를 검토한 UTC 날짜에도 통과하고, 새 최단 기한 다음 날부터는 다시 차단한다.
-  assert.deepEqual(verifyDependencyPolicy(audit, lock, policy, "2026-11-17"), {
+  assert.deepEqual(verifyReviewedFixture(audit, lock, policy, "2026-11-17"), {
     affectedPackages: 28,
     advisoryEntries: 3,
     p1: 0,
   });
-  assert.deepEqual(verifyDependencyPolicy(audit, lock, policy, "2026-11-25"), {
+  assert.deepEqual(verifyReviewedFixture(audit, lock, policy, "2026-11-25"), {
     affectedPackages: 28,
     advisoryEntries: 3,
     p1: 0,
   });
   assert.throws(
-    () => verifyDependencyPolicy(audit, lock, policy, "2026-11-26"),
+    () => verifyReviewedFixture(audit, lock, policy, "2026-11-26"),
     /DEPENDENCY_TRIAGE_INVALID/,
   );
 });
@@ -484,13 +524,13 @@ test("minimatch 권고는 사용면을 분리해 위험별 기한으로 재검�
 test("YAML 예외를 제거해도 다른 평가의 만료는 계속 차단한다", () => {
   const input = structuredClone(policy);
   input.assessments[0].reviewBy = "2026-11-17";
-  assert.deepEqual(verifyDependencyPolicy(audit, lock, input, "2026-11-17"), {
+  assert.deepEqual(verifyReviewedFixture(audit, lock, input, "2026-11-17"), {
     affectedPackages: 28,
     advisoryEntries: 3,
     p1: 0,
   });
   assert.throws(
-    () => verifyDependencyPolicy(audit, lock, input, "2026-11-18"),
+    () => verifyReviewedFixture(audit, lock, input, "2026-11-18"),
     /DEPENDENCY_TRIAGE_INVALID/,
   );
 });
@@ -538,7 +578,7 @@ test("Next ESLint의 새 picomatch 링크와 제거된 예전 링크를 구분�
     via: ["typescript-eslint"],
   };
   assert.throws(
-    () => verifyDependencyPolicy(input, lock, policy, "2026-11-17"),
+    () => verifyReviewedFixture(input, lock, policy, "2026-11-17"),
     /DEPENDENCY_TRIAGE_CHANGED/,
   );
 });
@@ -558,7 +598,7 @@ test("외부 피드 resolved는 주소 없이 설치 경로만 진단하고 차�
   );
   let thrown;
   try {
-    verifyDependencyPolicy(audit, input, policy, "2026-11-17");
+    verifyReviewedFixture(audit, input, policy, "2026-11-17");
   } catch (error) {
     thrown = error;
   }
@@ -604,42 +644,42 @@ test("상위 패키지 파생 range만 바뀌면 통과하지만 실제 권고·
   changedDerived.vulnerabilities["@expo/cli"].range += " || 999.0.0";
   changedDerived.vulnerabilities["@expo/fingerprint"].range += " || 999.0.0";
   assert.deepEqual(
-    verifyDependencyPolicy(changedDerived, mobileLock, mobilePolicy, "2026-11-17"),
+    verifyReviewedFixture(changedDerived, mobileLock, mobilePolicy, "2026-11-17"),
     mobileResult,
   );
 
   const severityChanged = structuredClone(changedDerived);
   severityChanged.vulnerabilities["@expo/cli"].severity = "critical";
   assert.throws(
-    () => verifyDependencyPolicy(severityChanged, mobileLock, mobilePolicy, "2026-11-17"),
+    () => verifyReviewedFixture(severityChanged, mobileLock, mobilePolicy, "2026-11-17"),
     /DEPENDENCY_TRIAGE_CHANGED/,
   );
 
   const advisoryChanged = structuredClone(changedDerived);
   advisoryChanged.vulnerabilities.minimatch.via[0].range += " || 999.0.0";
   assert.throws(
-    () => verifyDependencyPolicy(advisoryChanged, mobileLock, mobilePolicy, "2026-11-17"),
+    () => verifyReviewedFixture(advisoryChanged, mobileLock, mobilePolicy, "2026-11-17"),
     /DEPENDENCY_TRIAGE_CHANGED/,
   );
 
   const linkChanged = structuredClone(changedDerived);
   linkChanged.vulnerabilities["@expo/cli"].via.push("previously-unreviewed-dependency");
   assert.throws(
-    () => verifyDependencyPolicy(linkChanged, mobileLock, mobilePolicy, "2026-11-17"),
+    () => verifyReviewedFixture(linkChanged, mobileLock, mobilePolicy, "2026-11-17"),
     /DEPENDENCY_TRIAGE_CHANGED/,
   );
 
   const versionChanged = structuredClone(mobileLock);
   versionChanged.packages["node_modules/@expo/cli"].version = "99.0.0";
   assert.throws(
-    () => verifyDependencyPolicy(changedDerived, versionChanged, mobilePolicy, "2026-11-17"),
+    () => verifyReviewedFixture(changedDerived, versionChanged, mobilePolicy, "2026-11-17"),
     /DEPENDENCY_TRIAGE_CHANGED/,
   );
 
   const invalidRange = structuredClone(mobilePolicy);
   invalidRange.packages.find((item) => item.name === "@expo/cli").range = "";
   assert.throws(
-    () => verifyDependencyPolicy(mobileAudit, mobileLock, invalidRange, "2026-11-17"),
+    () => verifyReviewedFixture(mobileAudit, mobileLock, invalidRange, "2026-11-17"),
     /DEPENDENCY_TRIAGE_CHANGED/,
   );
 });
@@ -648,7 +688,7 @@ test("모바일 원장은 lock 스냅샷과 정확히 일치하고 모든 resolv
   assert.deepEqual(dependencySnapshot(mobileAudit, mobileLock), mobilePolicy.packages);
   assert.deepEqual(lockRegistryViolations(mobileLock), []);
   assert.deepEqual(
-    verifyDependencyPolicy(mobileAudit, mobileLock, mobilePolicy, "2026-11-17"),
+    verifyReviewedFixture(mobileAudit, mobileLock, mobilePolicy, "2026-11-17"),
     mobileResult,
   );
 });
@@ -715,7 +755,7 @@ test("모바일 node-forge는 보안 패치 1.4.3을 사용하며 새 권고가 
     ],
   };
   assert.throws(
-    () => verifyDependencyPolicy(changed, mobileLock, mobilePolicy, "2026-11-17"),
+    () => verifyReviewedFixture(changed, mobileLock, mobilePolicy, "2026-11-17"),
     /DEPENDENCY_TRIAGE_CHANGED/,
   );
 });
@@ -814,11 +854,11 @@ test("모바일 평가는 사용면 위험별 기한을 두고 가장 이른 기
     [],
   );
   assert.deepEqual(
-    verifyDependencyPolicy(mobileAudit, mobileLock, mobilePolicy, "2026-11-25"),
+    verifyReviewedFixture(mobileAudit, mobileLock, mobilePolicy, "2026-11-25"),
     mobileResult,
   );
   assert.throws(
-    () => verifyDependencyPolicy(mobileAudit, mobileLock, mobilePolicy, "2026-11-26"),
+    () => verifyReviewedFixture(mobileAudit, mobileLock, mobilePolicy, "2026-11-26"),
     /DEPENDENCY_TRIAGE_INVALID/,
   );
 });
@@ -849,7 +889,7 @@ test("모바일 원장은 정정 전 minimatch source와 빠진 경로를 남기
 
 // test-exclude처럼 같은 이름의 전이 패키지를 여러 버전으로 두면 npm이 같은 링크를 중복 보고한다. 최초 등록 때는
 // test-exclude의 glob 7·10이 그랬지만 2026-11-05 권고 정정으로 glob 7 경로가 빠져 현재 lock에는 중복이 없으므로 합성 입력으로 확인한다.
-test("중복 전이 링크는 평가 하나로 받되 링크 수 변경과 중복 평가는 계속 차단한다", () => {
+test("검증된 meta copy는 정본 평가 하나를 쓰되 중복 평가는 계속 차단한다", () => {
   assert.equal(
     mobilePolicy.assessments.filter((item) => item.key === "test-exclude:glob").length,
     1,
@@ -861,17 +901,17 @@ test("중복 전이 링크는 평가 하나로 받되 링크 수 변경과 중�
     .find((item) => item.name === "test-exclude")
     .via.unshift({ dependency: "glob" });
   assert.deepEqual(
-    verifyDependencyPolicy(audited, mobileLock, recorded, "2026-11-17"),
+    verifyReviewedFixture(audited, mobileLock, recorded, "2026-11-17"),
     mobileResult,
   );
-  assert.throws(
-    () => verifyDependencyPolicy(mobileAudit, mobileLock, recorded, "2026-11-17"),
-    /DEPENDENCY_TRIAGE_CHANGED/,
+  assert.deepEqual(
+    verifyReviewedFixture(mobileAudit, mobileLock, recorded, "2026-11-17"),
+    mobileResult,
   );
   const extra = structuredClone(recorded);
   extra.assessments.push({ ...extra.assessments.find((item) => item.key === "test-exclude:glob") });
   assert.throws(
-    () => verifyDependencyPolicy(audited, mobileLock, extra, "2026-11-17"),
+    () => verifyReviewedFixture(audited, mobileLock, extra, "2026-11-17"),
     /DEPENDENCY_TRIAGE_MISSING/,
   );
 });
@@ -886,14 +926,14 @@ test("모바일 lock의 새 권고·외부 피드 resolved는 차단한다", () 
     title: "SENSITIVE_SENTINEL",
   });
   assert.throws(
-    () => verifyDependencyPolicy(input, mobileLock, mobilePolicy, "2026-11-17"),
+    () => verifyReviewedFixture(input, mobileLock, mobilePolicy, "2026-11-17"),
     /DEPENDENCY_TRIAGE_CHANGED/,
   );
   const lockInput = structuredClone(mobileLock);
   lockInput.packages["node_modules/expo"].resolved =
     "https://registry.npmjs.org.evil.example/expo/-/expo-58.0.23.tgz";
   assert.throws(
-    () => verifyDependencyPolicy(mobileAudit, lockInput, mobilePolicy, "2026-11-17"),
+    () => verifyReviewedFixture(mobileAudit, lockInput, mobilePolicy, "2026-11-17"),
     /DEPENDENCY_LOCK_REGISTRY_INVALID/,
   );
 });
@@ -929,20 +969,20 @@ test("picomatch 새 leaf와 호스트 도구 전이 평가를 정확히 검토�
     const p1 = structuredClone(current);
     p1.assessments.find((item) => item.key === "picomatch:1247710").priority = "P1";
     assert.throws(
-      () => verifyDependencyPolicy(response, currentLock, p1, "2026-11-17"),
+      () => verifyReviewedFixture(response, currentLock, p1, "2026-11-17"),
       /DEPENDENCY_TRIAGE_INVALID/,
     );
   }
 });
 
-// 정확 집합에서 제외한 전이 링크가 다시 보고되면 자동 허용하지 않고 다시 차단합니다.
-test("제외한 두 mobile meta 링크의 재등장은 정확 비교로 차단한다", () => {
+// 과거 실제 두 표현도 입력 binding·identity·qualified closure 뒤에만 정본 평가를 사용합니다.
+test("정본에서 복원한 합성 mobile 표현은 qualified closure 뒤 정본 평가를 공유한다", () => {
   const included = structuredClone(mobileAudit);
   included.vulnerabilities["@react-native/community-cli-plugin"].via.push("metro");
   included.vulnerabilities["@react-native/metro-config"].via.push("metro-config");
-  assert.throws(
-    () => verifyDependencyPolicy(included, mobileLock, mobilePolicy, "2026-11-17"),
-    /DEPENDENCY_TRIAGE_CHANGED/,
+  assert.deepEqual(
+    verifyReviewedFixture(included, mobileLock, mobilePolicy, "2026-11-17"),
+    mobileResult,
   );
 });
 
@@ -953,14 +993,14 @@ for (const [label, mutate, category] of [
     (a) => a.vulnerabilities.esbuild.via.push(a.vulnerabilities.esbuild.via[0]),
     "ARRAY_COUNT",
   ],
-  ["package 순서", (a, p) => p.packages.reverse(), "ARRAY_ORDER"],
+  ["package 순서", (a, p) => p.packages.reverse(), "CANONICAL_PASS"],
   [
     "node 키 순서",
     (a, p) => {
       const n = p.packages[0].nodes[0];
       p.packages[0].nodes[0] = Object.fromEntries(Object.entries(n).reverse());
     },
-    "OBJECT_KEY_ORDER",
+    "CANONICAL_PASS",
   ],
   ["원문 임의 키", (a, p) => (p.packages[0]["SENSITIVE_SENTINEL/secret"] = true), "OBJECT_KEYS"],
   [
@@ -969,13 +1009,17 @@ for (const [label, mutate, category] of [
     "VALUE_OR_TYPE",
   ],
 ])
-  test(label + " literal 진단도 같은 실패를 유지한다", () => {
+  test(label + (category === "CANONICAL_PASS" ? " known canonical class" : " literal 차단"), () => {
     const input = structuredClone(audit);
     const recorded = structuredClone(policy);
     mutate(input, recorded);
+    if (category === "CANONICAL_PASS") {
+      assert.equal(verifyReviewedFixture(input, lock, recorded, "2026-11-17").p1, 0);
+      return;
+    }
     let error;
     try {
-      verifyDependencyPolicy(input, lock, recorded, "2026-11-17");
+      verifyReviewedFixture(input, lock, recorded, "2026-11-17");
     } catch (caught) {
       error = caught;
     }
@@ -1019,7 +1063,7 @@ for (const [label, key] of [
     node.version = { [key]: { title: "SENSITIVE_EXPECTED_VALUE" } };
     let error;
     try {
-      verifyDependencyPolicy(audit, inputLock, recorded, "2026-11-17");
+      verifyReviewedFixture(audit, inputLock, recorded, "2026-11-17");
     } catch (caught) {
       error = caught;
     }
@@ -1032,4 +1076,551 @@ for (const [label, key] of [
       lines.join("\n"),
       /SENSITIVE_PRIVATE_KEY|SENSITIVE_ACTUAL_VALUE|SENSITIVE_EXPECTED_VALUE/,
     );
+  });
+
+/** 승인된 v3 계약을 실제 정책과 분리한 가상 패키지로 검증합니다. */
+const fixtureHash = (bytes) => createHash("sha256").update(bytes).digest("hex");
+const fixtureAdvisory = {
+  source: 900001,
+  id: "GHSA-fixture-one",
+  severity: "high",
+  range: "<2",
+  title: "검증용 가상 권고",
+};
+function fixtureAudit(packages) {
+  return {
+    auditReportVersion: 2,
+    vulnerabilities: Object.fromEntries(
+      packages.map((pkg) => [
+        pkg.name,
+        {
+          name: pkg.name,
+          severity: pkg.severity,
+          range: pkg.range,
+          nodes: pkg.nodes.map((node) => node.path),
+          via: pkg.via.map((via) =>
+            "dependency" in via
+              ? via.dependency
+              : { ...via, url: "https://github.com/advisories/" + via.id },
+          ),
+        },
+      ]),
+    ),
+  };
+}
+// 이 함수는 synthetic fixture 승인값만 만듭니다. 실제 원장을 갱신하는 도구가 아닙니다.
+function bindFixture(fixture) {
+  fixture.inputs = {
+    manifestBytes: Buffer.from(JSON.stringify(fixture.manifest)),
+    lockBytes: Buffer.from(JSON.stringify(fixture.lock)),
+  };
+  fixture.policy.manifestBinding = {
+    algorithm: "sha256",
+    input: "package-json.raw-bytes-v1",
+    digest: fixtureHash(fixture.inputs.manifestBytes),
+  };
+  fixture.policy.lockBinding = {
+    algorithm: "sha256",
+    input: "package-lock.raw-bytes-v1",
+    digest: fixtureHash(fixture.inputs.lockBytes),
+  };
+}
+function identityFixture(
+  graph = { a: ["b"], b: [fixtureAdvisory], c: ["b"] },
+  project = "fixture-root",
+) {
+  const packages = Object.entries(graph).map(([name, via]) => ({
+    name,
+    severity: "high",
+    range: "*",
+    nodes: [{ path: "node_modules/" + name, version: "1.0.0", development: true }],
+    via: via.map((value) => (typeof value === "string" ? { dependency: value } : { ...value })),
+  }));
+  const fixture = {
+    manifest: { name: project, version: "1.0.0" },
+    lock: {
+      lockfileVersion: 3,
+      packages: Object.fromEntries([
+        ["", { name: project }],
+        ...packages.map((pkg) => [pkg.nodes[0].path, { version: "1.0.0", dev: true }]),
+      ]),
+    },
+    policy: {
+      schemaVersion: 3,
+      note: "격리된 가상 정책 검증 입력",
+      identityMode: "reviewed-input-origin-leaf-v1",
+      packages,
+      contexts: [
+        {
+          id: "fixture-context",
+          usedApi: "실제 운영과 무관한 가상 API 검증입니다.",
+          callLocations: "임시 테스트 프로젝트 안에서만 사용합니다.",
+          assessment: "정책 검증을 위한 합성 판단문이며 운영 승인이 아닙니다.",
+          residualAssumptions: "실제 위험이나 날짜를 자동 변경하지 않습니다.",
+        },
+      ],
+      assessments: [
+        ...new Set(
+          packages.flatMap((pkg) =>
+            pkg.via.map((via) => `${pkg.name}:${via.source ?? via.dependency}`),
+          ),
+        ),
+      ].map((key) => ({
+        key,
+        contextId: "fixture-context",
+        priority: "P2",
+        owner: "repo-maintainers",
+        reviewedOn: "2000-01-01",
+        reviewBy: "9999-12-31",
+        attackCondition: "격리 fixture의 명시적 가상 조건이며 운영 위험 수용이 아닙니다.",
+      })),
+    },
+  };
+  bindFixture(fixture);
+  fixture.audit = fixtureAudit(packages);
+  return fixture;
+}
+const verifyFixture = (f) => verifyV3DependencyPolicy(f.audit, f.inputs, f.policy, "2026-11-17");
+test("v3는 reviewed Buffer pair와 전체 origin closure를 확인한다", () => {
+  assert.deepEqual(verifyFixture(identityFixture()), {
+    affectedPackages: 3,
+    advisoryEntries: 1,
+    p1: 0,
+  });
+});
+for (const [name, mutate] of [
+  [
+    "manifest 임의 필드",
+    (f) =>
+      (f.inputs.manifestBytes = Buffer.from(JSON.stringify({ ...f.manifest, metadata: true }))),
+  ],
+  [
+    "manifest LF",
+    (f) => (f.inputs.manifestBytes = Buffer.concat([f.inputs.manifestBytes, Buffer.from("\n")])),
+  ],
+  [
+    "manifest CRLF",
+    (f) => (f.inputs.manifestBytes = Buffer.concat([f.inputs.manifestBytes, Buffer.from("\r\n")])),
+  ],
+  [
+    "manifest dependency 종류",
+    (f) =>
+      (f.inputs.manifestBytes = Buffer.from(
+        JSON.stringify({ ...f.manifest, peerDependencies: { b: "^1" } }),
+      )),
+  ],
+  [
+    "manifest overrides",
+    (f) =>
+      (f.inputs.manifestBytes = Buffer.from(
+        JSON.stringify({ ...f.manifest, overrides: { b: "1" } }),
+      )),
+  ],
+  [
+    "manifest workspaces",
+    (f) =>
+      (f.inputs.manifestBytes = Buffer.from(JSON.stringify({ ...f.manifest, workspaces: ["x"] }))),
+  ],
+  [
+    "lock 같은 node의 새 relation",
+    (f) => {
+      const lock = structuredClone(f.lock);
+      lock.packages["node_modules/a"].dependencies = { c: "^1" };
+      f.inputs.lockBytes = Buffer.from(JSON.stringify(lock));
+    },
+  ],
+  [
+    "lock whitespace",
+    (f) => (f.inputs.lockBytes = Buffer.concat([f.inputs.lockBytes, Buffer.from(" ")])),
+  ],
+  ["manifest digest 누락", (f) => delete f.policy.manifestBinding],
+  ["lock digest 누락", (f) => delete f.policy.lockBinding],
+  ["알고리즘 변경", (f) => (f.policy.manifestBinding.algorithm = "unknown")],
+  ["입력 tag 변경", (f) => (f.policy.lockBinding.input = "unknown")],
+  ["parsed lock fallback", (f) => (f.inputs.lockBytes = f.lock)],
+  ["schema downgrade", (f) => (f.policy.schemaVersion = 2)],
+])
+  test("v3 " + name + " 차단", () => {
+    const f = identityFixture();
+    mutate(f);
+    assert.throws(() => verifyFixture(f), /DEPENDENCY_/);
+  });
+for (const [name, mutate] of [
+  ["같은 origin redundant path", (f) => f.audit.vulnerabilities.a.via.push("c")],
+  ["같은 meta string copy", (f) => f.audit.vulnerabilities.a.via.push("b")],
+  [
+    "raw key 순서",
+    (f) => {
+      f.audit.vulnerabilities = Object.fromEntries(
+        Object.entries(f.audit.vulnerabilities).reverse(),
+      );
+    },
+  ],
+  [
+    "reference container/list 순서",
+    (f) => {
+      f.policy.packages.reverse();
+      f.policy.packages = f.policy.packages.map((pkg) =>
+        Object.fromEntries(Object.entries(pkg).reverse()),
+      );
+    },
+  ],
+  [
+    "raw 기존 ignored metadata",
+    (f) => {
+      f.audit.vulnerabilities.b.isDirect = false;
+      f.audit.vulnerabilities.b.via[0].cwe = ["fixture"];
+    },
+  ],
+])
+  test("v3 " + name + " 승인 class", () => {
+    const f = identityFixture();
+    mutate(f);
+    assert.equal(verifyFixture(f).p1, 0);
+  });
+for (const [name, mutate] of [
+  [
+    "node exact copy 추가",
+    (f) => f.audit.vulnerabilities.b.nodes.push(f.audit.vulnerabilities.b.nodes[0]),
+  ],
+  [
+    "direct exact copy 추가",
+    (f) => f.audit.vulnerabilities.b.via.push(structuredClone(f.audit.vulnerabilities.b.via[0])),
+  ],
+  ["unknown reference package", (f) => (f.policy.packages[0]["SENSITIVE_PRIVATE_KEY"] = true)],
+  [
+    "unknown reference node",
+    (f) => (f.policy.packages[0].nodes[0]["SENSITIVE_PRIVATE_KEY"] = true),
+  ],
+  ["unknown reference via", (f) => (f.policy.packages[0].via[0]["SENSITIVE_PRIVATE_KEY"] = true)],
+  ["unknown graph target", (f) => (f.audit.vulnerabilities.a.via = ["missing"])],
+])
+  test("v3 " + name + " 실패와 비출력", () => {
+    const f = identityFixture();
+    mutate(f);
+    let error;
+    try {
+      verifyFixture(f);
+    } catch (caught) {
+      error = caught;
+    }
+    assert.match(error?.message ?? "", /^DEPENDENCY_/);
+    assert.doesNotMatch(dependencyDiagnosticLines(error).join("\n"), /SENSITIVE_PRIVATE_KEY/);
+  });
+test("v3 B/C 동일5의 origin-swap은 평가 재사용 전에 실패한다", () => {
+  const f = identityFixture({ a: ["b"], b: [fixtureAdvisory], c: [fixtureAdvisory] });
+  f.audit.vulnerabilities.a.via = ["c"];
+  assert.throws(() => verifyFixture(f), /DEPENDENCY_TRIAGE_CHANGED/);
+});
+test("v3 global union이 같아도 vertex별 qualified closure 변화는 실패한다", () => {
+  const other = { ...fixtureAdvisory, source: 900002, id: "GHSA-fixture-two" };
+  const f = identityFixture({ a: ["b"], b: [fixtureAdvisory], c: [other] });
+  f.audit.vulnerabilities.a.via = ["c"];
+  assert.throws(() => verifyFixture(f), /DEPENDENCY_TRIAGE_CHANGED/);
+});
+for (const graph of [{ a: ["b"], b: ["a"] }, { a: ["a"] }, { a: ["missing"] }])
+  test("v3 leaf 없는 cycle/dangling reference는 평가가 있어도 실패한다", () => {
+    assert.throws(() => verifyFixture(identityFixture(graph)), /DEPENDENCY_TRIAGE_CHANGED/);
+  });
+test("v3 leaf 있는 cycle은 종료하고 qualified origin을 보존한다", () => {
+  const f = identityFixture({ a: ["b"], b: [fixtureAdvisory, "a"] });
+  assert.equal(verifyFixture(f).affectedPackages, 2);
+});
+test("v3 정상 empty graph와 error report는 구별한다", () => {
+  const f = identityFixture({});
+  f.policy.contexts = [];
+  assert.equal(verifyFixture(f).affectedPackages, 0);
+  f.audit.error = { summary: "SENSITIVE_SENTINEL" };
+  assert.throws(() => verifyFixture(f), /DEPENDENCY_REPORT_INVALID/);
+});
+test("v3 opaque version 내부 키 순서는 canonicalize하지 않는다", () => {
+  const f = identityFixture();
+  const node = f.policy.packages.find((p) => p.name === "b").nodes[0];
+  f.lock.packages[node.path].version = { first: 1, second: 2 };
+  node.version = { first: 1, second: 2 };
+  bindFixture(f);
+  assert.equal(verifyFixture(f).p1, 0);
+  node.version = { second: 2, first: 1 };
+  assert.throws(() => verifyFixture(f), /DEPENDENCY_TRIAGE_CHANGED/);
+});
+
+test("v3 새 reference key는 closure가 같아도 평가를 자동 만들지 않는다", () => {
+  const f = identityFixture();
+  f.policy.packages.find((p) => p.name === "a").via.push({ dependency: "c" });
+  assert.throws(() => verifyFixture(f), /DEPENDENCY_TRIAGE_MISSING/);
+});
+
+/** 실제 CLI를 격리 mirror에서 구동하며 실제 저장소 파일이나 registry를 변경하지 않습니다. */
+function runIdentityCli(mode = "normal", args = []) {
+  const directory = mkdtempSync(join(tmpdir(), "hra-identity-fixture-"));
+  try {
+    mkdirSync(join(directory, "scripts/_lib"), { recursive: true });
+    mkdirSync(join(directory, "security"));
+    mkdirSync(join(directory, "apps/mobile"), { recursive: true });
+    mkdirSync(join(directory, "bin"));
+    for (const file of ["verify-dependencies.mjs", "_lib/dependency-policy.mjs"])
+      writeFileSync(
+        join(directory, "scripts", file),
+        readFileSync(new URL("../" + file, import.meta.url)),
+      );
+    const projects = {};
+    for (const target of ["root", "mobile"]) {
+      const f = identityFixture(undefined, "fixture-" + target);
+      const prefix = target === "root" ? directory : join(directory, "apps/mobile");
+      projects[target] = {
+        manifest: join(prefix, "package.json"),
+        lock: join(prefix, "package-lock.json"),
+        policy: join(
+          directory,
+          "security",
+          target === "root" ? "dependency-triage.json" : "mobile-dependency-triage.json",
+        ),
+        audit: f.audit,
+      };
+      writeFileSync(projects[target].manifest, f.inputs.manifestBytes);
+      writeFileSync(projects[target].lock, f.inputs.lockBytes);
+      writeFileSync(projects[target].policy, JSON.stringify(f.policy));
+    }
+    if (mode === "initial-capture-failure") rmSync(projects.root.manifest);
+    const counter = join(directory, "calls.txt");
+    const script = `#!${process.execPath}
+const fs=require('node:fs');const path=require('node:path');
+const projects=${JSON.stringify(projects)};const mode=${JSON.stringify(mode)};const counter=${JSON.stringify(counter)};
+const pkg=JSON.parse(fs.readFileSync('package.json','utf8'));const target=pkg.name.endsWith('mobile')?'mobile':'root';fs.appendFileSync(counter,target+'\\n');
+if(target==='root'){
+ const field=mode.startsWith('source-')?mode.slice(7):null;
+ if(['manifest','lock','policy'].includes(field))fs.appendFileSync(projects.root[field],'\\n');
+ if(mode==='temp-manifest')fs.appendFileSync(path.resolve('package.json'),'\\n');
+ if(mode==='temp-lock')fs.appendFileSync(path.resolve('package-lock.json'),'\\n');
+ if(mode==='same-new-bytes'){fs.appendFileSync(projects.root.manifest,'\\n');fs.appendFileSync(path.resolve('package.json'),'\\n');}
+ if(mode==='source-read-error')fs.unlinkSync(projects.root.policy);
+ if(mode==='temp-read-error')fs.unlinkSync(path.resolve('package-lock.json'));
+ if(mode==='signal')process.kill(process.ppid,'SIGTERM');
+}
+if(target==='mobile'&&mode==='late-root-policy')fs.appendFileSync(projects.root.policy,'\\n');
+if(mode==='network'){process.stdout.write(JSON.stringify({error:{summary:'SENSITIVE_SENTINEL'}}));process.exit(1);}
+if(mode==='malformed'){process.stdout.write('{SENSITIVE_SENTINEL');process.exit(1);}
+if(mode==='status2'){process.stdout.write('SENSITIVE_SENTINEL');process.exit(2);}
+process.stdout.write(JSON.stringify(projects[target].audit));process.exit(1);
+`;
+    writeFileSync(join(directory, "bin/npm"), script, { mode: 0o700 });
+    const result = spawnSync(
+      process.execPath,
+      [join(directory, "scripts/verify-dependencies.mjs"), ...args],
+      {
+        cwd: directory,
+        env: {
+          PATH: join(directory, "bin") + ":" + process.env.PATH,
+          HOME: directory,
+          TMPDIR: directory,
+        },
+        encoding: "utf8",
+        timeout: 15000,
+      },
+    );
+    const calls = existsSync(counter)
+      ? readFileSync(counter, "utf8").split("\n").filter(Boolean)
+      : [];
+    const leftovers = readdirSync(directory).filter((name) =>
+      name.startsWith("hra-dependency-audit-"),
+    );
+    return {
+      status: result.status,
+      stdout: result.stdout,
+      stderr: result.stderr,
+      calls,
+      leftovers,
+    };
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+}
+test("v3 CLI는 captured pair와 두 target final barrier 뒤에만 성공한다", () => {
+  const result = runIdentityCli();
+  assert.equal(result.status, 0);
+  assert.deepEqual(result.calls, ["root", "mobile"]);
+  assert.equal(result.stdout.trim().split("\n").length, 2);
+  assert.deepEqual(result.leftovers, []);
+});
+for (const mode of [
+  "source-manifest",
+  "source-lock",
+  "source-policy",
+  "temp-manifest",
+  "temp-lock",
+  "same-new-bytes",
+  "source-read-error",
+  "temp-read-error",
+  "late-root-policy",
+])
+  test("v3 CLI " + mode + "는 INPUT_CHANGED로 고정한다", () => {
+    const result = runIdentityCli(mode);
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /DEPENDENCY_INPUT_CHANGED/);
+    assert.deepEqual(result.calls, ["root", "mobile"]);
+    assert.doesNotMatch(result.stdout, /"target":"root"/);
+    assert.deepEqual(result.leftovers, []);
+  });
+test("v3 CLI 첫 target capture 실패도 mobile을 계속 검사한다", () => {
+  const result = runIdentityCli("initial-capture-failure");
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /DEPENDENCY_INPUT_CAPTURE_FAILED/);
+  assert.deepEqual(result.calls, ["mobile"]);
+  assert.match(result.stdout, /"target":"mobile"/);
+});
+test("v3 CLI argv guard는 capture 실패보다 먼저이며 npm을 실행하지 않는다", () => {
+  const result = runIdentityCli("initial-capture-failure", ["--unknown"]);
+  assert.equal(result.status, 1);
+  assert.equal(result.stderr, "DEPENDENCY_ARGUMENTS_INVALID\n");
+  assert.deepEqual(result.calls, []);
+});
+for (const [mode, code] of [
+  ["network", "DEPENDENCY_AUDIT_FAILED"],
+  ["malformed", "DEPENDENCY_CHECK_FAILED"],
+  ["status2", "DEPENDENCY_AUDIT_FAILED"],
+])
+  test("v3 CLI 기존 " + mode + " 실패 출력 계약을 유지한다", () => {
+    const result = runIdentityCli(mode);
+    assert.equal(result.status, 1);
+    assert.equal(result.stdout, "");
+    assert.match(result.stderr, new RegExp(code));
+    assert.doesNotMatch(result.stderr, /SENSITIVE_SENTINEL/);
+    assert.deepEqual(result.calls, ["root", "mobile"]);
+    assert.deepEqual(result.leftovers, []);
+  });
+test("v3 CLI signal은 실패로 끝나고 소유 temp를 정리한다", () => {
+  const result = runIdentityCli("signal");
+  assert.equal(result.status, 1);
+  assert.deepEqual(result.calls, ["root"]);
+  assert.equal(result.stdout, "");
+  assert.deepEqual(result.leftovers, []);
+});
+
+/** production label builder와 독립인 수기 tuple oracle입니다. */
+function fixtureOriginOracle(graph) {
+  const result = {};
+  for (const name of Object.keys(graph)) {
+    const pending = [name];
+    const seen = new Set();
+    const labels = new Set();
+    while (pending.length) {
+      const origin = pending.pop();
+      if (!(origin in graph)) return null;
+      if (seen.has(origin)) continue;
+      seen.add(origin);
+      for (const edge of graph[origin]) {
+        if (typeof edge === "string") pending.push(edge);
+        else
+          labels.add(
+            JSON.stringify([origin, edge.source, edge.id, edge.severity, edge.range, edge.title]),
+          );
+      }
+    }
+    if (!labels.size) return null;
+    result[name] = [...labels].sort();
+  }
+  return result;
+}
+test("v3 qualified oracle는 같은5의 B/C origin을 수기로 구별한다", () => {
+  const before = { a: ["b"], b: [fixtureAdvisory], c: [fixtureAdvisory] };
+  const after = { ...before, a: ["c"] };
+  assert.deepEqual(fixtureOriginOracle(before).a, [
+    JSON.stringify(["b", 900001, "GHSA-fixture-one", "high", "<2", "검증용 가상 권고"]),
+  ]);
+  assert.deepEqual(fixtureOriginOracle(after).a, [
+    JSON.stringify(["c", 900001, "GHSA-fixture-one", "high", "<2", "검증용 가상 권고"]),
+  ]);
+  const f = identityFixture(before);
+  f.audit = fixtureAudit(identityFixture(after).policy.packages);
+  assert.throws(() => verifyFixture(f), /DEPENDENCY_TRIAGE_CHANGED/);
+});
+test("v3 generic graph 변이는 독립 qualified oracle와 같은 gate 결과다", () => {
+  const graph = { a: ["b"], b: ["d"], c: [fixtureAdvisory], d: [fixtureAdvisory] };
+  const expected = fixtureOriginOracle(graph);
+  const names = Object.keys(graph);
+  let seed = 17;
+  for (let index = 0; index < 32; index++) {
+    seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
+    const from = names[seed % 4];
+    seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
+    const to = names[seed % 4];
+    const changed = structuredClone(graph);
+    if (index % 3 === 0) changed[from] = changed[from].filter((edge) => typeof edge !== "string");
+    else changed[from].push(to);
+    const f = identityFixture(graph);
+    f.audit = fixtureAudit(identityFixture(changed).policy.packages);
+    const actual = fixtureOriginOracle(changed);
+    const shouldPass =
+      actual !== null &&
+      Object.values(changed).every((edges) => edges.length > 0) &&
+      JSON.stringify(actual) === JSON.stringify(expected);
+    let passed;
+    try {
+      verifyFixture(f);
+      passed = true;
+    } catch (error) {
+      assert.match(error.message, /^DEPENDENCY_/);
+      passed = false;
+    }
+    assert.equal(passed, shouldPass, "seeded case " + index);
+  }
+});
+for (const [field, value] of [
+  ["source", 900003],
+  ["url", "https://github.com/advisories/GHSA-fixture-other"],
+  ["severity", "moderate"],
+  ["range", ">=2"],
+  ["title", "SENSITIVE_CHANGED_TITLE"],
+])
+  test("v3 current direct5 " + field + " 변화는 정확 차단한다", () => {
+    const f = identityFixture();
+    f.audit.vulnerabilities.b.via[0][field] = value;
+    let error;
+    try {
+      verifyFixture(f);
+    } catch (caught) {
+      error = caught;
+    }
+    assert.equal(error?.message, "DEPENDENCY_TRIAGE_CHANGED");
+    assert.doesNotMatch(dependencyDiagnosticLines(error).join("\n"), /SENSITIVE_CHANGED_TITLE/);
+  });
+for (const [name, mutate] of [
+  ["severity", (f) => (f.audit.vulnerabilities.b.severity = "critical")],
+  [
+    "version",
+    (f) => {
+      f.lock.packages["node_modules/b"].version = "2.0.0";
+      bindFixture(f);
+    },
+  ],
+  [
+    "development",
+    (f) => {
+      f.lock.packages["node_modules/b"].dev = false;
+      bindFixture(f);
+    },
+  ],
+  ["node path", (f) => (f.audit.vulnerabilities.b.nodes = ["node_modules/c"])],
+  ["node missing", (f) => (f.audit.vulnerabilities.b.nodes = ["node_modules/missing"])],
+])
+  test("v3 영향 " + name + "은 같은 leaf여도 실패한다", () => {
+    const f = identityFixture();
+    mutate(f);
+    assert.throws(() => verifyFixture(f), /DEPENDENCY_/);
+  });
+for (const [name, mutate] of [
+  ["P1", (f) => (f.policy.assessments[0].priority = "P1")],
+  ["expired", (f) => (f.policy.assessments[0].reviewBy = "2000-01-01")],
+  ["missing", (f) => f.policy.assessments.pop()],
+  ["unknown root field", (f) => (f.policy.extra = true)],
+  [
+    "via branch union",
+    (f) => (f.policy.packages.find((p) => p.name === "b").via[0].dependency = "a"),
+  ],
+  ["package empty range", (f) => (f.policy.packages[0].range = "")],
+])
+  test("v3 reference " + name + "을 동등성으로 우회하지 않는다", () => {
+    const f = identityFixture();
+    mutate(f);
+    assert.throws(() => verifyFixture(f), /DEPENDENCY_/);
   });
