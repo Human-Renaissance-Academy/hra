@@ -107,10 +107,13 @@ test("신규 권고는 패키지·권고 ID·source로만 진단하며 차단한
     { kind: "ADVISORY_ONLY_IN_AUDIT", package: "esbuild", id: "GHSA-test-1234", source: 999999 },
   ]);
   assert.doesNotMatch(JSON.stringify(error.diagnostics), /SENSITIVE_SENTINEL|<99/);
-  assert.deepEqual(dependencyDiagnosticLines(error), [
-    "DEPENDENCY_TRIAGE_CHANGED",
-    'DEPENDENCY_CHANGE {"kind":"ADVISORY_ONLY_IN_AUDIT","package":"esbuild","id":"GHSA-test-1234","source":999999}',
-  ]);
+  const lines = dependencyDiagnosticLines(error);
+  assert.equal(lines[0], "DEPENDENCY_TRIAGE_CHANGED");
+  const { literalDiff, ...identifier } = JSON.parse(lines[1].slice("DEPENDENCY_CHANGE ".length));
+  assert.deepEqual(identifier, error.diagnostics[0]);
+  assert.equal(literalDiff.category, "ARRAY_COUNT");
+  assert.match(literalDiff.fieldPath, /^\$\[\d+\]\.via$/);
+  assert.equal(literalDiff.actualCount, literalDiff.expectedCount + 1);
 });
 
 // 현재 원장의 패키지는 권고가 하나뿐이므로, 원장에만 권고를 하나 더 둬 audit에서 사라진 권고를 재현한다.
@@ -942,3 +945,91 @@ test("제외한 두 mobile meta 링크의 재등장은 정확 비교로 차단�
     /DEPENDENCY_TRIAGE_CHANGED/,
   );
 });
+
+// 진단만 늘리고 기존 exact 판정과20건 제한·민감값 비출력을 유지합니다.
+for (const [label, mutate, category] of [
+  [
+    "via 중복",
+    (a) => a.vulnerabilities.esbuild.via.push(a.vulnerabilities.esbuild.via[0]),
+    "ARRAY_COUNT",
+  ],
+  ["package 순서", (a, p) => p.packages.reverse(), "ARRAY_ORDER"],
+  [
+    "node 키 순서",
+    (a, p) => {
+      const n = p.packages[0].nodes[0];
+      p.packages[0].nodes[0] = Object.fromEntries(Object.entries(n).reverse());
+    },
+    "OBJECT_KEY_ORDER",
+  ],
+  ["원문 임의 키", (a, p) => (p.packages[0]["SENSITIVE_SENTINEL/secret"] = true), "OBJECT_KEYS"],
+  [
+    "원문 제목",
+    (a) => (a.vulnerabilities.esbuild.via[0].title = "SENSITIVE_SENTINEL"),
+    "VALUE_OR_TYPE",
+  ],
+])
+  test(label + " literal 진단도 같은 실패를 유지한다", () => {
+    const input = structuredClone(audit);
+    const recorded = structuredClone(policy);
+    mutate(input, recorded);
+    let error;
+    try {
+      verifyDependencyPolicy(input, lock, recorded, "2026-11-17");
+    } catch (caught) {
+      error = caught;
+    }
+    assert.equal(error?.message, "DEPENDENCY_TRIAGE_CHANGED");
+    const lines = dependencyDiagnosticLines(error);
+    const row = JSON.parse(lines[1].slice("DEPENDENCY_CHANGE ".length));
+    assert.equal(row.literalDiff.category, category);
+    assert.match(row.literalDiff.expectedHash, /^[a-f0-9]{64}$/);
+    assert.match(row.literalDiff.actualHash, /^[a-f0-9]{64}$/);
+    assert.doesNotMatch(lines.join("\n"), /SENSITIVE_SENTINEL|secret/);
+  });
+test("기존 Map 진단이 있어도 중복 literal 차이를 출력하고 외부 진단필드는 무시한다", () => {
+  const input = structuredClone(audit);
+  const first = Object.keys(input.vulnerabilities)[0];
+  input.vulnerabilities[first].via.push(input.vulnerabilities[first].via[0]);
+  input.vulnerabilities.esbuild.severity = "critical";
+  const error = capturePolicyError(input);
+  assert.ok(error.diagnostics.some((row) => row.kind === "PACKAGE_METADATA_CHANGED"));
+  assert.equal(
+    JSON.parse(dependencyDiagnosticLines(error)[1].slice("DEPENDENCY_CHANGE ".length)).literalDiff
+      .category,
+    "ARRAY_COUNT",
+  );
+  const forged = Object.assign(new Error("DEPENDENCY_TRIAGE_CHANGED"), {
+    diagnostics: [{ kind: "SNAPSHOT_CHANGED" }],
+    literalDifference: "SENSITIVE_SENTINEL",
+  });
+  assert.doesNotMatch(dependencyDiagnosticLines(forged).join("\n"), /SENSITIVE_SENTINEL/);
+});
+
+// lock.version의 기존 truthy 허용은 바꾸지 않고 객체 내부의 원문 키·값을 진단에서 숨깁니다.
+for (const [label, key] of [
+  ["비공개 키", "SENSITIVE_PRIVATE_KEY"],
+  ["구조와 같은 키", "nodes"],
+])
+  test(label + " version 객체는 opaque 진단이다", () => {
+    const inputLock = structuredClone(lock);
+    const recorded = structuredClone(policy);
+    const node = recorded.packages[0].nodes[0];
+    inputLock.packages[node.path].version = { [key]: { title: "SENSITIVE_ACTUAL_VALUE" } };
+    node.version = { [key]: { title: "SENSITIVE_EXPECTED_VALUE" } };
+    let error;
+    try {
+      verifyDependencyPolicy(audit, inputLock, recorded, "2026-11-17");
+    } catch (caught) {
+      error = caught;
+    }
+    assert.equal(error?.message, "DEPENDENCY_TRIAGE_CHANGED");
+    const lines = dependencyDiagnosticLines(error);
+    const detail = JSON.parse(lines[1].slice("DEPENDENCY_CHANGE ".length)).literalDiff;
+    assert.equal(detail.category, "VALUE_OR_TYPE");
+    assert.match(detail.fieldPath, /\.version$/);
+    assert.doesNotMatch(
+      lines.join("\n"),
+      /SENSITIVE_PRIVATE_KEY|SENSITIVE_ACTUAL_VALUE|SENSITIVE_EXPECTED_VALUE/,
+    );
+  });
