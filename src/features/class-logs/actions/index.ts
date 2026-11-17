@@ -30,7 +30,7 @@ import { auth } from "@/lib/auth";
 import { logServerError } from "@/lib/errors";
 import { buildImageAlt } from "@/lib/image-alt";
 import { cleanupCreatedBlobs, uploadBlobsForCreate } from "@/lib/create-with-blobs";
-import { validateImageUpload } from "@/lib/upload-file-validation";
+import { getValidatedImageFiles } from "@/lib/form-data-image-validation";
 import { uploadWithOwnedIntent } from "@/lib/server-upload-intent";
 import { findOwnedBlobUrls } from "@/lib/owned-blob";
 
@@ -43,7 +43,7 @@ const createRequestIdSchema = z.uuid("유효하지 않은 요청 ID입니다.");
 
 /**
  * 수업일지 작성/수정 시 입력 데이터 검증 규칙
- * 
+ *
  * 각 필드 설명:
  * - title: 수업일지 제목 (최소 1글자, 최대 300글자)
  * - content: 수업일지 내용 (최소 1글자, 제한 없음)
@@ -67,15 +67,13 @@ export type ClassLogActionState = {
   error?: string;
 };
 
-const maxImageSize = 10 * 1024 * 1024;
-
 /**
  * 수업일지 관련 페이지들의 캐시를 새로고침하는 헬퍼 함수
  *
  * 역할: 수업일지를 생성, 수정, 삭제할 때마다 호출되어
  *      관리자 페이지와 공개 페이지의 데이터를 최신으로 유지
- * 
- * 예시: 새 수업일지를 만들면 → 이 함수가 실행 → 
+ *
+ * 예시: 새 수업일지를 만들면 → 이 함수가 실행 →
  *      페이지를 방문한 사용자들이 새로운 내용을 볼 수 있음
  */
 const revalidateClassLogPaths = () => {
@@ -85,10 +83,10 @@ const revalidateClassLogPaths = () => {
 
 /**
  * 문자열을 날짜 객체로 변환하는 헬퍼 함수
- * 
+ *
  * 입력: "2025-03-24" 같은 날짜 문자열
  * 출력: JavaScript Date 객체 (또는 잘못된 형식이면 null)
- * 
+ *
  * 예시:
  * - toClassDate("2025-03-24") → Date 객체
  * - toClassDate("invalid") → null
@@ -105,10 +103,10 @@ const toClassDate = (value: string) => {
 
 /**
  * 폼에서 받은 반(cohort) ID를 처리하는 헬퍼 함수
- * 
+ *
  * 역할: 사용자가 "반 없음"을 선택했으면 빈 문자열("")으로 변환
  *      그 외에는 그대로 반의 ID를 반환
- * 
+ *
  * 예시:
  * - parseCohortId("550e8400-...") → "550e8400-..." (반 ID)
  * - parseCohortId("__none__") → "" (반 없음)
@@ -128,37 +126,25 @@ const normalizeFileName = (fileName: string) => {
   return sanitized || "class-log-image";
 };
 
-const getValidatedImageFiles = async (formData: FormData) => {
-  const files = formData
-    .getAll("images")
-    .filter((value): value is File => value instanceof File && value.size > 0);
-
-  const contentTypes: string[] = [];
-  for (const file of files) {
-    if (file.size > maxImageSize) {
-      return { error: "사진 파일은 10MB 이하여야 합니다." } as const;
-    }
-    const contentType = await validateImageUpload(file);
-    if (!contentType) {
-      return {
-        error: "사진은 JPG, PNG, WEBP, GIF 형식만 업로드할 수 있습니다.",
-      } as const;
-    }
-    contentTypes.push(contentType);
-  }
-
-  return { files, contentTypes } as const;
-};
-
 /** 첨부 업로드 후 글과 이미지 메타를 한 DB 배치에 저장합니다. */
 async function createClassLogRecord(
   id: string,
-  values: { title: string; content: string; classDate: Date; cohortId: string | null; authorId: string },
+  values: {
+    title: string;
+    content: string;
+    classDate: Date;
+    cohortId: string | null;
+    authorId: string;
+  },
   files: File[],
   contentTypes: string[],
 ): Promise<void> {
   // 동일한 폼의 재제출이면 업로드 전에 기존 글을 확인합니다.
-  const [alreadyCreated] = await db.select({ id: classLogs.id }).from(classLogs).where(eq(classLogs.id, id)).limit(1);
+  const [alreadyCreated] = await db
+    .select({ id: classLogs.id })
+    .from(classLogs)
+    .where(eq(classLogs.id, id))
+    .limit(1);
   if (alreadyCreated) return;
 
   const urls = await uploadBlobsForCreate(
@@ -176,27 +162,37 @@ async function createClassLogRecord(
     if (urls.length > 0) {
       await db.batch([
         insertLog,
-        db.insert(classLogImages).values(urls.map((url, index) => ({
-          classLogId: id,
-          url,
-          alt: buildImageAlt(values.title, index + 1),
-          order: index,
-        }))),
+        db.insert(classLogImages).values(
+          urls.map((url, index) => ({
+            classLogId: id,
+            url,
+            alt: buildImageAlt(values.title, index + 1),
+            order: index,
+          })),
+        ),
       ]);
     } else {
       await insertLog;
     }
   } catch (error) {
     // DB 결과를 다시 확인해 커밋 후 응답만 유실된 경우 참조 중인 Blob을 보존합니다.
-    const [existing] = await db.select({ id: classLogs.id }).from(classLogs).where(eq(classLogs.id, id)).limit(1);
+    const [existing] = await db
+      .select({ id: classLogs.id })
+      .from(classLogs)
+      .where(eq(classLogs.id, id))
+      .limit(1);
     if (!existing) {
       await cleanupCreatedBlobs(urls);
       throw error;
     }
     // 같은 키의 동시 제출은 다른 URL을 올릴 수 있으므로 이미 참조된 URL만 보존합니다.
-    const referenced = urls.length > 0
-      ? await db.select({ url: classLogImages.url }).from(classLogImages).where(eq(classLogImages.classLogId, id))
-      : [];
+    const referenced =
+      urls.length > 0
+        ? await db
+            .select({ url: classLogImages.url })
+            .from(classLogImages)
+            .where(eq(classLogImages.classLogId, id))
+        : [];
     const referencedUrls = new Set(referenced.map((row) => row.url));
     await cleanupCreatedBlobs(urls.filter((url) => !referencedUrls.has(url)));
   }
@@ -266,13 +262,18 @@ export async function createClassLogAsMember(formData: FormData): Promise<ClassL
   }
 
   try {
-    await createClassLogRecord(requestId.data, {
-      title: parsed.data.title,
-      content: parsed.data.content,
-      classDate,
-      cohortId: parsed.data.cohortId || null,
-      authorId: session.user.id,
-    }, validatedImages.files, validatedImages.contentTypes);
+    await createClassLogRecord(
+      requestId.data,
+      {
+        title: parsed.data.title,
+        content: parsed.data.content,
+        classDate,
+        cohortId: parsed.data.cohortId || null,
+        authorId: session.user.id,
+      },
+      validatedImages.files,
+      validatedImages.contentTypes,
+    );
 
     revalidateClassLogPaths();
     revalidatePath("/resources/class-logs");
@@ -343,13 +344,18 @@ export async function createClassLog(formData: FormData): Promise<ClassLogAction
   }
 
   try {
-    await createClassLogRecord(requestId.data, {
-      title: parsed.data.title,
-      content: parsed.data.content,
-      classDate,
-      cohortId: parsed.data.cohortId || null,
-      authorId: session.user.id,
-    }, validatedImages.files, validatedImages.contentTypes);
+    await createClassLogRecord(
+      requestId.data,
+      {
+        title: parsed.data.title,
+        content: parsed.data.content,
+        classDate,
+        cohortId: parsed.data.cohortId || null,
+        authorId: session.user.id,
+      },
+      validatedImages.files,
+      validatedImages.contentTypes,
+    );
 
     revalidateClassLogPaths();
 
@@ -367,7 +373,6 @@ export async function createClassLog(formData: FormData): Promise<ClassLogAction
   }
 }
 
-
 /**
  * ✏️ 기존 수업일지를 수정하는 서버 액션
  *
@@ -381,10 +386,7 @@ export async function createClassLog(formData: FormData): Promise<ClassLogAction
  * 입력: id (수정할 수업일지 ID), formData (새로운 내용)
  * 출력: { success: true } (성공) 또는 { success: false, error: "에러메시지" } (실패)
  */
-export async function updateClassLog(
-  id: string,
-  formData: FormData
-): Promise<ClassLogActionState> {
+export async function updateClassLog(id: string, formData: FormData): Promise<ClassLogActionState> {
   // 1️⃣ 관리자 권한 확인
   const session = await requireAdmin();
 
@@ -476,8 +478,11 @@ export async function updateClassLog(
       for (let i = 0; i < validatedImages.files.length; i += 1) {
         const file = validatedImages.files[i];
         const url = await uploadWithOwnedIntent({
-          namespace: "class-logs", extension: file.name.split(".").pop()?.toLowerCase() ?? "",
-          body: file, contentType: validatedImages.contentTypes[i], uploadedById: session.user.id,
+          namespace: "class-logs",
+          extension: file.name.split(".").pop()?.toLowerCase() ?? "",
+          body: file,
+          contentType: validatedImages.contentTypes[i],
+          uploadedById: session.user.id,
           protectedResource: true,
         });
         newRows.push({
@@ -548,7 +553,7 @@ export async function updateClassLog(
  *
  * 입력: id (삭제할 수업일지 ID)
  * 출력: { success: true } (성공) 또는 { success: false, error: "에러메시지" } (실패)
- * 
+ *
  * ⚠️ 주의: 이 작업은 되돌릴 수 없습니다! 삭제하면 완전히 사라집니다.
  */
 export async function deleteClassLog(id: string): Promise<ClassLogActionState> {

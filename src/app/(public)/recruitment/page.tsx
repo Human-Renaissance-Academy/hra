@@ -4,6 +4,7 @@
  * 접수 채널 영역(#412)은 홈페이지 지원서(공개 양식)와 외부 지원서(구글폼)의 상태를
  * `deriveIntakeChannels` 순수 함수로 계산해 함께 보여주며, 공통 헤더 `지원하기`의 목적지입니다.
  */
+import { getSiteConfig } from "@/lib/site-url";
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
@@ -26,7 +27,8 @@ export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "모집안내",
-  description: "HRA 신규 기수 모집 일정과 지원 절차를 안내합니다. 인간 르네상스를 함께 꿈꿀 청년들을 기다립니다.",
+  description:
+    "HRA 신규 기수 모집 일정과 지원 절차를 안내합니다. 인간 르네상스를 함께 꿈꿀 청년들을 기다립니다.",
   // 사이트 기준 주소(metadataBase)와 합쳐 이 페이지의 대표 주소(canonical)가 됩니다.
   alternates: { canonical: "/recruitment" },
 };
@@ -137,7 +139,9 @@ export default async function RecruitmentPage() {
             <CardContent className="flex flex-col gap-6 py-6 md:flex-row md:items-center md:justify-between">
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
-                  <h2 className="text-xl font-semibold text-[#1a1a1a] md:text-2xl">{activeCohort.name}</h2>
+                  <h2 className="text-xl font-semibold text-[#1a1a1a] md:text-2xl">
+                    {activeCohort.name}
+                  </h2>
                   <Badge variant="outline" className={status.className}>
                     {status.label}
                   </Badge>
@@ -150,11 +154,10 @@ export default async function RecruitmentPage() {
                   {startDate && endDate
                     ? `${startDate} ~ ${endDate}`
                     : startDate
-                    ? `${startDate}부터`
-                    : "모집 일정 추후 공지"}
+                      ? `${startDate}부터`
+                      : "모집 일정 추후 공지"}
                 </div>
               </div>
-
             </CardContent>
           </Card>
         )}
@@ -167,7 +170,10 @@ export default async function RecruitmentPage() {
         className="mt-10 scroll-mt-24 space-y-4 sm:mt-16"
       >
         <div className="space-y-2">
-          <h2 id={`${APPLY_CHANNELS_ANCHOR}-title`} className="text-xl font-semibold text-[#1a1a1a] md:text-2xl">
+          <h2
+            id={`${APPLY_CHANNELS_ANCHOR}-title`}
+            className="text-xl font-semibold text-[#1a1a1a] md:text-2xl"
+          >
             지원서 접수 채널
           </h2>
           <p className="text-sm text-[#666666] md:text-base">{channels.headline}</p>
@@ -179,37 +185,52 @@ export default async function RecruitmentPage() {
       </section>
 
       {/* 포스터 + 세부 안내 섹션 */}
-      {(overview.posterImageUrl || overview.detailsMarkdown) && (() => {
-        const layout = overview.posterLayout ?? "right";
-        const posterUrl = overview.posterImageUrl;
-        const showPoster = !!posterUrl && layout !== "none";
+      {(overview.posterImageUrl || overview.detailsMarkdown) &&
+        (() => {
+          const layout = overview.posterLayout ?? "right";
+          const posterUrl = overview.posterImageUrl;
+          const showPoster = !!posterUrl && layout !== "none";
 
-        const posterEl = showPoster && posterUrl ? (
-          <div className="shrink-0 lg:w-80 xl:w-96">
-            <Image
-              src={posterUrl}
-              alt="모집 포스터"
-              width={600}
-              height={840}
-              className="w-full rounded-2xl shadow-[var(--shadow-soft)]"
-            />
-          </div>
-        ) : null;
+          const posterEl =
+            showPoster && posterUrl ? (
+              <div className="shrink-0 lg:w-80 xl:w-96">
+                <Image
+                  src={posterUrl}
+                  alt="모집 포스터"
+                  width={600}
+                  height={840}
+                  className="w-full rounded-2xl shadow-[var(--shadow-soft)]"
+                />
+              </div>
+            ) : null;
 
-        const detailsEl = overview.detailsMarkdown ? (
-          <div className="lg:flex-1">
-            <MarkdownViewer body={overview.detailsMarkdown} />
-          </div>
-        ) : null;
-
-        return (
-          <section className="mt-16 sm:mt-24">
-            <div className="flex flex-col gap-8 lg:flex-row lg:items-start lg:gap-12">
-              {layout === "left" ? <>{posterEl}{detailsEl}</> : <>{detailsEl}{posterEl}</>}
+          const detailsEl = overview.detailsMarkdown ? (
+            <div className="lg:flex-1">
+              <MarkdownViewer
+                trustedSiteOrigin={getSiteConfig().url}
+                body={overview.detailsMarkdown}
+              />
             </div>
-          </section>
-        );
-      })()}
+          ) : null;
+
+          return (
+            <section className="mt-16 sm:mt-24">
+              <div className="flex flex-col gap-8 lg:flex-row lg:items-start lg:gap-12">
+                {layout === "left" ? (
+                  <>
+                    {posterEl}
+                    {detailsEl}
+                  </>
+                ) : (
+                  <>
+                    {detailsEl}
+                    {posterEl}
+                  </>
+                )}
+              </div>
+            </section>
+          );
+        })()}
     </div>
   );
 }

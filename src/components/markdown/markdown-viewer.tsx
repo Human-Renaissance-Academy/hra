@@ -3,7 +3,7 @@ import remarkGfm from "remark-gfm";
 import rehypeRaw from "rehype-raw";
 import rehypeSanitize from "rehype-sanitize";
 import { cn } from "@/lib/utils";
-import { isAllowedImageUrl, sanitizeSchema } from "@/lib/markdown/sanitize";
+import { resolveAllowedImageSrc, sanitizeSchema } from "@/lib/markdown/sanitize";
 
 /**
  * 마크다운 본문 뷰어
@@ -11,7 +11,7 @@ import { isAllowedImageUrl, sanitizeSchema } from "@/lib/markdown/sanitize";
  * - 입력: DB에 저장된 마크다운 문자열.
  * - 렌더링: react-markdown + remark-gfm(표/체크박스/취소선) + rehype-sanitize.
  * - 보안: src/lib/markdown/sanitize.ts 의 화이트리스트 정책(sanitizeSchema)을 사용하고,
- *         이미지는 추가로 isAllowedImageUrl 호스트 검사를 통과해야만 렌더링한다.
+ *         이미지는 추가로 resolveAllowedImageSrc origin 검사를 통과해야만 렌더링한다.
  * - 스타일: Tailwind Typography(`prose`)에 사이트 디자인 토큰을 덧씌운다.
  * - 공개 페이지는 서버에서 실행하고, 클라이언트 에디터·인쇄 뷰가 import하면 해당 클라이언트 그래프에 포함된다.
  *   상태·이벤트·브라우저 API가 없는 공용 모듈이므로 별도 클라이언트 경계나 server-only 표시는 두지 않는다.
@@ -19,9 +19,10 @@ import { isAllowedImageUrl, sanitizeSchema } from "@/lib/markdown/sanitize";
 interface MarkdownViewerProps {
   body: string;
   className?: string;
+  trustedSiteOrigin?: string;
 }
 
-export function MarkdownViewer({ body, className }: MarkdownViewerProps) {
+export function MarkdownViewer({ body, className, trustedSiteOrigin }: MarkdownViewerProps) {
   return (
     <article
       className={cn(
@@ -48,7 +49,7 @@ export function MarkdownViewer({ body, className }: MarkdownViewerProps) {
         "prose-code:before:content-none prose-code:after:content-none",
         "prose-pre:overflow-x-auto prose-pre:rounded-xl prose-pre:bg-gray-900 prose-pre:p-4 prose-pre:text-gray-100 prose-pre:shadow-sm",
         "prose-hr:border-[#D9D9D9]",
-        className
+        className,
       )}
     >
       <ReactMarkdown
@@ -57,9 +58,10 @@ export function MarkdownViewer({ body, className }: MarkdownViewerProps) {
         components={{
           img: ({ src, alt, ...rest }) => {
             const url = typeof src === "string" ? src : "";
-            if (!isAllowedImageUrl(url)) return null;
+            const allowedSrc = resolveAllowedImageSrc(url, trustedSiteOrigin);
+            if (allowedSrc === null) return null;
             // eslint-disable-next-line @next/next/no-img-element
-            return <img src={url} alt={alt ?? ""} {...rest} />;
+            return <img src={allowedSrc} alt={alt ?? ""} {...rest} />;
           },
         }}
       >

@@ -27,7 +27,8 @@ import { users, weeklyTextImages, weeklyTexts } from "@/lib/db/schema";
 import { logServerError } from "@/lib/errors";
 import { buildImageAlt } from "@/lib/image-alt";
 import { cleanupCreatedBlobs, uploadBlobsForCreate } from "@/lib/create-with-blobs";
-import { validateDocumentUpload, validateImageUpload } from "@/lib/upload-file-validation";
+import { validateDocumentUpload } from "@/lib/upload-file-validation";
+import { getValidatedImageFiles } from "@/lib/form-data-image-validation";
 import { validateResourceUploadReference } from "@/lib/resource-upload-server";
 import { validateWeeklyTextImageReference } from "@/lib/weekly-text-image-upload";
 import { resourceBlobAccess } from "@/lib/resource-download";
@@ -66,19 +67,16 @@ const weeklyTextFormSchema = z.object({
 
 const maxFileSize = 30 * 1024 * 1024;
 
-const maxImageSize = 10 * 1024 * 1024;
-
 // 직접 업로드 URL은 원장이 현재 참조를 확인한 후 정리합니다. 같은 URL이 다른
 // 콘텐츠에 재사용됐거나 DB 응답이 불확실할 때 즉시 삭제하면 정상 파일을 잃을 수 있습니다.
-const isDirectWeeklyUpload = (url: string) => resourceBlobAccess(url) !== null &&
+const isDirectWeeklyUpload = (url: string) =>
+  resourceBlobAccess(url) !== null &&
   (new URL(url).pathname.startsWith("/resource-uploads/weekly-texts/") ||
-   new URL(url).pathname.startsWith("/weekly-text-images/"));
+    new URL(url).pathname.startsWith("/weekly-text-images/"));
 
 const normalizeFileName = (fileName: string) => {
   const trimmed = fileName.trim();
-  const sanitized = trimmed
-    .replace(/\s+/g, "-")
-    .replace(/[^a-zA-Z0-9._-]/g, "");
+  const sanitized = trimmed.replace(/\s+/g, "-").replace(/[^a-zA-Z0-9._-]/g, "");
 
   // 한글로만 된 파일명은 위 정리 후 ".pdf" 처럼 확장자만 남는다. 이름 부분이 비면 기본 이름을 붙여
   // 저장 경로가 점으로 시작하지 않게 한다 (확장자로 파일 형식을 추정하는 동작을 보존).
@@ -116,35 +114,16 @@ const getValidatedFile = async (value: FormDataEntryValue | null) => {
   return { file: value, contentType } as const;
 };
 
-const getValidatedImageFiles = async (formData: FormData) => {
-  const files = formData
-    .getAll("images")
-    .filter((value): value is File => value instanceof File && value.size > 0);
-
-  const contentTypes: string[] = [];
-  for (const file of files) {
-    if (file.size > maxImageSize) {
-      return { error: "사진 파일은 10MB 이하여야 합니다." } as const;
-    }
-    const contentType = await validateImageUpload(file);
-    if (!contentType) {
-      return {
-        error: "사진은 JPG, PNG, WEBP, GIF 형식만 업로드할 수 있습니다.",
-      } as const;
-    }
-    contentTypes.push(contentType);
-  }
-
-  return { files, contentTypes } as const;
-};
-
 const revalidateWeeklyTextPaths = () => {
   revalidatePath("/admin/resources/weekly-texts");
   revalidatePath("/resources");
   revalidatePath("/resources/weekly-texts");
 };
 
-const createWeeklyTextRecord = async (formData: FormData, uploadedById: string): Promise<WeeklyTextActionState> => {
+const createWeeklyTextRecord = async (
+  formData: FormData,
+  uploadedById: string,
+): Promise<WeeklyTextActionState> => {
   const rawTextType = formData.get("textType");
   const parsedTextType =
     typeof rawTextType === "string" && rawTextType !== "__none__" && rawTextType !== ""
@@ -176,10 +155,12 @@ const createWeeklyTextRecord = async (formData: FormData, uploadedById: string):
 
   const directUrl = formData.get("uploadedFileUrl");
   const directName = formData.get("uploadedFileName");
-  if (validatedFile.file && directUrl) return { success: false, error: "파일 정보를 확인할 수 없습니다." };
-  const directFile = typeof directUrl === "string" && typeof directName === "string"
-    ? await validateResourceUploadReference("weekly-texts", uploadedById, directUrl, directName)
-    : null;
+  if (validatedFile.file && directUrl)
+    return { success: false, error: "파일 정보를 확인할 수 없습니다." };
+  const directFile =
+    typeof directUrl === "string" && typeof directName === "string"
+      ? await validateResourceUploadReference("weekly-texts", uploadedById, directUrl, directName)
+      : null;
   if (directUrl && (!directFile || "error" in directFile)) {
     return { success: false, error: "업로드한 파일을 확인할 수 없습니다." };
   }
@@ -200,9 +181,7 @@ const createWeeklyTextRecord = async (formData: FormData, uploadedById: string):
   }
 
   // 업로드 전에 날짜를 확인해야 잘못된 입력으로 미참조 파일이 남지 않습니다.
-  const classDateObj = parsed.data.classDate
-    ? new Date(`${parsed.data.classDate}T00:00:00`)
-    : null;
+  const classDateObj = parsed.data.classDate ? new Date(`${parsed.data.classDate}T00:00:00`) : null;
   if (classDateObj && Number.isNaN(classDateObj.getTime())) {
     return { success: false, error: "유효한 수업 날짜를 입력해주세요." };
   }
@@ -227,24 +206,36 @@ const createWeeklyTextRecord = async (formData: FormData, uploadedById: string):
     } catch {
       return { success: false, error: "사진 정보를 확인할 수 없습니다." };
     }
-    const checks = await Promise.all(directImageUrls.map((url) =>
-      validateWeeklyTextImageReference(requestId.data, uploadedById, url)));
-    if (checks.some((valid) => !valid)) return { success: false, error: "업로드한 사진을 확인할 수 없습니다." };
+    const checks = await Promise.all(
+      directImageUrls.map((url) =>
+        validateWeeklyTextImageReference(requestId.data, uploadedById, url),
+      ),
+    );
+    if (checks.some((valid) => !valid))
+      return { success: false, error: "업로드한 사진을 확인할 수 없습니다." };
   }
 
   try {
     const id = requestId.data;
-    const [alreadyCreated] = await db.select({ id: weeklyTexts.id }).from(weeklyTexts).where(eq(weeklyTexts.id, id)).limit(1);
+    const [alreadyCreated] = await db
+      .select({ id: weeklyTexts.id })
+      .from(weeklyTexts)
+      .where(eq(weeklyTexts.id, id))
+      .limit(1);
     if (alreadyCreated) {
       return { success: true };
     }
     const documentFile = validatedFile.file;
     const uploads = [
-      ...(documentFile ? [{
-        pathname: `weekly-texts/${normalizeFileName(documentFile.name)}`,
-        file: documentFile,
-        contentType: validatedFile.contentType,
-      }] : []),
+      ...(documentFile
+        ? [
+            {
+              pathname: `weekly-texts/${normalizeFileName(documentFile.name)}`,
+              file: documentFile,
+              contentType: validatedFile.contentType,
+            },
+          ]
+        : []),
       ...validatedImages.files.map((file, index) => ({
         pathname: `weekly-texts/images/${id}-${index}-${normalizeFileName(file.name)}`,
         file,
@@ -259,7 +250,10 @@ const createWeeklyTextRecord = async (formData: FormData, uploadedById: string):
         id,
         title: parsed.data.title,
         fileUrl: directFile && "url" in directFile ? directFile.url : documentFile ? urls[0] : "",
-        fileName: directFile && "fileName" in directFile ? directFile.fileName : documentFile?.name ?? null,
+        fileName:
+          directFile && "fileName" in directFile
+            ? directFile.fileName
+            : (documentFile?.name ?? null),
         body: parsed.data.body ?? null,
         cohortId: parsed.data.cohortId || null,
         textType: parsed.data.textType ?? null,
@@ -268,27 +262,37 @@ const createWeeklyTextRecord = async (formData: FormData, uploadedById: string):
       if (imageUrls.length > 0) {
         await db.batch([
           insertText,
-          db.insert(weeklyTextImages).values(imageUrls.map((url, index) => ({
-            weeklyTextId: id,
-            url,
-            alt: buildImageAlt(parsed.data.title, index + 1),
-            order: index,
-          }))),
+          db.insert(weeklyTextImages).values(
+            imageUrls.map((url, index) => ({
+              weeklyTextId: id,
+              url,
+              alt: buildImageAlt(parsed.data.title, index + 1),
+              order: index,
+            })),
+          ),
         ]);
       } else {
         await insertText;
       }
     } catch (error) {
       // 배치 응답이 유실됐어도 실제 글이 남았다면 첨부 파일을 삭제하지 않습니다.
-      const [existing] = await db.select({ fileUrl: weeklyTexts.fileUrl }).from(weeklyTexts).where(eq(weeklyTexts.id, id)).limit(1);
+      const [existing] = await db
+        .select({ fileUrl: weeklyTexts.fileUrl })
+        .from(weeklyTexts)
+        .where(eq(weeklyTexts.id, id))
+        .limit(1);
       if (!existing) {
         await cleanupCreatedBlobs(urls);
         throw error;
       }
       // 같은 요청이 동시에 도착해 생긴 미참조 업로드만 정리합니다.
-      const referencedImages = imageUrls.length > 0
-        ? await db.select({ url: weeklyTextImages.url }).from(weeklyTextImages).where(eq(weeklyTextImages.weeklyTextId, id))
-        : [];
+      const referencedImages =
+        imageUrls.length > 0
+          ? await db
+              .select({ url: weeklyTextImages.url })
+              .from(weeklyTextImages)
+              .where(eq(weeklyTextImages.weeklyTextId, id))
+          : [];
       const referencedUrls = new Set([existing.fileUrl, ...referencedImages.map((row) => row.url)]);
       await cleanupCreatedBlobs(urls.filter((url) => !referencedUrls.has(url)));
     }
@@ -318,9 +322,7 @@ export async function createWeeklyText(formData: FormData): Promise<WeeklyTextAc
   return createWeeklyTextRecord(formData, session.user.id);
 }
 
-export async function createWeeklyTextAsMember(
-  formData: FormData,
-): Promise<WeeklyTextActionState> {
+export async function createWeeklyTextAsMember(formData: FormData): Promise<WeeklyTextActionState> {
   const session = await auth();
   const role = session?.user?.role;
 
@@ -357,7 +359,10 @@ export async function createWeeklyTextAsMember(
   return createWeeklyTextRecord(formData, session.user.id);
 }
 
-export async function updateWeeklyText(id: string, formData: FormData): Promise<WeeklyTextActionState> {
+export async function updateWeeklyText(
+  id: string,
+  formData: FormData,
+): Promise<WeeklyTextActionState> {
   const session = await requireAdmin();
 
   const parsedId = weeklyTextIdSchema.safeParse(id);
@@ -400,16 +405,25 @@ export async function updateWeeklyText(id: string, formData: FormData): Promise<
 
     const directUrl = formData.get("uploadedFileUrl");
     const directName = formData.get("uploadedFileName");
-    if (validatedFile.file && directUrl) return { success: false, error: "파일 정보를 확인할 수 없습니다." };
-    const directFile = typeof directUrl === "string" && typeof directName === "string"
-      ? await validateResourceUploadReference("weekly-texts", session.user.id, directUrl, directName)
-      : null;
+    if (validatedFile.file && directUrl)
+      return { success: false, error: "파일 정보를 확인할 수 없습니다." };
+    const directFile =
+      typeof directUrl === "string" && typeof directName === "string"
+        ? await validateResourceUploadReference(
+            "weekly-texts",
+            session.user.id,
+            directUrl,
+            directName,
+          )
+        : null;
     if (directUrl && (!directFile || "error" in directFile)) {
       return { success: false, error: "업로드한 파일을 확인할 수 없습니다." };
     }
 
     // 파일을 만들기 전에 날짜 검증을 끝내 불필요한 예약·객체 생성을 피합니다.
-    const classDateObj = parsed.data.classDate ? new Date(`${parsed.data.classDate}T00:00:00`) : null;
+    const classDateObj = parsed.data.classDate
+      ? new Date(`${parsed.data.classDate}T00:00:00`)
+      : null;
     if (classDateObj && Number.isNaN(classDateObj.getTime())) {
       return { success: false, error: "유효한 수업 날짜를 입력해주세요." };
     }
@@ -425,9 +439,12 @@ export async function updateWeeklyText(id: string, formData: FormData): Promise<
     if (validatedFile.file) {
       // UUID URL을 먼저 예약해 업로드 중단·응답 유실 이후에도 기존 원장으로 추적합니다.
       fileUrl = await uploadWithOwnedIntent({
-        namespace: "weekly-texts", extension: validatedFile.file.name.split(".").pop()?.toLowerCase() ?? "",
-        body: validatedFile.file, contentType: validatedFile.contentType,
-        uploadedById: session.user.id, protectedResource: true,
+        namespace: "weekly-texts",
+        extension: validatedFile.file.name.split(".").pop()?.toLowerCase() ?? "",
+        body: validatedFile.file,
+        contentType: validatedFile.contentType,
+        uploadedById: session.user.id,
+        protectedResource: true,
       });
       fileName = validatedFile.file.name;
     }
@@ -447,7 +464,11 @@ export async function updateWeeklyText(id: string, formData: FormData): Promise<
       .where(eq(weeklyTexts.id, parsedId.data));
 
     // 직접 업로드의 기존 보존 규칙에 더해 원장 등록된 서버·레거시 객체도 유지보수 GC에 맡깁니다.
-    if (fileUrl !== existing.fileUrl && existing.fileUrl && !isDirectWeeklyUpload(existing.fileUrl)) {
+    if (
+      fileUrl !== existing.fileUrl &&
+      existing.fileUrl &&
+      !isDirectWeeklyUpload(existing.fileUrl)
+    ) {
       const ownedUrls = await findOwnedBlobUrls([existing.fileUrl]);
       if (ownedUrls && !ownedUrls.has(existing.fileUrl)) await deleteBlobIfExists(existing.fileUrl);
     }
@@ -501,8 +522,9 @@ export async function deleteWeeklyText(id: string): Promise<WeeklyTextActionStat
     await db.delete(weeklyTexts).where(eq(weeklyTexts.id, parsedId.data));
 
     // 경로만으로 등록 여부를 추정하지 않습니다. 원장 조회 실패 시에도 삭제 전체를 건너뜁니다.
-    const legacyUrls = [target.fileUrl, ...attachedImageRows.map((img) => img.url)]
-      .filter((url) => url && !isDirectWeeklyUpload(url));
+    const legacyUrls = [target.fileUrl, ...attachedImageRows.map((img) => img.url)].filter(
+      (url) => url && !isDirectWeeklyUpload(url),
+    );
     const ownedUrls = await findOwnedBlobUrls(legacyUrls);
     if (ownedUrls) await cleanupCreatedBlobs(legacyUrls.filter((url) => !ownedUrls.has(url)));
 

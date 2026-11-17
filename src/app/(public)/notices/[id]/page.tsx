@@ -2,6 +2,7 @@
  * 공개 공지 상세 화면과 검색 미리보기 메타데이터를 구성합니다.
  * 공지 조회·이웃 글·조회수 저장은 공용 Application Service를 통해 처리합니다.
  */
+import { getSiteConfig } from "@/lib/site-url";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowLeft, ArrowRight, CalendarDays } from "lucide-react";
@@ -11,7 +12,11 @@ import { z } from "zod/v4";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { MarkdownViewer } from "@/components/markdown/markdown-viewer";
-import { getPublishedNoticeById, getPublishedNoticeDetail, incrementPublishedNoticeViewCount } from "@/features/notices/detail/service";
+import {
+  getPublishedNoticeById,
+  getPublishedNoticeDetail,
+  incrementPublishedNoticeViewCount,
+} from "@/features/notices/detail/service";
 import { formatKstDate } from "@/lib/date-time";
 import { logServerError } from "@/lib/errors";
 import { buildNoticeExcerpt } from "@/lib/notice-excerpt";
@@ -102,32 +107,44 @@ export default async function NoticeDetailPage({ params }: NoticePageProps) {
           </div>
         </CardHeader>
         <CardContent className="py-6 sm:py-10">
-          <MarkdownViewer body={notice.content} />
+          <MarkdownViewer trustedSiteOrigin={getSiteConfig().url} body={notice.content} />
         </CardContent>
       </Card>
 
       <div className="mt-8 flex items-center justify-between gap-4">
         {prevNotice ? (
-          <Link href={`/notices/${prevNotice.id}`} className="flex items-center gap-2 text-sm text-[#666666] hover:text-[#1a1a1a] transition-colors">
+          <Link
+            href={`/notices/${prevNotice.id}`}
+            className="flex items-center gap-2 text-sm text-[#666666] hover:text-[#1a1a1a] transition-colors"
+          >
             <ArrowLeft className="size-4" />
             <div>
               <div className="text-xs text-[#666666]">이전글</div>
               <div className="font-medium text-[#1a1a1a]">{prevNotice.title}</div>
             </div>
           </Link>
-        ) : <div />}
+        ) : (
+          <div />
+        )}
         <Link href="/notices">
-          <Button variant="outline" className="border-[#D9D9D9] text-[#666666] hover:bg-gray-50">목록</Button>
+          <Button variant="outline" className="border-[#D9D9D9] text-[#666666] hover:bg-gray-50">
+            목록
+          </Button>
         </Link>
         {nextNotice ? (
-          <Link href={`/notices/${nextNotice.id}`} className="flex items-center gap-2 text-sm text-[#666666] hover:text-[#1a1a1a] transition-colors text-right">
+          <Link
+            href={`/notices/${nextNotice.id}`}
+            className="flex items-center gap-2 text-sm text-[#666666] hover:text-[#1a1a1a] transition-colors text-right"
+          >
             <div>
               <div className="text-xs text-[#666666]">다음글</div>
               <div className="font-medium text-[#1a1a1a]">{nextNotice.title}</div>
             </div>
             <ArrowRight className="size-4" />
           </Link>
-        ) : <div />}
+        ) : (
+          <div />
+        )}
       </div>
     </div>
   );

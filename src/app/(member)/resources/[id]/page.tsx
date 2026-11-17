@@ -1,3 +1,4 @@
+import { getSiteConfig } from "@/lib/site-url";
 import type { Metadata } from "next";
 import { formatKstDate as formatDate } from "@/lib/date-time";
 import Image from "next/image";
@@ -107,7 +108,7 @@ export default async function ResourceDetailPage({ params }: ResourceDetailPageP
         <CardContent className="space-y-8 py-6 sm:py-10">
           <section className="space-y-3">
             <h2 className="text-base font-semibold text-[#1a1a1a]">내용</h2>
-            <MarkdownViewer body={log.content} />
+            <MarkdownViewer trustedSiteOrigin={getSiteConfig().url} body={log.content} />
           </section>
 
           {images.length > 0 ? (
