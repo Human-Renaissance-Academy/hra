@@ -64,5 +64,11 @@
     "rule": "SOURCE_EMAIL",
     "sha256": "ae273bb5d4ed96c09c161bb6d64bea59a7367ea28bf9ceb22cc102a3bdf40884",
     "reason": "Gmail 주소의 점을 별칭으로 합치지 않고 대소문자만 바꾸는 입력·예상값으로 직접 작성한 합성 표본입니다."
+  },
+  {
+    "file": "tests/unit/preview-boundary.test.ts",
+    "rule": "SOURCE_SESSION_COOKIE",
+    "sha256": "3a2378a7870699333c2bc5ea2528bad13c1d884736edf0a7e914f681ad831343",
+    "reason": "Preview가 세션 해석 전에 거부하는지 검사하기 위해 단위 테스트에 직접 쓴 검증 불가능한 고정 합성 쿠키이며 실제 발급 세션이 아닙니다."
   }
 ]
