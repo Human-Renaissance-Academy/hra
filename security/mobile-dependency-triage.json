@@ -642,9 +642,6 @@
       "via": [
         {
           "dependency": "@react-native/metro-config"
-        },
-        {
-          "dependency": "metro"
         }
       ]
     },
@@ -699,9 +696,6 @@
       "via": [
         {
           "dependency": "@react-native/metro-babel-transformer"
-        },
-        {
-          "dependency": "metro-config"
         }
       ]
     },
@@ -3488,15 +3482,6 @@
       "attackCondition": "@react-native/community-cli-plugin:@react-native/metro-config — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
     },
     {
-      "key": "@react-native/community-cli-plugin:metro",
-      "contextId": "mobile-picomatch-host-tools",
-      "priority": "P2",
-      "owner": "repo-maintainers",
-      "reviewedOn": "2026-11-17",
-      "reviewBy": "2026-11-25",
-      "attackCondition": "@react-native/community-cli-plugin:metro — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
-    },
-    {
       "key": "@react-native/jest-preset:babel-jest",
       "contextId": "mobile-picomatch-host-tools",
       "priority": "P2",
@@ -3531,15 +3516,6 @@
       "reviewedOn": "2026-11-17",
       "reviewBy": "2026-11-25",
       "attackCondition": "@react-native/metro-config:@react-native/metro-babel-transformer — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
-    },
-    {
-      "key": "@react-native/metro-config:metro-config",
-      "contextId": "mobile-picomatch-host-tools",
-      "priority": "P2",
-      "owner": "repo-maintainers",
-      "reviewedOn": "2026-11-17",
-      "reviewBy": "2026-11-25",
-      "attackCondition": "@react-native/metro-config:metro-config — 현재 확인한 Expo CLI/Metro·Jest/린트/codegen 호스트 도구로 이어지는 감사 전이 링크다. 프로젝트/의존 package metadata·CLI/테스트 설정에 공격자 제어 반복 extglob 패턴과 매칭 문자열이 함께 들어가면 export·개발 서버·CI 작업 DoS가 남는다. runtime/peer 표시만으로 기기 노출 유무를 단정하지 않으며 앱 원격 데이터를 패턴으로 컴파일하는 직접 경로는 확인하지 않았다."
     },
     {
       "key": "@react-native/virtualized-lists:react-native",

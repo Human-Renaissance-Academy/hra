@@ -785,7 +785,7 @@ test("모바일 평가는 사용면 위험별 기한을 두고 가장 이른 기
     mobilePolicy.contexts.map((item) => item.id).sort(),
     Object.keys(deadlines).sort(),
   );
-  assert.equal(mobilePolicy.assessments.length, 225);
+  assert.equal(mobilePolicy.assessments.length, 223);
   assert.equal(
     mobilePolicy.assessments.filter((item) => item.contextId !== "mobile-picomatch-host-tools")
       .length,
@@ -899,7 +899,7 @@ test("모바일 lock의 새 권고·외부 피드 resolved는 차단한다", () 
 test("picomatch 새 leaf와 호스트 도구 전이 평가를 정확히 검토한다", () => {
   for (const [current, response, currentLock, contextId, count, nodeCount] of [
     [policy, audit, lock, "tooling-picomatch-extglob", 24, 5],
-    [mobilePolicy, mobileAudit, mobileLock, "mobile-picomatch-host-tools", 173, 26],
+    [mobilePolicy, mobileAudit, mobileLock, "mobile-picomatch-host-tools", 171, 26],
   ]) {
     const leaf = current.packages.find((item) => item.name === "picomatch");
     assert.deepEqual(leaf.via, [
@@ -930,4 +930,15 @@ test("picomatch 새 leaf와 호스트 도구 전이 평가를 정확히 검토�
       /DEPENDENCY_TRIAGE_INVALID/,
     );
   }
+});
+
+// 정확 집합에서 제외한 전이 링크가 다시 보고되면 자동 허용하지 않고 다시 차단합니다.
+test("제외한 두 mobile meta 링크의 재등장은 정확 비교로 차단한다", () => {
+  const included = structuredClone(mobileAudit);
+  included.vulnerabilities["@react-native/community-cli-plugin"].via.push("metro");
+  included.vulnerabilities["@react-native/metro-config"].via.push("metro-config");
+  assert.throws(
+    () => verifyDependencyPolicy(included, mobileLock, mobilePolicy, "2026-11-17"),
+    /DEPENDENCY_TRIAGE_CHANGED/,
+  );
 });
