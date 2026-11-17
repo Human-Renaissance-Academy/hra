@@ -90,10 +90,11 @@ const nextConfig: NextConfig = {
     ];
   },
   experimental: {
-    // 가이드북·주차별텍스트 파일 업로드 최대 30MB + 멀티파트 헤더 여유분 포함해 32MB로 설정.
-    // 기본값(1MB)에서는 대부분의 파일이 413 에러로 차단된다.
+    // 원본 문서는 Blob으로 직접 전송하고, Action은 메타데이터 중심으로 받습니다.
+    // 기수 폼의 4MiB 이미지와 multipart 여유를 포함해 전체 본문은 5MiB로 제한합니다.
+    // 이 상한은 파일별 검증과 별개이며 큰 raw 호환 요청은 액션 실행 전에 거부됩니다.
     serverActions: {
-      bodySizeLimit: "32mb",
+      bodySizeLimit: "5mb",
     },
   },
   // Preview의 원격·동적 이미지 대상을 허용하지 않습니다. 자동 추가된 빌드 정적 패턴은 배포에서 확인합니다.
