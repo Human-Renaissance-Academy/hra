@@ -23,6 +23,16 @@ Vercel이 Preview 배포를 자동 생성할 수 있으나, 배포 성공 자체
 
 **2026-11-14 읽기 점검:** 비운영 전용 DB/Blob 자격증명이 설정되지 않은 상태에서 Preview 홈 HTTP 500이 관찰됐다(#279). 이는 안전한 테스트 환경을 갖췄다는 증거가 아니다. 운영 DB를 Preview에 넣어 해결하지 않는다. Preview를 계속 사용하면 안전한 Test DB와 합성 스키마를 준비하거나 의존 기능을 비활성화해야 한다.
 
+### 자원이 없는 Preview의 거부 계약 (#279)
+
+코드는 정확히 `VERCEL=1`과 `VERCEL_ENV=preview`가 함께 있을 때 HTML·RSC·Server Action을 인증 조회 전에 한국어 HTTP 503으로 거부한다. API 전체(health·cron·인증·파일 포함)와 이미지 최적화는 **Preview 빌드에서 생성한** `beforeFiles` rewrite가 순수 503 Route로 보낸다. 응답은 `no-store`, `noindex, nofollow`이며 로그인 쿠키나 복구 시각을 발급하지 않는다. 이 Preview는 기능 검수 환경이 아니다.
+
+허용한 읽기는 정확한 `/robots.txt`, `/sitemap.xml`의 GET/HEAD와 현재 Proxy matcher가 제외하는 실제 정적 자원·빌드 chunk다. robots는 전체 차단, sitemap은 비어 있다. metadata의 POST는 503이다. 임의 이미지 확장자나 원격 이미지 최적화는 안전 읽기 예외가 아니다. 프레임워크의 잘못된 경로·미지원 메서드 거부는 앱 503과 구분한다. Next 16.4.5의 고정 `/globe.svg` POST fixture는 내부 405 렌더에서 plain 500으로 끝나며, Local·Production 대조와 요청별 앱 함수 실행·외부 IO 0을 별도로 검사한다. 또한 고정 `/api/health`·`/resources`의 TRACE는 Next Request adapter가 handler 전에 거부하면서 plain 500을 반환한다. 정확한 미지원 메서드 진단과 Local·Production 대조·외부 IO 0을 함께 검사한다. 이 한정된 프레임워크 거부를 일반 500 허용이나 지원하는 일곱 메서드의 503 성공으로 확대 해석하지 않는다. 이 장치는 네트워크 수신·Next의 본문 clone/buffer 자체가 없다는 보장이 아니다.
+
+**운영 적용 게이트:** 일반 `next start`의 rewrite 검증만으로 Vercel을 승인하지 않는다. Vercel adapter/minimalMode의 routing artifact와 실제 Preview 응답에서 API·이미지 선행 거부, 최종 시스템 환경값·override·secret scope를 별도로 확인한다. `VERCEL_ENV=preview`만 있는 로컬은 이 차단 대상이 아니다. 빌드와 실행의 tuple이 달라지면 API rewrite와 Proxy 조건이 불일치하므로 **prebuilt 재사용·Preview artifact의 Production 승격을 지원하지 않는다. 대상 환경에서 다시 빌드한다.**
+
+코드 503와 별개로 Preview에 Production DB·Blob·OAuth·세션·Cron 자격정보를 공급하지 않는다. 실제 플랫폼 경계가 불명확하거나 업무 handler·외부 IO가 실행되면 Preview 공유·기능 검증을 중단하고, 권한 있는 운영자가 선택적 Preview 중단 또는 독립 정적 안내 배포를 적용한다. 이 문서의 코드 계약은 실제 Vercel 격리·#279 종료를 선언하지 않는다.
+
 ## 2. DB와 파일
 
 - **Production DB가 유일한 실사용 정본**이다. 개발·PR에서 운영 데이터를 조회·수정하거나 데이터베이스를 복제해 테스트하지 않는다.
