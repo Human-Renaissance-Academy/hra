@@ -2,7 +2,7 @@
 
 이 문서는 개발한 웹사이트를 검증 환경에 올리고, 확인한 버전을 운영에 반영하는 순서를 설명합니다. **배포 성공은 코드가 실행된다는 뜻이며, DB 변경·파일 보호·로그인 설정까지 완료됐다는 뜻은 아닙니다.**
 
-운영 환경 분리의 **목표 정책**은 [환경 분리 및 배포 전략](developer/environment-strategy.md)을 따릅니다. 목표 흐름은 **Local Development → PR Preview/Test → Production**이며, 모바일 내부 테스트 목적이 생기기 전에는 상시 Staging을 기본으로 두지 않습니다. Preview/Test는 Production DB·Blob·개인정보·운영 세션과 토큰을 사용하지 않아야 합니다. **현재 Preview 자원과 환경변수의 실제 격리 상태는 미확인입니다.** Preview 사용 전 [환경 분리 #279](https://github.com/Human-Renaissance-Academy/hra-website/issues/279)에 따라 연결 대상을 확인합니다.
+**현재 정책(2026-11-16): 1인 저관여 운영이므로 Production 웹 1곳만 상시 운영합니다.** 기본 흐름은 **로컬 개발 → GitHub CI → main → Production**이며 Vercel PR Preview는 필요할 때만 사용합니다. 별도 Dev/QA/Staging 서버·PR별 DB/Blob은 기본 요구가 아닙니다. 상세 기준은 [환경 전략](developer/environment-strategy.md)과 [1인 운영 체크리스트](operations/solo-operations.md)를 참고하세요. Preview가 자동 생성되더라도 Production DB·Blob·개인정보·운영 자격증명을 사용하면 안 되며, 실제 자원 격리는 아직 검증이 필요합니다([#279](https://github.com/Human-Renaissance-Academy/hra-website/issues/279)).
 
 문서 확인일: 2026-10-18. 현재 앱은 저장소 루트의 `package.json`과 `src/`를 사용합니다. `apps/web` 전환과 자동 migration gate는 [환경 분리 및 배포 전략](developer/environment-strategy.md)의 목표이며, 실제 구축 여부는 각각의 이슈에서 확인합니다.
 
@@ -16,19 +16,20 @@
 
 환경변수에는 비밀값도 있고 공개 가능한 값도 있습니다. 이름에 `NEXT_PUBLIC_`이 붙은 값은 브라우저에 전달될 수 있으므로 비밀번호나 토큰을 넣지 않습니다. 용어가 낯설면 [용어집](getting-started/glossary.md)을 함께 보세요.
 
-## 2. 배포할 환경부터 선택하기
+## 2. 환경을 최소화하기
 
-기본 운영 정책은 **Local Development → PR Preview/Test → Production**입니다. 자세한 결정과 아직 구현할 작업은 [환경 전략](developer/environment-strategy.md)에 있습니다.
+기본 정책은 **Local Development + GitHub CI + Production(상시 1개)**이며 Preview는 선택 사항입니다.
 
-| 환경 | 목적 | 사용 데이터·저장소 |
+| 구분 | 사용 시점 | 데이터·파일 |
 | --- | --- | --- |
-| Local Development | 내 컴퓨터에서 개발 | 개인 개발 DB와 합성 테스트 자료 |
-| PR Preview/Test | 변경 사항을 함께 확인 | Production과 분리된 테스트 DB·Blob |
-| Production | 실제 사용자에게 제공 | 운영 DB·운영 저장소 |
+| Local Development | 개인 PC에서 개발 | 개발용 Neon DB/격리 테스트, 합성 자료 |
+| GitHub CI | PR/main 변경 자동 검증 | 운영 자격 증명 없는 격리 테스트 DB |
+| PR Preview | 브라우저·통합 확인이 꼭 필요할 때만 | Production과 다른 **공용 Test DB/Blob** 또는 DB·업로드·OAuth 기능 비활성 |
+| Production | 실제 운영 | 운영 Neon·공개/비공개 Blob·인증 설정 |
 
-같은 설정값을 모든 환경에 체크해서 복사하지 않습니다. Preview가 운영 DB나 운영 파일을 사용하지 않는지 먼저 확인합니다. 현재 앱의 DB 드라이버는 Neon HTTP 방식입니다. 일반 로컬 PostgreSQL 주소만 넣어 앱을 실행할 수 있다고 가정하지 말고, 앱 개발용 Neon DB 또는 문서화된 테스트 실행기를 사용합니다.
+Preview 배포가 준비됐다는 이유만으로 운영 자원을 연결하지 않습니다. 2026-11-14 기존 Preview 홈페이지에서 HTTP 500이 관찰됐으며 운영 DB 연결로 해결하지 않습니다. Preview를 사용할 때 비운영 데이터 준비 여부부터 확인합니다([#279](https://github.com/Human-Renaissance-Academy/hra-website/issues/279)).
 
-**정상 결과:** 배포 대상과 DB·파일 저장소가 같은 환경을 가리킵니다. **대상이 불분명하면:** 배포나 초기화 명령을 실행하기 전에 프로젝트 담당자에게 환경 구성을 확인합니다.
+앱은 Neon HTTP 드라이버를 사용하므로 일반 로컬 PostgreSQL URL을 앱에 그대로 넣으면 동작한다고 가정하지 않습니다. 로컬 PostgreSQL은 지원된 격리 테스트 경로에 사용합니다. 환경별 비밀값이 불분명하면 업로드/삭제 작업을 수행하지 않습니다.
 
 ## 3. 필요한 설정값
 
@@ -103,31 +104,16 @@ npm run build
 
 DB 변경이 필요하면 **앱 배포보다 먼저 적용해야 할 항목**을 [DB 변경 절차](developer/database-change-procedure.md)에서 확인합니다. `npm run db:push`는 현재 모든 대상에서 접속 없이 실패 종료합니다. 기본 Drizzle 설정에도 DB 자격정보가 없으며, SQL 생성과 실제 적용 승인은 위 절차에서 구분합니다. 자동 적용 이력·배포 차단 장치의 구축은 [#280](https://github.com/Human-Renaissance-Academy/hra-website/issues/280)에서 진행할 작업입니다.
 
-## 5. Preview에서 확인한 뒤 운영 반영하기
+## 5. 1인 운영 기준으로 배포하기
 
-1. Vercel 프로젝트가 올바른 저장소와 연결됐는지 확인합니다. 현재 앱의 기준 폴더는 저장소 루트입니다.
-2. 작업 브랜치의 PR과 Preview를 준비합니다. 실제 자동 배포 조건은 프로젝트 설정에서 확인합니다. **현재 PR 마지막 커밋**의 GitHub CI와 Vercel Preview 결과를 각각 확인합니다.
-3. Preview 설치·빌드가 실패하면 해당 커밋의 로그에서 첫 실패 단계를 확인하고 수정한 커밋으로 두 검사를 다시 통과시킵니다. `npm ci`의 peer 충돌은 [빌드·배포 안전 가이드](contributing/build-and-deploy-safety.md)의 의존성 확인 절차를 따릅니다.
-4. #279에 따라 Preview 자원이 Production과 분리된 것을 확인한 뒤 아래 확인표를 Preview의 합성 계정·자료로 검사합니다. 격리가 확인되지 않았다면 실사용 자료를 넣지 않고 미검증으로 기록합니다.
-5. 리뷰와 필요한 검증을 통과한 PR **한 건**을 프로젝트 절차에 따라 병합합니다.
-6. DB 변경 순서와 운영 설정을 확인한 뒤 Production 배포 또는 승격을 진행합니다. 새 `main` 병합 커밋의 Production 배포 성공을 확인한 다음에만 다음 PR을 갱신·푸시합니다. 배포가 대기·실패·횟수 제한이면 다음 작업의 푸시·병합을 멈추고 마지막 성공 배포 커밋을 따로 기록합니다.
+1. PR 마지막 커밋에서 필수 CI, 위험에 따른 리뷰, 관련 테스트/build가 성공했는지 확인합니다. [변경 위험별 검증 규칙](https://github.com/Human-Renaissance-Academy/hra-website/blob/main/AGENTS.md#11-변경-위험에-따른-검증독립-리뷰)은 유지합니다.
+2. **Preview는 선택 사항**입니다. 필요한 화면·로그인·업로드 통합 확인이 있을 때만 사용하고, [#279](https://github.com/Human-Renaissance-Academy/hra-website/issues/279)에 따라 격리 테스트 DB/Blob과 합성 계정을 준비합니다. 자원이 없으면 해당 기능을 비활성화합니다. 기존 Vercel Preview가 필수 체크라면 #408/#492 검증 없이 체크나 브랜치 보호를 끄지 않습니다.
+3. DB 변경이 없다면 승인된 PR을 main에 병합하고 Production 배포 완료를 확인합니다. 최근 성공 배포 SHA와 이번 배포 SHA를 구분합니다.
+4. DB 구조·데이터 변경이 있을 때만 [DB 변경 절차](developer/database-change-procedure.md) 및 [#280](https://github.com/Human-Renaissance-Academy/hra-website/issues/280)의 실제 대상·백업·복구·호환성 검사를 선행합니다. Vercel build에서 자동 migration을 하지 않습니다.
+5. Production 배포의 정확한 커밋 SHA와 공개 [smoke 점검](operations/production-smoke.md), 장애 알림을 확인합니다. 배포가 실패·대기·횟수 제한 상태라면 다음 PR을 서둘러 병합하지 말고 마지막 성공 배포를 기준으로 복구합니다.
+6. 변경·장애 대응은 [1인 운영 체크리스트](operations/solo-operations.md)에 짧게 남깁니다. 매일 Preview·DB·스토리지를 수동 확인하는 체계를 만들지 않습니다.
 
-브랜치에 `git push`했다고 반드시 운영이 갱신되는 것은 아닙니다. 연결된 Production Branch와 Preview 설정에 따라 대상이 달라집니다. [Vercel 배포 환경 문서](https://vercel.com/docs/deployments/environments)를 참고합니다.
-
-Preview가 `Ready`여도 실제 로그인 제공자·DB·Blob 연결과 운영 환경 설정까지 검증된 것은 아닙니다. 확인한 배포 커밋, CI·Preview 상태, 실행한 기능 검사와 미확인 범위를 PR에 각각 기록합니다.
-
-| 확인 항목 | 기대 결과 |
-| --- | --- |
-| 공개 홈페이지 | 오류 없이 표시 |
-| `/api/health` | 정상 DB 연결에서 HTTP 200과 `status: ok` |
-| 로그인 | 준비한 계정으로 로그인 가능 |
-| 자료실 | 승인 역할별 정책이 동일하게 적용 |
-| 공개 이미지 업로드 | 저장 후 실제 페이지에서 표시 |
-| 보호 자료 | 합성 자료로 다운로드·권한 검사 확인 |
-| 내부 지원서 | 양식 공개·제출·관리자 조회가 연결 |
-| 외부 접수 사용 시 | 모집 날짜·외부 버튼과 외부 서비스의 접수 상태를 각각 확인 |
-
-처음 사용하는 DB라면 [첫 관리자 준비](DATABASE.md)를 **관리자 로그인 검사 전에** 마칩니다. 기수와 공지 작성 방법은 [관리자 가이드](ADMIN-GUIDE.md)를 따릅니다.
+공개 페이지·로그인·파일 보호·학사 과제처럼 **변경된 기능**에 필요한 정상·거부 경로를 검증합니다. 상태 API 성공만으로 모든 인증·업로드 기능이 정상이라고 판단하지 않습니다.
 
 ## 6. 실패했을 때 무엇부터 볼까요?
 
