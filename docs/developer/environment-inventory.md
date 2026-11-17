@@ -75,8 +75,8 @@ Production·Preview·Development는 DB·공개/비공개 Blob·OAuth·세션 비
 | 이름 | 목적 | 적용 환경·격리 | 비밀값 | 필수 조건 | 기본·누락 동작 | 예시 |
 | --- | --- | --- | --- | --- | --- | --- |
 | `NODE_ENV` | Node/Next 실행 모드 | Development / Preview / Production; 플랫폼이 해당 실행에 제공; 직접 복제하지 않음 | 아니요 | 실행 도구가 제공 | production일 때 메타데이터 URL의 production fallback 선택; 임의 설정으로 보안 기능을 우회하지 않음 | 앱 예시에 넣지 않음 |
-| `VERCEL` | Vercel 신뢰 프록시 경계 표시 | Development / Preview / Production; 플랫폼이 해당 실행에 제공; 직접 복제하지 않음 | 아니요 | Vercel 플랫폼에서 제공 | 1이면 x-vercel-forwarded-for만 신뢰; 아니면 검증된 일반 프록시 헤더도 순서대로 확인 | 앱 예시에 넣지 않음 |
-| `VERCEL_ENV` | Vercel 배포 환경 구분(production·preview·development) | Development / Preview / Production; 플랫폼이 해당 실행에 제공; 직접 복제하지 않음 | 아니요 | Vercel에서 제공하는 경우만 | 정확한 production일 때만 운영 canonical·검색 색인 허용; 다른 값이나 미설정이면 noindex와 robots 전체 차단 | 앱 예시에 넣지 않음 |
+| `VERCEL` | Vercel 신뢰 프록시·선택적 Preview 경계 표시 | Development / Preview / Production; 플랫폼이 해당 실행에 제공; 직접 복제하지 않음 | 아니요 | Vercel 플랫폼에서 제공 | 1이면 x-vercel-forwarded-for만 신뢰; 아니면 검증된 일반 프록시 헤더도 순서대로 확인. 정확한 VERCEL=1 + VERCEL_ENV=preview만 업무 요청 503; 미설정·다른 값은 Preview 차단 조건 아님 | 앱 예시에 넣지 않음 |
+| `VERCEL_ENV` | Vercel 배포 환경 구분(production·preview·development) | Development / Preview / Production; 플랫폼이 해당 실행에 제공; 직접 복제하지 않음 | 아니요 | Vercel에서 제공하는 경우만 | 정확한 production만 운영 canonical·색인 허용; 다른 값이나 미설정은 noindex·robots 전체 차단. 정확한 VERCEL=1과 preview 조합은 업무 503. API/image rewrite는 빌드 시 생성하므로 실행 tuple 동일 필수; promotion/prebuilt 재사용 금지 | 앱 예시에 넣지 않음 |
 | `VERCEL_PROJECT_PRODUCTION_URL` | Vercel production 도메인 메타데이터 우선값 | Development / Preview / Production; 플랫폼이 해당 실행에 제공; 직접 복제하지 않음 | 아니요 | Vercel에서 제공하는 경우만 | VERCEL_ENV=production에서만 사용; 없으면 고정 운영 주소. Preview에서는 사용하지 않음 | 앱 예시에 넣지 않음 |
 | `VERCEL_URL` | 현재 Vercel 배포 도메인 | Development / Preview / Production; 플랫폼이 해당 실행에 제공; 직접 복제하지 않음 | 아니요 | Vercel에서 제공하는 경우만 | VERCEL_ENV가 production이 아닐 때의 기준 주소; 없으면 NEXT_PUBLIC_APP_URL/localhost | 앱 예시에 넣지 않음 |
 
@@ -152,6 +152,7 @@ Production·Preview·Development는 DB·공개/비공개 Blob·OAuth·세션 비
 | `scripts/verify-academic-submission-file-http.mjs` | 기존 여섯 시스템 값만 새 격리 자식 환경으로 복사 | `PATH`, `HOME`, `TMPDIR`, `TMP`, `TEMP`, `SYSTEMROOT` |
 | `scripts/verify-resource-access-http.mjs` | 기존 여섯 시스템 값만 새 격리 자식 환경으로 복사 | `PATH`, `HOME`, `TMPDIR`, `TMP`, `TEMP`, `SYSTEMROOT` |
 | `scripts/verify-site-routes.mjs` | 기존 여섯 시스템 값만 새 격리 자식 환경으로 복사 | `PATH`, `HOME`, `TMPDIR`, `TMP`, `TEMP`, `SYSTEMROOT` |
+| `scripts/verify-preview-boundary-http.mjs` | Preview HTTP 실행기의 기존 여섯 시스템 값만 복사; 앱·운영 secret 상속 금지 | `PATH`, `HOME`, `TMPDIR`, `TMP`, `TEMP`, `SYSTEMROOT` |
 | `scripts/verify-auth-proxy-http.mjs` | Proxy HTTP 격리 실행기의 기존 여섯 시스템 값만 새 자식 환경으로 복사 | `PATH`, `HOME`, `TMPDIR`, `TMP`, `TEMP`, `SYSTEMROOT` |
 | `scripts/verify-markdown-boundary.mjs` | Markdown 경계 검증 실행기의 기존 여섯 시스템 값만 새 자식 환경으로 복사; 작업 디렉터리의 .env 파일 로딩까지 차단한다는 뜻은 아님 | `PATH`, `HOME`, `TMPDIR`, `TMP`, `TEMP`, `SYSTEMROOT` |
 | `tests/support/qa-schema-export.mjs` | 기존 여섯 시스템 값만 새 격리 자식 환경으로 복사 | `PATH`, `HOME`, `TMPDIR`, `TMP`, `TEMP`, `SYSTEMROOT` |
