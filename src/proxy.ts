@@ -1,11 +1,22 @@
 /**
  * HTML 요청마다 CSP nonce를 전달하고 기존 네 보호 경로에서만 인증을 수행한다.
+ * 별도 자원이 없는 Vercel Preview의 업무 요청은 인증·본문 처리 전에 503으로 거부한다.
  * 원본 요청과 이벤트를 Auth.js에 그대로 넘겨 Server Action 본문을 건드리지 않는다.
  */
-import { NextResponse, type NextRequest, type NextFetchEvent, type NextMiddleware } from "next/server";
+import {
+  NextResponse,
+  type NextRequest,
+  type NextFetchEvent,
+  type NextMiddleware,
+} from "next/server";
 import { auth } from "@/lib/auth";
 import { logServerError } from "@/lib/errors";
 import { createContentSecurityPolicy } from "@/lib/security/csp";
+import {
+  isRestrictedPreview,
+  isSafePreviewMetadata,
+  previewUnavailableResponse,
+} from "@/lib/preview-boundary";
 
 /** 유사 접두어의 공개 경로에 인증 조회가 추가되지 않도록 경계를 확인한다. */
 function requiresAuthentication(pathname: string) {
@@ -15,6 +26,11 @@ function requiresAuthentication(pathname: string) {
 }
 
 export default async function proxy(request: NextRequest, event: NextFetchEvent) {
+  // Auth.js 래퍼는 세션부터 읽으므로 호출보다 먼저 거부합니다. 본문도 해석하지 않습니다.
+  const restrictedPreview = isRestrictedPreview(process.env.VERCEL, process.env.VERCEL_ENV);
+  if (restrictedPreview && !isSafePreviewMetadata(request.nextUrl.pathname, request.method)) {
+    return previewUnavailableResponse(request.method);
+  }
   // 외부 입력을 신뢰하지 않고 매 요청 256비트 난수와 대응하는 정책을 새로 만든다.
   const nonce = Buffer.from(crypto.getRandomValues(new Uint8Array(32))).toString("base64");
   const policy = createContentSecurityPolicy(nonce, process.env.NODE_ENV === "development");
@@ -32,6 +48,11 @@ export default async function proxy(request: NextRequest, event: NextFetchEvent)
     if (!response) throw new Error("CSP_PROXY_RESPONSE_MISSING");
     // 기존 Auth.js 응답의 redirect·쿠키를 보존하고 CSP만 보강한다.
     response.headers.set("Content-Security-Policy", policy);
+    // 허용한 metadata도 Preview에서 캐시·검색 색인으로 재사용하지 않습니다.
+    if (restrictedPreview) {
+      response.headers.set("Cache-Control", "no-store");
+      response.headers.set("X-Robots-Tag", "noindex, nofollow");
+    }
     return response;
   } catch (error) {
     logServerError("proxy/auth", error);
@@ -44,5 +65,7 @@ export default async function proxy(request: NextRequest, event: NextFetchEvent)
 export const config = {
   // 실제 정적 자원만 제외한다. 점이 있는 미존재 HTML 경로도 CSP를 받아야 한다.
   // 새 공개 자원을 추가할 때 이 목록과 matcher 계약을 함께 확인한다.
-  matcher: ["/((?!api(?:/|$)|_next(?:/|$)|(?:favicon\\.ico|globe\\.svg|vercel\\.svg|window\\.svg|next\\.svg|file\\.svg)$|images/(?:hero-bg|faculty-classics|faculty-casestudy|faculty-lecture|cohort-17)\\.jpeg$).*)"],
+  matcher: [
+    "/((?!api(?:/|$)|_next(?:/|$)|(?:favicon\\.ico|globe\\.svg|vercel\\.svg|window\\.svg|next\\.svg|file\\.svg)$|images/(?:hero-bg|faculty-classics|faculty-casestudy|faculty-lecture|cohort-17)\\.jpeg$).*)",
+  ],
 };

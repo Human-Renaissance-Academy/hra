@@ -20,6 +20,7 @@
     "test:e2e": "playwright test",
     "test:e2e:expanded": "node scripts/verify-site-routes.mjs --browser public --output test-results/expanded-public.json && npm run test:academic-g1",
     "test:academic-g1": "node scripts/verify-academic-g1.mjs",
+    "verify:preview-boundary": "node scripts/verify-preview-boundary-http.mjs",
     "verify:auth-proxy": "node scripts/verify-auth-proxy-http.mjs",
     "verify:auth-measurement": "node scripts/measure-authentication.mjs",
     "verify:csp": "node scripts/verify-site-routes.mjs --browser csp",

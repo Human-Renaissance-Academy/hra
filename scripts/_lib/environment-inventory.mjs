@@ -338,10 +338,10 @@ export const environmentInventory = {
     variable(
       "VERCEL",
       "platform",
-      "Vercel 신뢰 프록시 경계 표시",
+      "Vercel 신뢰 프록시·선택적 Preview 경계 표시",
       false,
       "Vercel 플랫폼에서 제공",
-      "1이면 x-vercel-forwarded-for만 신뢰; 아니면 검증된 일반 프록시 헤더도 순서대로 확인",
+      "1이면 x-vercel-forwarded-for만 신뢰; 아니면 검증된 일반 프록시 헤더도 순서대로 확인. 정확한 VERCEL=1 + VERCEL_ENV=preview만 업무 요청 503; 미설정·다른 값은 Preview 차단 조건 아님",
     ),
     variable(
       "VERCEL_ENV",
@@ -349,7 +349,7 @@ export const environmentInventory = {
       "Vercel 배포 환경 구분(production·preview·development)",
       false,
       "Vercel에서 제공하는 경우만",
-      "정확한 production일 때만 운영 canonical·검색 색인 허용; 다른 값이나 미설정이면 noindex와 robots 전체 차단",
+      "정확한 production만 운영 canonical·색인 허용; 다른 값이나 미설정은 noindex·robots 전체 차단. 정확한 VERCEL=1과 preview 조합은 업무 503. API/image rewrite는 빌드 시 생성하므로 실행 tuple 동일 필수; promotion/prebuilt 재사용 금지",
     ),
     variable(
       "VERCEL_PROJECT_PRODUCTION_URL",
@@ -728,6 +728,13 @@ export const environmentInventory = {
       expression:
         'Object.fromEntries(["PATH", "HOME", "TMPDIR", "TMP", "TEMP", "SYSTEMROOT"]\n  .filter(key => process.env[key]).map(key => [key, process.env[key]]))',
       reason: "기존 여섯 시스템 값만 새 격리 자식 환경으로 복사",
+      names: ["PATH", "HOME", "TMPDIR", "TMP", "TEMP", "SYSTEMROOT"],
+    },
+    {
+      path: "scripts/verify-preview-boundary-http.mjs",
+      expression:
+        'Object.fromEntries(["PATH", "HOME", "TMPDIR", "TMP", "TEMP", "SYSTEMROOT"]\n    .filter((name) => process.env[name]).map((name) => [name, process.env[name]]),)',
+      reason: "Preview HTTP 실행기의 기존 여섯 시스템 값만 복사; 앱·운영 secret 상속 금지",
       names: ["PATH", "HOME", "TMPDIR", "TMP", "TEMP", "SYSTEMROOT"],
     },
     {
