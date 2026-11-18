@@ -726,7 +726,7 @@ export const environmentInventory = {
     {
       path: "scripts/verify-site-routes.mjs",
       expression:
-        'Object.fromEntries(["PATH", "HOME", "TMPDIR", "TMP", "TEMP", "SYSTEMROOT"]\n  .filter(key => process.env[key]).map(key => [key, process.env[key]]))',
+        'Object.fromEntries(["PATH", "HOME", "TMPDIR", "TMP", "TEMP", "SYSTEMROOT"]\n    .filter((key) => process.env[key])\n    .map((key) => [key, process.env[key]]),)',
       reason: "기존 여섯 시스템 값만 새 격리 자식 환경으로 복사",
       names: ["PATH", "HOME", "TMPDIR", "TMP", "TEMP", "SYSTEMROOT"],
     },
