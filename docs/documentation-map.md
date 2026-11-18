@@ -101,6 +101,7 @@ G1은 첫 학사 기능 묶음으로, 학생·수강 이력, 과제 대상, 개�
 | [환경 분리 및 배포 전략](developer/environment-strategy.md) | 개발·검증·운영의 DB·파일·로그인 설정을 분리하는 원칙 |
 | [환경변수 계약 목록](developer/environment-inventory.md) | 소스·SDK·운영 명령·QA 입력의 설정 목록과 예시·문서 drift 검사 |
 | [검색 색인·canonical 정책](developer/seo-indexing-policy.md) | 환경별 기준 주소·canonical·robots·sitemap 규칙과 별도 운영 확인 |
+| [Server Action 입력 상한과 직접 업로드 현황](developer/server-action-payload-limits.md) | 액션별 입력·파일 경유·길이 상한 전수 정리, 본문 5MiB 근거, 상한 격차와 플랫폼 413 미검증 범위 |
 
 ## 6. 과거 기록과 저장소 공통 문서
 
