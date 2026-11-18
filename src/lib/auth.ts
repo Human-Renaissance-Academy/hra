@@ -2,15 +2,15 @@
  * ========================================
  * NextAuth 인증 시스템 설정 파일
  * ========================================
- * 
+ *
  * 이 파일은 사용자 로그인을 안전하게 관리하는 설정 파일입니다.
- * 
+ *
  * 주요 역할:
  * 1. 구글/카카오 소셜 로그인 (OAuth) 설정
  * 2. 소셜 로그인 시 데이터베이스에 사용자 자동 등록 (signIn 콜백)
  * 3. 로그인 성공 후 JWT 토큰에 사용자 정보 저장 (jwt 콜백)
  * 4. 페이지 접근 권한 확인 (authorized 콜백)
- * 
+ *
  * 초보자 개념 설명:
  * - OAuth: 구글이나 카카오 같은 외부 서비스를 통해 로그인하는 방식입니다.
  *   사용자가 비밀번호를 직접 만들 필요 없이, 구글/카카오 계정으로 바로 로그인합니다.
@@ -42,26 +42,27 @@ import { extractClientIp } from "@/lib/rate-limit-core";
 const MEMBER_ONLY_PREFIXES = ["/resources", "/member", "/mypage"] as const;
 
 /**
- * Timing attack 방어용 dummy bcrypt hash (pre-computed 상수)
+ * 허용된 credentials 요청의 이메일 존재 여부에 따른 빠른 종료를 피하는 dummy bcrypt hash입니다 (#71).
  *
  * 배경 (#71): credentials 로그인 시 이메일이 존재하지 않으면 bcrypt.compare 를 호출하지 않고
  *   즉시 null 을 반환하는 구조였다. 반면 이메일이 존재하면 bcrypt (cost 12, ~300ms) 를 수행하므로
  *   응답 시간 차이로 이메일 존재 여부를 통계적으로 추정할 수 있었다 (이메일 enumeration).
  *
- * 해결: 이메일이 없어도 항상 bcrypt.compare 를 실행하도록 dummy hash 를 준비한다.
+ * 두 단계 계약 (#508): 원자 예약이 거부되거나 저장소를 사용할 수 없으면 사용자 조회·bcrypt 전에 끝냅니다.
+ * 예약이 허용된 요청만 실제 hash 또는 이 dummy로 정확히 한 번 비교합니다.
+ * 따라서 허용/거부 경로의 시간은 다를 수 있으며 제한 상태 은닉이나 정밀 상수시간을 보장하지 않습니다.
  *
  * 왜 pre-computed 상수인가 (Oracle NIT):
  *   - hashSync("...", 12) 를 모듈 로드 시 실행하면 Vercel serverless 인스턴스가 cold start 될 때마다
  *     ~300ms CPU 를 소비한다. 다수의 콜드 스타트에서 누적되면 무의미한 비용이다.
  *   - dummy 값은 상수이며 재계산할 필요가 없으므로 사전에 1회 계산해 두고 하드코딩한다.
  *   - 생성 방법: `node -e "console.log(require('bcryptjs').hashSync('__hra_timing_attack_defense__', 12))"`
- *   - cost 12 는 seed-admin.mjs 및 실제 사용자 비밀번호와 동일해야 timing 이 일치한다 ($2b$12$... prefix 로 확인).
+ *   - cost 12 는 seed-admin.mjs의 생성 비용과 맞추되 DB·네트워크·hash 비용 차이까지 없앤다고 주장하지 않습니다.
  *
  * 안전성: 이 dummy hash 는 실제 사용자 레코드에 매칭되지 않으며,
- *   authorize() 에서 `if (!user || !user.passwordHash || !isValid) return null` 로 최종 차단된다.
+ *   authorize()에서 사용자·비밀번호 hash의 존재와 비교 결과를 함께 확인해 최종 차단합니다.
  */
-const DUMMY_PASSWORD_HASH =
-  "$2b$12$z/qEe8YYHyxXWQv8pJpxgOM8sLEXLWOmxou0re9M1IkPPhMYHyd32";
+const DUMMY_PASSWORD_HASH = "$2b$12$z/qEe8YYHyxXWQv8pJpxgOM8sLEXLWOmxou0re9M1IkPPhMYHyd32";
 
 /**
  * 활성화할 로그인 프로바이더 목록을 동적으로 구성합니다.
@@ -102,9 +103,9 @@ if (process.env.AUTH_KAKAO_ID && process.env.AUTH_KAKAO_SECRET) {
  *
  * 동작 순서:
  * 1) 사용자가 입력한 이메일/비밀번호를 받습니다.
- * 2) 이메일로 사용자를 조회합니다.
- * 3) 저장된 passwordHash와 입력 비밀번호를 compare로 검증합니다.
- * 4) 검증 성공 시 NextAuth 세션 생성을 위해 사용자 정보를 반환합니다.
+ * 2) 원자 예약이 허용된 경우에만 이메일로 사용자를 조회합니다.
+ * 3) 저장된 passwordHash 또는 dummy와 입력 비밀번호를 compare로 검증합니다.
+ * 4) 검증 성공 시 자신의 예약만 해제하고 NextAuth 세션 생성을 위한 사용자 정보를 반환합니다.
  */
 providers.push(
   Credentials({
@@ -114,10 +115,7 @@ providers.push(
     },
     async authorize(credentials, request) {
       if (!credentials?.email || !credentials?.password) return null;
-      if (
-        typeof credentials.email !== "string" ||
-        typeof credentials.password !== "string"
-      ) {
+      if (typeof credentials.email !== "string" || typeof credentials.password !== "string") {
         return null;
       }
 
@@ -125,24 +123,24 @@ providers.push(
       // 동시 요청도 예약된 실패 시도를 보므로 상한을 넘어 인증할 수 없습니다.
       const ip = extractClientIp(request.headers);
       const reservation = await reserveLoginAttempt(ip, credentials.email);
+      // 계정 존재를 조회하지 않고 admission 결과만으로 종료해 차단 요청의 DB 조회·bcrypt 소비를 막습니다.
+      if (reservation.unavailable || reservation.blocked) return null;
 
       const user = await findCredentialUser(credentials.email);
 
-      // Timing attack 방어 (#71): 이메일 존재 여부와 무관하게 항상 bcrypt.compare 를 실행하여
-      // 응답 시간 차이로 이메일 enumeration 이 되지 않도록 한다.
-      // blocked=true 여도 여전히 실행: 429 응답이 아니라 null 을 반환할 계획이므로
-      // 응답 시간 균일화를 유지하려면 bcrypt 는 항상 돌아야 한다.
+      // 허용된 요청은 이메일 존재 여부와 무관하게 실/dummy hash로 한 번 비교합니다 (#71).
+      // 거부된 요청과의 시간 차이는 허용하지만 없는 계정만 빠르게 끝내는 분기는 만들지 않습니다.
       const passwordHash = user?.passwordHash ?? DUMMY_PASSWORD_HASH;
       const isValid = await compare(credentials.password, passwordHash);
 
       const authSucceeded = !!user && !!user.passwordHash && isValid;
 
       // 성공한 예약은 제거해 기존의 실패 시도 기반 잠금 정책을 유지합니다.
-      if (authSucceeded && !reservation.blocked) {
+      if (authSucceeded) {
         await releaseSuccessfulLogin(reservation.reservationId);
       }
 
-      if (reservation.blocked || !authSucceeded) return null;
+      if (!authSucceeded) return null;
 
       return {
         id: user.id,
@@ -358,7 +356,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           return Response.redirect(new URL("/pending", request.url));
         }
 
-        if (auth.user.role !== "MEMBER" && auth.user.role !== "ADMIN" && auth.user.role !== "FACULTY") {
+        if (
+          auth.user.role !== "MEMBER" &&
+          auth.user.role !== "ADMIN" &&
+          auth.user.role !== "FACULTY"
+        ) {
           // 세션의 역할 검증과 별개로 이 경계에서도 허용 목록 밖의 역할은 응답으로 차단한다.
           return new Response("승인된 회원만 접근할 수 있습니다.", {
             status: 403,
