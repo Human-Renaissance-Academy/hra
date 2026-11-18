@@ -16,6 +16,7 @@ import { requireAdmin } from "@/lib/admin";
 import * as galleryService from "@/features/gallery/admin/service";
 import type { GalleryActor } from "@/features/gallery/admin/service";
 import { logServerError } from "@/lib/errors";
+import { maxReorderIds } from "@/lib/server-action-input-limits";
 import { validateGalleryUploadReference } from "@/lib/gallery-upload-server";
 
 export type GalleryActionState = {
@@ -143,7 +144,10 @@ export async function deleteGallery(id: string): Promise<GalleryActionState> {
   return successState("앨범이 삭제되었습니다.");
 }
 
-export async function addGalleryImages(id: string, formData: FormData): Promise<GalleryActionState> {
+export async function addGalleryImages(
+  id: string,
+  formData: FormData,
+): Promise<GalleryActionState> {
   const session = await requireAdmin();
   const actor = { userId: session.user.id, role: session.user.role };
 
@@ -155,10 +159,19 @@ export async function addGalleryImages(id: string, formData: FormData): Promise<
     return initialError(parsed.error.issues[0]?.message ?? "입력값을 확인해주세요.");
   }
 
-  const parsedUrls = z.array(z.url()).min(1).max(100).safeParse((() => {
-    try { return JSON.parse(String(formData.get("uploadedImageUrls") ?? "")); }
-    catch { return null; }
-  })());
+  const parsedUrls = z
+    .array(z.url())
+    .min(1)
+    .max(100)
+    .safeParse(
+      (() => {
+        try {
+          return JSON.parse(String(formData.get("uploadedImageUrls") ?? ""));
+        } catch {
+          return null;
+        }
+      })(),
+    );
   if (!parsedUrls.success || new Set(parsedUrls.data).size !== parsedUrls.data.length) {
     return initialError("업로드한 이미지 정보를 확인할 수 없습니다.");
   }
@@ -169,24 +182,37 @@ export async function addGalleryImages(id: string, formData: FormData): Promise<
   }
 
   // 완료 URL마다 실제 Blob 크기·형식·시작 바이트·업로드 소유자를 확인합니다.
-  const checks = await Promise.all(parsedUrls.data.map((url) =>
-    validateGalleryUploadReference(galleryResult.gallery.id, session.user.id, url)));
+  const checks = await Promise.all(
+    parsedUrls.data.map((url) =>
+      validateGalleryUploadReference(galleryResult.gallery.id, session.user.id, url),
+    ),
+  );
   if (checks.some((valid) => !valid)) {
     return initialError("업로드한 이미지 정보를 확인할 수 없습니다. 다시 시도해주세요.");
   }
   const result = await galleryService.saveGalleryImages(actor, {
-    gallery: galleryResult.gallery, urls: parsedUrls.data, alt: parsed.data.alt,
+    gallery: galleryResult.gallery,
+    urls: parsedUrls.data,
+    alt: parsed.data.alt,
   });
   switch (result.kind) {
-    case "duplicate": return initialError("이미 등록된 이미지가 포함되어 있습니다.");
+    case "duplicate":
+      return initialError("이미 등록된 이미지가 포함되어 있습니다.");
     case "insert-error":
-      logServerError("gallery/add-images-insert", result.error, { galleryId: galleryResult.gallery.id });
+      logServerError("gallery/add-images-insert", result.error, {
+        galleryId: galleryResult.gallery.id,
+      });
       return initialError("이미지 저장 중 오류가 발생했습니다. 앨범을 확인해주세요.");
     case "cover-error":
-      logServerError("gallery/add-images-cover", result.error, { galleryId: galleryResult.gallery.id });
+      logServerError("gallery/add-images-cover", result.error, {
+        galleryId: galleryResult.gallery.id,
+      });
       revalidateGalleryPaths(galleryResult.gallery.id);
-      return successState("이미지는 추가됐지만 대표 사진 설정에 실패했습니다. 앨범을 확인해주세요.");
-    case "saved": break;
+      return successState(
+        "이미지는 추가됐지만 대표 사진 설정에 실패했습니다. 앨범을 확인해주세요.",
+      );
+    case "saved":
+      break;
     default: {
       const unreachable: never = result;
       return unreachable;
@@ -202,7 +228,7 @@ export async function addGalleryImages(id: string, formData: FormData): Promise<
 // orderedIds: 새 순서대로 정렬된 이미지 ID 배열
 export async function reorderGalleryImages(
   galleryId: string,
-  orderedIds: string[]
+  orderedIds: string[],
 ): Promise<GalleryActionState> {
   const session = await requireAdmin();
   const actor = { userId: session.user.id, role: session.user.role };
@@ -218,7 +244,7 @@ export async function reorderGalleryImages(
   // 캐스트 에러로 raw ID 가 Vercel Logs 에 노출된다, (2) reorderByCase 헬퍼의
   // `${a.id}::uuid` raw SQL 캐스트도 동일한 leak 벡터를 가진다. 두 경로 진입 전에
   // 사전 차단한다.
-  const parsedIds = z.array(z.uuid()).min(1).safeParse(orderedIds);
+  const parsedIds = z.array(z.uuid()).min(1).max(maxReorderIds).safeParse(orderedIds);
   if (!parsedIds.success) {
     return initialError("유효하지 않은 요청입니다.");
   }
@@ -230,19 +256,19 @@ export async function reorderGalleryImages(
   }
 
   try {
-    const { matched, affected } = await galleryService.reorderAdminImages(actor, parsedGalleryId.data, validIds);
+    const { matched, affected } = await galleryService.reorderAdminImages(
+      actor,
+      parsedGalleryId.data,
+      validIds,
+    );
 
     // 존재하지 않는 ID 또는 중복 ID 로 인해 일부만 갱신된 경우 방어
     if (!matched) {
-      logServerError(
-        "gallery/reorder-images",
-        new Error("update count mismatch"),
-        {
-          galleryId: parsedGalleryId.data,
-          expected: validIds.length,
-          actual: affected,
-        },
-      );
+      logServerError("gallery/reorder-images", new Error("update count mismatch"), {
+        galleryId: parsedGalleryId.data,
+        expected: validIds.length,
+        actual: affected,
+      });
       return initialError("일부 이미지를 저장하지 못했습니다.");
     }
   } catch (err) {
@@ -271,15 +297,26 @@ export async function deleteGalleryImage(id: string, imageId: string): Promise<G
     return initialError(parsedImageId.error.issues[0]?.message ?? "잘못된 이미지 ID입니다.");
   }
 
-  const result = await galleryService.deleteAdminImage(actor, parsedGalleryId.data, parsedImageId.data);
+  const result = await galleryService.deleteAdminImage(
+    actor,
+    parsedGalleryId.data,
+    parsedImageId.data,
+  );
   switch (result.kind) {
-    case "missing-gallery": return initialError("앨범을 찾을 수 없습니다.");
-    case "missing-image": return initialError("이미지를 찾을 수 없습니다.");
+    case "missing-gallery":
+      return initialError("앨범을 찾을 수 없습니다.");
+    case "missing-image":
+      return initialError("이미지를 찾을 수 없습니다.");
     case "cover-error":
-      logServerError("gallery/delete-image-cover", result.error, { galleryId: parsedGalleryId.data });
+      logServerError("gallery/delete-image-cover", result.error, {
+        galleryId: parsedGalleryId.data,
+      });
       revalidateGalleryPaths(parsedGalleryId.data);
-      return successState("이미지는 삭제됐지만 대표 사진 갱신에 실패했습니다. 앨범을 확인해주세요.");
-    case "deleted": break;
+      return successState(
+        "이미지는 삭제됐지만 대표 사진 갱신에 실패했습니다. 앨범을 확인해주세요.",
+      );
+    case "deleted":
+      break;
     default: {
       const unreachable: never = result;
       return unreachable;

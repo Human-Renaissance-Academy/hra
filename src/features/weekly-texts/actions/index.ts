@@ -20,6 +20,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod/v4";
 import { WEEKLY_TEXT_TYPE_VALUES } from "@/features/weekly-texts/constants";
 import { requireAdmin } from "@/lib/admin";
+import { maxMarkdownBodyLength } from "@/lib/server-action-input-limits";
 import { auth } from "@/lib/auth";
 import { deleteBlobIfExists } from "@/lib/blob-utils";
 import { db } from "@/lib/db";
@@ -54,6 +55,11 @@ const weeklyTextFormSchema = z.object({
   classDate: z.string().optional().nullable(),
   body: z
     .string()
+    // 본문은 선택 입력이지만 입력된 경우 마크다운 본문 상한(#539)을 넘을 수 없다.
+    .max(
+      maxMarkdownBodyLength,
+      `본문은 ${maxMarkdownBodyLength.toLocaleString("ko-KR")}자 이하여야 합니다.`,
+    )
     .optional()
     .nullable()
     .transform((value) => {

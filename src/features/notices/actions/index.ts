@@ -8,11 +8,19 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod/v4";
 import { requireAdmin } from "@/lib/admin";
+import { maxMarkdownBodyLength } from "@/lib/server-action-input-limits";
 import * as noticeService from "@/features/notices/admin/service";
 
 const noticeFormSchema = z.object({
   title: z.string().trim().min(1, "제목을 입력해주세요.").max(300, "제목은 300자 이하여야 합니다."),
-  content: z.string().trim().min(1, "내용을 입력해주세요."),
+  content: z
+    .string()
+    .trim()
+    .min(1, "내용을 입력해주세요.")
+    .max(
+      maxMarkdownBodyLength,
+      `내용은 ${maxMarkdownBodyLength.toLocaleString("ko-KR")}자 이하여야 합니다.`,
+    ),
   status: z.enum(["DRAFT", "PUBLISHED"]),
   pinned: z.boolean(),
 });
@@ -83,7 +91,10 @@ export async function createNotice(formData: FormData): Promise<NoticeActionStat
     };
   }
 
-  await noticeService.createNotice({ userId: session.user.id, role: session.user.role }, parsed.data);
+  await noticeService.createNotice(
+    { userId: session.user.id, role: session.user.role },
+    parsed.data,
+  );
 
   revalidateNoticePaths();
   redirect("/admin/notices");
@@ -110,9 +121,13 @@ export async function updateNotice(id: string, formData: FormData): Promise<Noti
     };
   }
 
-  if (!(await noticeService.updateNotice(
-    { userId: session.user.id, role: session.user.role }, parsedId.data, parsed.data,
-  ))) {
+  if (
+    !(await noticeService.updateNotice(
+      { userId: session.user.id, role: session.user.role },
+      parsedId.data,
+      parsed.data,
+    ))
+  ) {
     return {
       success: false,
       message: "공지사항을 찾을 수 없습니다.",
@@ -134,9 +149,12 @@ export async function deleteNotice(id: string): Promise<NoticeActionState> {
     };
   }
 
-  if (!(await noticeService.deleteNotice(
-    { userId: session.user.id, role: session.user.role }, parsedId.data,
-  ))) {
+  if (
+    !(await noticeService.deleteNotice(
+      { userId: session.user.id, role: session.user.role },
+      parsedId.data,
+    ))
+  ) {
     return {
       success: false,
       message: "공지사항을 찾을 수 없습니다.",
@@ -166,7 +184,8 @@ export async function togglePin(id: string): Promise<NoticeActionState> {
   }
 
   const updated = await noticeService.togglePin(
-    { userId: session.user.id, role: session.user.role }, parsedId.data,
+    { userId: session.user.id, role: session.user.role },
+    parsedId.data,
   );
 
   if (!updated) {
@@ -196,7 +215,8 @@ export async function toggleStatus(id: string): Promise<NoticeActionState> {
   }
 
   const updated = await noticeService.toggleStatus(
-    { userId: session.user.id, role: session.user.role }, parsedId.data,
+    { userId: session.user.id, role: session.user.role },
+    parsedId.data,
   );
 
   if (!updated) {

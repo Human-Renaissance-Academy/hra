@@ -20,10 +20,14 @@ import { redirect } from "next/navigation";
 import { z } from "zod/v4";
 import { requireAdmin } from "@/lib/admin";
 import {
-  createAdminTemplate, hasDuplicateSlug, prepareTemplateUpdate,
-  unpublishAdminTemplate, updateAdminTemplate,
+  createAdminTemplate,
+  hasDuplicateSlug,
+  prepareTemplateUpdate,
+  unpublishAdminTemplate,
+  updateAdminTemplate,
 } from "@/features/report-templates/admin/service";
 import { logServerError } from "@/lib/errors";
+import { maxMarkdownBodyLength } from "@/lib/server-action-input-limits";
 
 // 폼 입력 검증 스키마
 // slug: 영숫자/대시/언더스코어만 허용하여 URL 안정성 확보
@@ -56,17 +60,21 @@ const templateFormSchema = z
       .trim()
       .min(1, "버전을 입력해주세요.")
       .max(20, "버전은 20자 이하여야 합니다."),
-    body: z.string().trim().min(1, "본문을 입력해주세요."),
+    body: z
+      .string()
+      .trim()
+      .min(1, "본문을 입력해주세요.")
+      .max(
+        maxMarkdownBodyLength,
+        `본문은 ${maxMarkdownBodyLength.toLocaleString("ko-KR")}자 이하여야 합니다.`,
+      ),
     published: z.boolean(),
     order: z.number().int().min(0).max(9999),
   })
-  .refine(
-    (value) => value.category !== "template" || value.reportCategory !== null,
-    {
-      message: "양식(template) 카테고리는 분야 코드를 선택해야 합니다.",
-      path: ["reportCategory"],
-    },
-  );
+  .refine((value) => value.category !== "template" || value.reportCategory !== null, {
+    message: "양식(template) 카테고리는 분야 코드를 선택해야 합니다.",
+    path: ["reportCategory"],
+  });
 
 export type TemplateActionState = {
   success: boolean;
@@ -91,9 +99,7 @@ function parseInteger(value: FormDataEntryValue | null) {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
-function issuesToFieldErrors(
-  issues: Array<{ path: PropertyKey[]; message: string }>,
-) {
+function issuesToFieldErrors(issues: Array<{ path: PropertyKey[]; message: string }>) {
   const fieldErrors: Record<string, string> = {};
   for (const issue of issues) {
     const [field] = issue.path;
@@ -112,9 +118,7 @@ function parseFormData(formData: FormData) {
     reportCategory: normalizeText(formData.get("reportCategory")),
     description: normalizeText(formData.get("description")),
     version: normalizeText(formData.get("version")) || "1.0.0",
-    body: typeof formData.get("body") === "string"
-      ? (formData.get("body") as string)
-      : "",
+    body: typeof formData.get("body") === "string" ? (formData.get("body") as string) : "",
     published: parseBoolean(formData.get("published")),
     order: parseInteger(formData.get("order")),
   });
@@ -132,9 +136,7 @@ function revalidateTemplatePaths(slug?: string) {
   }
 }
 
-export async function createReportTemplate(
-  formData: FormData,
-): Promise<TemplateActionState> {
+export async function createReportTemplate(formData: FormData): Promise<TemplateActionState> {
   const session = await requireAdmin();
   const actor = { userId: session.user.id, role: session.user.role };
 
@@ -244,9 +246,7 @@ export async function updateReportTemplate(
   redirect("/admin/resources/templates");
 }
 
-export async function deleteReportTemplate(
-  id: string,
-): Promise<TemplateActionState> {
+export async function deleteReportTemplate(id: string): Promise<TemplateActionState> {
   // 회원 자료실 운영상 "삭제"는 published=false로 비공개 처리한다.
   // 실제 row 삭제 시, 동일 slug의 content/ 시드가 존재하면 회원 페이지에 다시
   // 노출되어 운영자 의도와 어긋난다(resolver fallback 정책 참조).

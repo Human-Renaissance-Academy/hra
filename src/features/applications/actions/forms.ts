@@ -10,12 +10,20 @@ import { requireAdmin } from "@/lib/admin";
 import { db } from "@/lib/db";
 import { applicationForms, applicationSubmissions } from "@/lib/db/schema";
 import { logServerError } from "@/lib/errors";
+import { maxFormDescriptionLength } from "@/lib/server-action-input-limits";
 import { isConstraintViolation } from "@/lib/db/constraint-errors";
 import { hasSubmissionDeleteGuards } from "@/lib/db/submission-delete-guards";
 
 const formSchema = z.object({
   title: z.string().trim().min(1, "제목을 입력해주세요.").max(255, "제목은 255자 이하여야 합니다."),
-  description: z.string().trim().optional(),
+  description: z
+    .string()
+    .trim()
+    .max(
+      maxFormDescriptionLength,
+      `설명은 ${maxFormDescriptionLength.toLocaleString("ko-KR")}자 이하여야 합니다.`,
+    )
+    .optional(),
   cohortId: z.string().uuid("기수를 선택해주세요.").optional().nullable(),
   isPublished: z.boolean().default(false),
 });
@@ -160,7 +168,10 @@ export async function updateForm(id: string, formData: FormData): Promise<FormAc
 /**
  * 공개 상태 전환
  */
-export async function toggleFormPublishStatus(id: string, isPublished: boolean): Promise<FormActionState> {
+export async function toggleFormPublishStatus(
+  id: string,
+  isPublished: boolean,
+): Promise<FormActionState> {
   await requireAdmin();
 
   // 🛡️ action 파라미터 id 를 DB 조회 전에 UUID 검증합니다 (#70).
@@ -221,17 +232,24 @@ export async function deleteForm(id: string): Promise<FormActionState> {
   const validId = parsedId.data;
 
   try {
-    if (!await hasSubmissionDeleteGuards()) {
-      return { success: false, message: "제출 보존 설정을 확인할 수 없어 양식을 삭제할 수 없습니다." };
+    if (!(await hasSubmissionDeleteGuards())) {
+      return {
+        success: false,
+        message: "제출 보존 설정을 확인할 수 없어 양식을 삭제할 수 없습니다.",
+      };
     }
     // 사용자 안내를 위한 사전 검사입니다. 실제 동시 제출 차단은 DB의 RESTRICT FK가 담당합니다.
-    const [submission] = await db.select({ id: applicationSubmissions.id })
-      .from(applicationSubmissions).where(eq(applicationSubmissions.formId, validId)).limit(1);
+    const [submission] = await db
+      .select({ id: applicationSubmissions.id })
+      .from(applicationSubmissions)
+      .where(eq(applicationSubmissions.formId, validId))
+      .limit(1);
     if (submission) {
       return { success: false, message: "제출된 지원서가 있는 양식은 삭제할 수 없습니다." };
     }
 
-    const deleted = await db.delete(applicationForms)
+    const deleted = await db
+      .delete(applicationForms)
       .where(eq(applicationForms.id, validId))
       .returning({ id: applicationForms.id });
 
@@ -245,7 +263,13 @@ export async function deleteForm(id: string): Promise<FormActionState> {
       message: "양식이 삭제되었습니다.",
     };
   } catch (error) {
-    if (isConstraintViolation(error, "23503", "application_submissions_form_id_application_forms_id_fk")) {
+    if (
+      isConstraintViolation(
+        error,
+        "23503",
+        "application_submissions_form_id_application_forms_id_fk",
+      )
+    ) {
       return { success: false, message: "제출된 지원서가 있는 양식은 삭제할 수 없습니다." };
     }
     logServerError("application-forms/delete", error, { id: validId });

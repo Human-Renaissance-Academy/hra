@@ -9,6 +9,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod/v4";
 import { requireAdmin } from "@/lib/admin";
 import { logServerError } from "@/lib/errors";
+import { maxMarkdownBodyLength, maxReorderIds } from "@/lib/server-action-input-limits";
 import {
   createItem,
   deleteItem,
@@ -21,9 +22,21 @@ import {
 } from "@/features/faq/service";
 
 const faqContactSchema = z.object({
-  contactName: z.string().trim().min(1, "담당자명을 입력해주세요.").max(100, "담당자명은 100자 이하여야 합니다."),
-  contactPhone: z.string().trim().min(1, "연락처를 입력해주세요.").max(20, "연락처는 20자 이하여야 합니다."),
-  contactRole: z.string().trim().min(1, "역할을 입력해주세요.").max(100, "역할은 100자 이하여야 합니다."),
+  contactName: z
+    .string()
+    .trim()
+    .min(1, "담당자명을 입력해주세요.")
+    .max(100, "담당자명은 100자 이하여야 합니다."),
+  contactPhone: z
+    .string()
+    .trim()
+    .min(1, "연락처를 입력해주세요.")
+    .max(20, "연락처는 20자 이하여야 합니다."),
+  contactRole: z
+    .string()
+    .trim()
+    .min(1, "역할을 입력해주세요.")
+    .max(100, "역할은 100자 이하여야 합니다."),
 });
 
 export type FaqContactActionState = {
@@ -63,11 +76,13 @@ async function requireFaqActor() {
 export async function getFaqContact() {
   const actor = await requireFaqActor();
   const contact = await getAdminContact(actor);
-  return contact ? {
-    contactName: contact.contactName,
-    contactPhone: contact.contactPhone,
-    contactRole: contact.contactRole,
-  } : null;
+  return contact
+    ? {
+        contactName: contact.contactName,
+        contactPhone: contact.contactPhone,
+        contactRole: contact.contactRole,
+      }
+    : null;
 }
 
 export async function updateFaqContact(formData: FormData): Promise<FaqContactActionState> {
@@ -106,8 +121,19 @@ export async function updateFaqContact(formData: FormData): Promise<FaqContactAc
 
 // order 필드는 폼에서 제거 — 드래그앤드롭으로 순서 관리
 const faqItemSchema = z.object({
-  question: z.string().trim().min(1, "질문을 입력해주세요.").max(500, "질문은 500자 이하여야 합니다."),
-  answer: z.string().trim().min(1, "답변을 입력해주세요."),
+  question: z
+    .string()
+    .trim()
+    .min(1, "질문을 입력해주세요.")
+    .max(500, "질문은 500자 이하여야 합니다."),
+  answer: z
+    .string()
+    .trim()
+    .min(1, "답변을 입력해주세요.")
+    .max(
+      maxMarkdownBodyLength,
+      `답변은 ${maxMarkdownBodyLength.toLocaleString("ko-KR")}자 이하여야 합니다.`,
+    ),
 });
 
 export type FaqItemActionState = {
@@ -152,7 +178,7 @@ export async function createFaqItem(formData: FormData): Promise<FaqItemActionSt
       fieldErrors: Object.fromEntries(
         parsed.error.issues
           .filter((i) => i.path.length > 0)
-          .map((i) => [String(i.path[0]), i.message])
+          .map((i) => [String(i.path[0]), i.message]),
       ),
     };
   }
@@ -185,7 +211,7 @@ export async function updateFaqItem(id: string, formData: FormData): Promise<Faq
       fieldErrors: Object.fromEntries(
         parsed.error.issues
           .filter((i) => i.path.length > 0)
-          .map((i) => [String(i.path[0]), i.message])
+          .map((i) => [String(i.path[0]), i.message]),
       ),
     };
   }
@@ -217,7 +243,7 @@ export async function deleteFaqItem(id: string): Promise<void> {
 // 저장소의 단일 UPDATE ... CASE 문으로 원자적으로 갱신합니다.
 // 개별 UPDATE 루프에서 중간 실패 시 정렬 상태가 뒤엉키지 않도록 합니다.
 export async function reorderFaqItems(
-  orderedIds: string[]
+  orderedIds: string[],
 ): Promise<{ success: boolean; message: string }> {
   const actor = await requireFaqActor();
 
@@ -225,7 +251,7 @@ export async function reorderFaqItems(
   // 이 배열은 reorderByCase 헬퍼의 `${a.id}::uuid` raw SQL 캐스트로 흘러가는데
   // UUID 형식이 아닌 값이 도달하면 Postgres cast error 로 raw ID 가 Vercel Logs 에
   // 노출될 수 있으므로 사전 차단한다. z.array(z.uuid()).min(1) 은 배열/비어있음/원소 형식을 한번에 검증.
-  const parsedIds = z.array(z.uuid()).min(1).safeParse(orderedIds);
+  const parsedIds = z.array(z.uuid()).min(1).max(maxReorderIds).safeParse(orderedIds);
   if (!parsedIds.success) {
     return { success: false, message: "유효하지 않은 요청입니다." };
   }
@@ -236,14 +262,10 @@ export async function reorderFaqItems(
 
     // 존재하지 않는 ID 또는 중복 ID 로 인해 일부만 갱신된 경우 방어
     if (!matched) {
-      logServerError(
-        "faq/reorder",
-        new Error("update count mismatch"),
-        {
-          expected: validIds.length,
-          actual: affected,
-        },
-      );
+      logServerError("faq/reorder", new Error("update count mismatch"), {
+        expected: validIds.length,
+        actual: affected,
+      });
       return { success: false, message: "일부 항목을 저장하지 못했습니다." };
     }
   } catch (err) {
