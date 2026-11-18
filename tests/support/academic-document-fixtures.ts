@@ -40,6 +40,8 @@ const NO_STREAM = 0xffffffff;
 export interface CfbStreamInput {
   name: string;
   data: Uint8Array;
+  /** true면 내용 없는 저장소(storage) 엔트리로 씁니다(BodyText·Scripts 등). */
+  storage?: boolean;
 }
 
 /** 작성된 CFB와 변형 테스트용 섹터 배치 정보 */
@@ -148,11 +150,11 @@ export function buildCfb(streams: CfbStreamInput[]): CfbFixture {
     writeEntry(
       index + 1,
       stream.name,
-      2,
+      stream.storage ? 1 : 2,
       NO_STREAM,
       index + 1 < streams.length ? index + 2 : NO_STREAM,
-      starts.get(index) ?? END_OF_CHAIN,
-      stream.data.length,
+      stream.storage ? 0 : (starts.get(index) ?? END_OF_CHAIN),
+      stream.storage ? 0 : stream.data.length,
     );
   });
   const directorySectors = allocate(directory);
@@ -221,22 +223,40 @@ export function hwpFileHeader(properties = 0x1, size = 256): Uint8Array {
   return data;
 }
 
+/** 빈 저장소 엔트리 입력 */
+export function cfbStorage(name: string): CfbStreamInput {
+  return { name, data: new Uint8Array(0), storage: true };
+}
+
+/** 최소 HWP 필수 엔트리: FileHeader·DocInfo 스트림과 BodyText 저장소 */
+export function hwpStreams(
+  options: { properties?: number; fileHeaderSize?: number } = {},
+): CfbStreamInput[] {
+  return [
+    { name: "FileHeader", data: hwpFileHeader(options.properties, options.fileHeaderSize) },
+    { name: "DocInfo", data: new Uint8Array(100).fill(7) },
+    cfbStorage("BodyText"),
+  ];
+}
+
 /** 최소 HWP(CFB) 원본 */
 export function syntheticHwp(
   options: { properties?: number; fileHeaderSize?: number } = {},
 ): CfbFixture {
-  return buildCfb([
-    { name: "FileHeader", data: hwpFileHeader(options.properties, options.fileHeaderSize) },
-    { name: "DocInfo", data: new Uint8Array(100).fill(7) },
-  ]);
+  return buildCfb(hwpStreams(options));
 }
 
-/** 최소 PPT(CFB) 원본. `PowerPoint Document`는 일반 섹터 경로를 쓰도록 4096바이트 이상으로 만듭니다. */
-export function syntheticPpt(): CfbFixture {
-  return buildCfb([
+/** 최소 PPT 필수 스트림. `PowerPoint Document`는 일반 섹터 경로를 쓰도록 4096바이트 이상으로 만듭니다. */
+export function pptStreams(): CfbStreamInput[] {
+  return [
     { name: "Current User", data: new Uint8Array(40).fill(1) },
     { name: "PowerPoint Document", data: new Uint8Array(5000).fill(2) },
-  ]);
+  ];
+}
+
+/** 최소 PPT(CFB) 원본 */
+export function syntheticPpt(): CfbFixture {
+  return buildCfb(pptStreams());
 }
 
 // ---------------------------------------------------------------------------
@@ -253,6 +273,15 @@ export interface ZipEntryInput {
   /** 로컬·중앙 헤더의 원본 크기 필드를 덮어씁니다(압축 폭탄 선언 변형). */
   declaredSize?: number;
   crc?: number;
+  /** 중앙·로컬 헤더에 함께 넣을 추가 필드 */
+  extra?: Uint8Array;
+  /** 중앙 디렉터리의 생성 버전(상위 바이트 = 호스트, 3은 Unix)과 외부 속성 */
+  versionMadeBy?: number;
+  externalAttributes?: number;
+  /** 데이터 서술자 사용: plain(12바이트), signed(시그니처 포함 16바이트) */
+  dataDescriptor?: "plain" | "signed";
+  /** 엔트리 데이터 뒤에 끼워 넣을 임의 바이트(폴리글랏 변형용) */
+  gapAfter?: Uint8Array;
 }
 
 /** ZIP 전체 변형 옵션 */
@@ -274,27 +303,48 @@ export function buildZip(entries: ZipEntryInput[], options: ZipOptions = {}): Ui
     const method = entry.method ?? 8;
     const stored = method === 8 ? new Uint8Array(deflateRawSync(raw)) : raw;
     const name = encoder.encode(entry.name);
-    const flags = (entry.flags ?? 0) | (/^[\x00-\x7f]*$/.test(entry.name) ? 0 : 0x800);
+    const deferred = entry.dataDescriptor !== undefined;
+    const flags =
+      (entry.flags ?? 0) | (/^[\x00-\x7f]*$/.test(entry.name) ? 0 : 0x800) | (deferred ? 0x8 : 0);
     const crc = entry.crc ?? crc32(raw);
     const size = entry.declaredSize ?? raw.length;
+    const extra = entry.extra ?? new Uint8Array(0);
 
-    const local = new Uint8Array(30 + name.length + stored.length);
+    // 데이터 서술자를 쓰면 로컬 헤더의 CRC·크기는 0으로 두고 데이터 뒤에 서술자를 붙입니다.
+    const descriptor = new Uint8Array(
+      entry.dataDescriptor === "signed" ? 16 : entry.dataDescriptor === "plain" ? 12 : 0,
+    );
+    if (deferred) {
+      const descriptorView = new DataView(descriptor.buffer);
+      const base = entry.dataDescriptor === "signed" ? 4 : 0;
+      if (base) descriptorView.setUint32(0, 0x08074b50, true);
+      descriptorView.setUint32(base, crc, true);
+      descriptorView.setUint32(base + 4, stored.length, true);
+      descriptorView.setUint32(base + 8, size, true);
+    }
+    const gap = entry.gapAfter ?? new Uint8Array(0);
+    const headerLength = 30 + name.length + extra.length;
+    const local = new Uint8Array(headerLength + stored.length + descriptor.length + gap.length);
     const localView = new DataView(local.buffer);
     localView.setUint32(0, 0x04034b50, true);
     localView.setUint16(4, 20, true);
     localView.setUint16(6, flags, true);
     localView.setUint16(8, method, true);
-    localView.setUint32(14, crc, true);
-    localView.setUint32(18, stored.length, true);
-    localView.setUint32(22, size, true);
+    localView.setUint32(14, deferred ? 0 : crc, true);
+    localView.setUint32(18, deferred ? 0 : stored.length, true);
+    localView.setUint32(22, deferred ? 0 : size, true);
     localView.setUint16(26, name.length, true);
+    localView.setUint16(28, extra.length, true);
     local.set(name, 30);
-    local.set(stored, 30 + name.length);
+    local.set(extra, 30 + name.length);
+    local.set(stored, headerLength);
+    local.set(descriptor, headerLength + stored.length);
+    local.set(gap, headerLength + stored.length + descriptor.length);
 
-    const central = new Uint8Array(46 + name.length);
+    const central = new Uint8Array(46 + name.length + extra.length);
     const centralView = new DataView(central.buffer);
     centralView.setUint32(0, 0x02014b50, true);
-    centralView.setUint16(4, 20, true);
+    centralView.setUint16(4, entry.versionMadeBy ?? 20, true);
     centralView.setUint16(6, 20, true);
     centralView.setUint16(8, flags, true);
     centralView.setUint16(10, method, true);
@@ -302,8 +352,11 @@ export function buildZip(entries: ZipEntryInput[], options: ZipOptions = {}): Ui
     centralView.setUint32(20, stored.length, true);
     centralView.setUint32(24, size, true);
     centralView.setUint16(28, name.length, true);
+    centralView.setUint16(30, extra.length, true);
+    centralView.setUint32(38, entry.externalAttributes ?? 0, true);
     centralView.setUint32(42, offset, true);
     central.set(name, 46);
+    central.set(extra, 46 + name.length);
 
     locals.push(local);
     centrals.push(central);

@@ -19,8 +19,11 @@
  * - [MS-PPT]: 루트에 `PowerPoint Document`와 `Current User` 스트림이 있어야 합니다.
  * - [MS-OFFCRYPTO]: 암호화된 OOXML은 CFB 안에 `EncryptionInfo`/`EncryptedPackage` 스트림으로 저장됩니다.
  *
- * 미지원(후속 과제):
- * - PPT 자체 RC4 CryptoAPI 암호화(`PowerPoint Document` 내부 CryptSession10Container)는 탐지하지 않습니다.
+ * 미탐지(한계, 후속 과제):
+ * - PPT RC4 CryptoAPI 암호화는 `EncryptedSummary` 스트림만 확인합니다. 이 스트림 없이
+ *   `PowerPoint Document` 내부 CryptSession10Container만 있는 경우는 탐지하지 않습니다.
+ * - `PowerPoint Document` 스트림 안의 VBA 레코드, OLE 개체 임베드는 해석하지 않습니다.
+ *   서버는 업로드 문서를 렌더링·실행하지 않으며 다운로드는 attachment로만 제공합니다.
  */
 import {
   type DetectionResult,
@@ -54,9 +57,19 @@ const OBJECT_ROOT = 5;
 /** HWP FileHeader 서명과 속성 비트 */
 const HWP_SIGNATURE = "HWP Document File";
 const HWP_PROPERTY_PASSWORD = 1 << 1;
+/**
+ * bit 2(배포용 문서)는 의도적으로 허용합니다. 배포용 문서는 본문이 `ViewText`에 보관되며
+ * 한글에서 열람은 가능하므로 제출물로 받되, 서버는 내용을 해석하지 않습니다.
+ */
+const HWP_PROPERTY_SCRIPT = 1 << 3;
 const HWP_PROPERTY_DRM = 1 << 4;
 /** 서명(32) + 버전(4) + 속성(4)까지 읽을 수 있어야 합니다. */
 const HWP_FILE_HEADER_MIN_BYTES = 40;
+
+/** 다른 Office 형식(DOC·XLS)의 루트 이름. HWP·PPT와 공존하면 폴리글랏으로 보고 거부합니다. */
+const FOREIGN_ROOT_NAMES = ["WordDocument", "Workbook", "Book"] as const;
+/** VBA 매크로 저장소 이름(PPT의 `_VBA_PROJECT_CUR`, 일부 저장본의 `Macros`/`VBA`) */
+const MACRO_ROOT_NAMES = ["_VBA_PROJECT_CUR", "Macros", "VBA"] as const;
 
 /** 파싱 중 실패를 전달하기 위한 내부 예외. 모듈 밖으로 새지 않고 사유 코드로 변환됩니다. */
 class CfbFailure {
@@ -173,7 +186,9 @@ function openContainer(bytes: Uint8Array): { context: CfbContext; header: DataVi
   const fatSectorCount = view.getUint32(44, true);
   const firstDifat = view.getUint32(68, true);
   const difatSectorCount = view.getUint32(72, true);
-  if (fatSectorCount < 1 || fatSectorCount > sectorCount) reject();
+  // FAT 섹터 하나는 (섹터 크기/4)개 섹터를 기술하므로 필요한 수보다 많은 선언은 손상으로 봅니다.
+  const maxFatSectors = Math.ceil(sectorCount / (sectorSize / 4)) + 1;
+  if (fatSectorCount < 1 || fatSectorCount > maxFatSectors) reject();
   if (difatSectorCount > sectorCount) reject();
 
   const base = { bytes, view, sectorSize, sectorCount };
@@ -334,6 +349,8 @@ function checkHwpFileHeader(fileHeader: Uint8Array): void {
   const properties = viewOf(fileHeader).getUint32(36, true);
   // 암호 설정 문서와 DRM 보안 문서는 서버나 검토자가 열 수 없으므로 암호화로 거부합니다.
   if (properties & (HWP_PROPERTY_PASSWORD | HWP_PROPERTY_DRM)) reject("ENCRYPTED");
+  // 스크립트가 저장된 문서는 실행 콘텐츠를 포함하므로 매크로로 거부합니다.
+  if (properties & HWP_PROPERTY_SCRIPT) reject("MACRO");
 }
 
 /**
@@ -352,17 +369,37 @@ export function detectCfbDocument(bytes: Uint8Array): DetectionResult {
       const entry = children.get(name.toUpperCase());
       return entry && entry.type === OBJECT_STREAM ? entry : undefined;
     };
+    const storage = (name: string) => children.get(name.toUpperCase())?.type === OBJECT_STORAGE;
+    const has = (names: readonly string[]) =>
+      names.some((name) => children.has(name.toUpperCase()));
 
-    // 암호화된 OOXML(PPTX·DOCX 등)은 CFB로 감싸지므로 내용 확인 없이 암호화로 거부합니다.
-    if (children.has("ENCRYPTIONINFO") || children.has("ENCRYPTEDPACKAGE"))
-      return fail("ENCRYPTED");
+    // 1) 암호화된 OOXML(PPTX·DOCX 등)은 CFB로 감싸지므로 내용 확인 없이 암호화로 거부합니다.
+    if (has(["EncryptionInfo", "EncryptedPackage"])) return fail("ENCRYPTED");
+    // 2) 다른 Office 형식의 루트 스트림이 섞이면 어느 판독기로 여느냐에 따라 해석이 갈리므로 거부합니다.
+    if (has(FOREIGN_ROOT_NAMES)) return fail("UNSUPPORTED");
+    // 3) VBA 프로젝트 저장소는 실행 콘텐츠이므로 매크로로 거부합니다.
+    if (has(MACRO_ROOT_NAMES)) return fail("MACRO");
+    const hwpMarkers = has(["FileHeader", "DocInfo", "BodyText", "ViewText"]);
+    const pptMarkers = has(["PowerPoint Document", "Current User"]);
+    if (hwpMarkers && pptMarkers) return fail("UNSUPPORTED");
 
-    const fileHeader = stream("FileHeader");
-    if (fileHeader) {
+    // 4) HWP: FileHeader·DocInfo 스트림과 BodyText 또는 ViewText(배포용) 저장소가 모두 있어야 합니다.
+    if (hwpMarkers) {
+      const fileHeader = stream("FileHeader");
+      if (!fileHeader || !stream("DocInfo") || !(storage("BodyText") || storage("ViewText")))
+        return fail("MALFORMED");
       checkHwpFileHeader(readStreamPrefix(context, header, root, fileHeader, 256));
+      // 스크립트 저장소(JScript 등)는 실행 콘텐츠이므로 거부합니다.
+      if (has(["Scripts"])) return fail("MACRO");
       return { ok: true, format: "HWP" };
     }
-    if (stream("PowerPoint Document") && stream("Current User")) return { ok: true, format: "PPT" };
+    // 5) PPT: 두 필수 스트림이 있어야 하며, RC4 CryptoAPI 암호화 문서에 흔한
+    //    `EncryptedSummary` 스트림이 있으면 암호화로 거부합니다.
+    if (pptMarkers) {
+      if (!stream("PowerPoint Document") || !stream("Current User")) return fail("UNSUPPORTED");
+      if (has(["EncryptedSummary"])) return fail("ENCRYPTED");
+      return { ok: true, format: "PPT" };
+    }
     // DOC·XLS·MSI 등 다른 CFB 문서는 과제 형식이 아닙니다.
     return fail("UNSUPPORTED");
   } catch (error) {

@@ -3,7 +3,7 @@
  *
  * 역할:
  * - `detectDocumentFormat()`: 원본 바이트만 보고 PDF·HWP·HWPX·PPT·PPTX를 판별합니다.
- *   매직 바이트로 컨테이너를 고른 뒤 PDF는 폴리글랏 검사, CFB/ZIP은 내부 구조 검증을 수행합니다.
+ *   매직 바이트로 컨테이너를 고른 뒤 PDF는 폴리글랏·암호화 검사, CFB/ZIP은 내부 구조 검증을 수행합니다.
  * - `validateDeclaredDocument()`: 파일 확장자 ↔ 선언 형식 ↔ 정규 MIME ↔ 실제 탐지 형식,
  *   그리고 산출물 유형(텍스트/발표자료) 허용 목록을 모두 교차 검증합니다.
  * - 잘못되었거나 악의적인 입력에도 예외를 던지지 않고 안정적인 사유 코드를 반환합니다.
@@ -32,6 +32,7 @@ import {
   ZIP_LOCAL_SIGNATURE,
   fail,
   indexOfBytes,
+  viewOf,
   startsWithAt,
 } from "./types";
 
@@ -49,6 +50,60 @@ function hasSignatureNearStart(
   );
 }
 
+/** PDF 끝 표식 `%%EOF`, 암호화 사전 키 `/Encrypt`, ZIP EOCD 시그니처 */
+const PDF_EOF = [0x25, 0x25, 0x45, 0x4f, 0x46] as const;
+const PDF_ENCRYPT = [0x2f, 0x45, 0x6e, 0x63, 0x72, 0x79, 0x70, 0x74] as const;
+const ZIP_EOCD_SIGNATURE = [0x50, 0x4b, 0x05, 0x06] as const;
+/** PDF 꼬리 검사 범위: trailer·암호화 사전과 ZIP EOCD(22바이트 + 주석 최대 65,535바이트)가 놓일 수 있는 구간 */
+const PDF_TRAILER_SCAN_BYTES = 64 * 1024;
+const ZIP_EOCD_SCAN_BYTES = 22 + 0xffff;
+
+/** `signature`가 마지막으로 나타나는 위치(없으면 -1). 뒤에서부터 한 번만 훑습니다. */
+function lastIndexOfBytes(bytes: Uint8Array, signature: readonly number[]): number {
+  for (let offset = bytes.length - signature.length; offset >= 0; offset -= 1) {
+    if (startsWithAt(bytes, offset, signature)) return offset;
+  }
+  return -1;
+}
+
+/**
+ * 파일 끝 65,557바이트 안에 ZIP 판독기가 받아들일 EOCD(주석 길이가 정확히 파일 끝에 닿는 레코드)가
+ * 있는지 확인합니다. EOCD 주석으로 PDF 꼬리를 덮는 폴리글랏을 찾기 위한 검사입니다.
+ */
+function hasTrailingZipEndRecord(bytes: Uint8Array): boolean {
+  const view = viewOf(bytes);
+  const start = Math.max(0, bytes.length - ZIP_EOCD_SCAN_BYTES);
+  for (let offset = bytes.length - 22; offset >= start; offset -= 1) {
+    if (!startsWithAt(bytes, offset, ZIP_EOCD_SIGNATURE)) continue;
+    if (offset + 22 + view.getUint16(offset + 20, true) === bytes.length) return true;
+  }
+  return false;
+}
+
+/**
+ * PDF 원본을 검사합니다.
+ * - 앞 1KiB에 ZIP/CFB 시그니처가 섞이면 폴리글랏으로 거부합니다.
+ * - 마지막 `%%EOF`가 없으면 잘린 파일로 보고 거부합니다.
+ * - 마지막 `%%EOF` 뒤에 ZIP 로컬 헤더·EOCD·CFB 시그니처가 있거나, 꼬리에 유효한 ZIP EOCD가 있으면
+ *   폴리글랏으로 거부합니다.
+ * - 정책: 이슈 #516은 암호화 문서를 거부 대상으로 정하므로 꼬리 64KiB에 `/Encrypt`가 있으면 거부합니다.
+ * 본문 구조(xref·객체)는 해석하지 않습니다. 서버는 PDF를 렌더링·변환하지 않습니다.
+ */
+function detectPdfDocument(bytes: Uint8Array): DetectionResult {
+  if (hasSignatureNearStart(bytes, [ZIP_LOCAL_SIGNATURE, CFB_SIGNATURE], PDF_SIGNATURE.length))
+    return fail("POLYGLOT");
+  const eof = lastIndexOfBytes(bytes, PDF_EOF);
+  if (eof === -1) return fail("MALFORMED");
+  const afterEof = eof + PDF_EOF.length;
+  const trailingContainer = [ZIP_LOCAL_SIGNATURE, ZIP_EOCD_SIGNATURE, CFB_SIGNATURE].some(
+    (signature) => indexOfBytes(bytes, signature, afterEof) !== -1,
+  );
+  if (trailingContainer || hasTrailingZipEndRecord(bytes)) return fail("POLYGLOT");
+  const trailerStart = Math.max(0, bytes.length - PDF_TRAILER_SCAN_BYTES);
+  if (indexOfBytes(bytes, PDF_ENCRYPT, trailerStart) !== -1) return fail("ENCRYPTED");
+  return { ok: true, format: "PDF" };
+}
+
 /**
  * 원본 바이트로 문서 형식을 판별합니다.
  * 1) 크기 상한·빈 파일 검사 → 2) 선두 시그니처로 컨테이너 선택 → 3) 컨테이너별 구조 검증
@@ -58,17 +113,19 @@ export function detectDocumentFormat(bytes: Uint8Array): DetectionResult {
   if (bytes.length > MAX_DOCUMENT_BYTES) return fail("TOO_LARGE");
   if (bytes.length === 0) return fail("EMPTY");
 
-  // 2-a) PDF: `%PDF-`로 시작해야 하며, 앞 1KiB에 ZIP/CFB 시그니처가 섞이면 폴리글랏으로 거부합니다.
-  //      PDF 본문 구조(xref·trailer)는 검증하지 않습니다. 렌더링·변환을 하지 않으므로 헤더 판별까지만 수행합니다.
-  if (startsWithAt(bytes, 0, PDF_SIGNATURE)) {
-    if (hasSignatureNearStart(bytes, [ZIP_LOCAL_SIGNATURE, CFB_SIGNATURE], PDF_SIGNATURE.length))
-      return fail("POLYGLOT");
-    return { ok: true, format: "PDF" };
+  // 2-a) PDF: 헤더·꼬리 폴리글랏과 암호화를 검사합니다.
+  if (startsWithAt(bytes, 0, PDF_SIGNATURE)) return detectPdfDocument(bytes);
+  // 2-b) CFB(OLE2)·ZIP: PDF 판독기는 앞 1KiB 안의 `%PDF-`도 받아들이므로, 이 범위에 PDF 헤더가
+  //      있으면 두 형식으로 동시에 열리는 폴리글랏으로 거부합니다.
+  const container = startsWithAt(bytes, 0, CFB_SIGNATURE)
+    ? detectCfbDocument
+    : startsWithAt(bytes, 0, ZIP_LOCAL_SIGNATURE)
+      ? detectZipDocument
+      : undefined;
+  if (container) {
+    if (hasSignatureNearStart(bytes, [PDF_SIGNATURE], 4)) return fail("POLYGLOT");
+    return container(bytes);
   }
-  // 2-b) CFB(OLE2): HWP·PPT 후보
-  if (startsWithAt(bytes, 0, CFB_SIGNATURE)) return detectCfbDocument(bytes);
-  // 2-c) ZIP: HWPX·PPTX 후보. 첫 로컬 헤더가 오프셋 0이어야 하므로 선두 일치만 받습니다.
-  if (startsWithAt(bytes, 0, ZIP_LOCAL_SIGNATURE)) return detectZipDocument(bytes);
 
   // 3) 선두에 임의 데이터를 붙여 다른 형식을 숨긴 경우(앞 1KiB 안의 시그니처)는 폴리글랏으로 구분합니다.
   if (hasSignatureNearStart(bytes, [PDF_SIGNATURE, ZIP_LOCAL_SIGNATURE, CFB_SIGNATURE]))

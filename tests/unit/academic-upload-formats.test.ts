@@ -20,8 +20,12 @@ import {
 } from "@/features/academics/assignment-uploads/formats/types";
 import {
   PPTM_MAIN,
+  PPTX_MAIN as PPTX_MAIN_TYPE,
   buildCfb,
   buildZip,
+  cfbStorage,
+  hwpStreams,
+  pptStreams,
   concatBytes,
   contentTypesXml,
   docxEntries,
@@ -451,5 +455,241 @@ describe("선언 교차 검증", () => {
       "FORMAT_MISMATCH",
       "ARTIFACT_NOT_ALLOWED",
     ]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 보안 리뷰(400f201) 지적 회귀 테스트
+// ---------------------------------------------------------------------------
+
+/** `[Content_Types].xml`만 바꾼 PPTX */
+const pptxWithContentTypes = (xml: string | Uint8Array, extra: Partial<ZipEntryInput> = {}) => {
+  const [, ...rest] = pptxEntries();
+  return buildZip([{ name: "[Content_Types].xml", data: xml, ...extra }, ...rest]);
+};
+/** 결정적 의사난수 바이트(압축되지 않는 데이터) */
+const noise = (length: number) => {
+  const data = new Uint8Array(length);
+  let state = 0x12345678;
+  for (let index = 0; index < length; index += 1) {
+    state = (Math.imul(state, 1103515245) + 12345) >>> 0;
+    data[index] = state >>> 24;
+  }
+  return data;
+};
+/** 1KiB를 넘도록 본문을 채운 PDF(앞 1KiB 검사와 꼬리 검사를 분리하기 위함) */
+const paddedPdf = (trailer = "trailer\n<< /Root 1 0 R >>\n%%EOF\n") =>
+  encoder.encode(
+    `%PDF-1.7\n1 0 obj\n<< /Type /Catalog >>\nendobj\n${" ".repeat(2048)}\n${trailer}`,
+  );
+
+describe("XML 스캐너 ReDoS 방지", () => {
+  const timed = (bytes: Uint8Array) => {
+    const started = performance.now();
+    const reason = reasonOf(bytes);
+    return { reason, elapsed: performance.now() - started };
+  };
+
+  it("1MiB 속성 이름은 200ms 안에 MALFORMED", () => {
+    const xml = `<?xml version="1.0"?><Types><Override ${"a".repeat(1_000_000)}/></Types>`;
+    const { reason, elapsed } = timed(pptxWithContentTypes(xml));
+    expect(reason).toBe("MALFORMED");
+    expect(elapsed).toBeLessThan(200);
+  });
+
+  it("닫히지 않은 `<Override` 반복은 200ms 안에 MALFORMED", () => {
+    const xml = `<?xml version="1.0"?><Types>${"<Override".repeat(110_000)}`;
+    const { reason, elapsed } = timed(pptxWithContentTypes(xml));
+    expect(reason).toBe("MALFORMED");
+    expect(elapsed).toBeLessThan(200);
+  });
+
+  it("1MiB 공백 속성 구간은 빠르게 처리하고, 과도한 요소 수는 ZIP_LIMIT", () => {
+    const spaces = `<Types><Override ${" ".repeat(1_000_000)}/></Types>`;
+    const first = timed(pptxWithContentTypes(spaces));
+    expect(first.reason).toBe("UNSUPPORTED");
+    expect(first.elapsed).toBeLessThan(200);
+    const many = `<Types>${'<Default Extension="x" ContentType="a"/>'.repeat(5000)}</Types>`;
+    expect(reasonOf(pptxWithContentTypes(many))).toBe("ZIP_LIMIT");
+  });
+
+  it("따옴표 없는 속성 값과 중복 속성은 MALFORMED", () => {
+    expect(reasonOf(pptxWithContentTypes("<Types><Override PartName=/ppt/x/></Types>"))).toBe(
+      "MALFORMED",
+    );
+    expect(
+      reasonOf(pptxWithContentTypes('<Types><Override PartName="a" PartName="b"/></Types>')),
+    ).toBe("MALFORMED");
+  });
+
+  it("해제 대상 엔트리의 압축 크기가 상한을 넘으면 ZIP_LIMIT", () => {
+    expect(reasonOf(pptxWithContentTypes(noise(1_200_000), { declaredSize: 1000 }))).toBe(
+      "ZIP_LIMIT",
+    );
+  });
+});
+
+describe("CFB 형식 혼합·실행 콘텐츠·암호화", () => {
+  it("HWP는 FileHeader·DocInfo·BodyText/ViewText 저장소가 모두 있어야 한다", () => {
+    expect(reasonOf(buildCfb(hwpStreams().slice(0, 1)).bytes)).toBe("MALFORMED");
+    expect(reasonOf(buildCfb(hwpStreams().slice(0, 2)).bytes)).toBe("MALFORMED");
+    const viewText = [...hwpStreams().slice(0, 2), cfbStorage("ViewText")];
+    expect(reasonOf(buildCfb(viewText).bytes)).toBe("OK:HWP");
+    // BodyText가 저장소가 아니라 스트림이면 손상으로 봅니다.
+    const bodyStream = [
+      ...hwpStreams().slice(0, 2),
+      { name: "BodyText", data: new Uint8Array(10) },
+    ];
+    expect(reasonOf(buildCfb(bodyStream).bytes)).toBe("MALFORMED");
+  });
+
+  it("HWP·PPT 표식이 함께 있거나 DOC·XLS 스트림이 섞이면 UNSUPPORTED", () => {
+    expect(reasonOf(buildCfb([...hwpStreams(), ...pptStreams()]).bytes)).toBe("UNSUPPORTED");
+    const pptWithDocInfo = [...pptStreams(), { name: "DocInfo", data: new Uint8Array(10) }];
+    expect(reasonOf(buildCfb(pptWithDocInfo).bytes)).toBe("UNSUPPORTED");
+    const pptWithWord = [...pptStreams(), { name: "WordDocument", data: new Uint8Array(10) }];
+    expect(reasonOf(buildCfb(pptWithWord).bytes)).toBe("UNSUPPORTED");
+    const hwpWithWorkbook = [...hwpStreams(), { name: "Workbook", data: new Uint8Array(10) }];
+    expect(reasonOf(buildCfb(hwpWithWorkbook).bytes)).toBe("UNSUPPORTED");
+  });
+
+  it("VBA 저장소, HWP 스크립트 비트·Scripts 저장소는 MACRO", () => {
+    expect(reasonOf(buildCfb([...pptStreams(), cfbStorage("_VBA_PROJECT_CUR")]).bytes)).toBe(
+      "MACRO",
+    );
+    expect(reasonOf(buildCfb([...hwpStreams(), cfbStorage("Macros")]).bytes)).toBe("MACRO");
+    expect(reasonOf(syntheticHwp({ properties: 0x1 | 0x8 }).bytes)).toBe("MACRO");
+    expect(reasonOf(buildCfb([...hwpStreams(), cfbStorage("Scripts")]).bytes)).toBe("MACRO");
+  });
+
+  it("배포용 문서 비트(bit 2)는 의도적으로 허용한다", () => {
+    expect(reasonOf(syntheticHwp({ properties: 0x1 | 0x4 }).bytes)).toBe("OK:HWP");
+  });
+
+  it("PPT EncryptedSummary 스트림은 ENCRYPTED", () => {
+    const encrypted = [...pptStreams(), { name: "EncryptedSummary", data: new Uint8Array(64) }];
+    expect(reasonOf(buildCfb(encrypted).bytes)).toBe("ENCRYPTED");
+  });
+
+  it("파일 크기에 비해 과도한 FAT 섹터 수 선언은 MALFORMED", () => {
+    const fixture = syntheticPpt();
+    new DataView(fixture.bytes.buffer).setUint32(44, 3, true);
+    expect(reasonOf(fixture.bytes)).toBe("MALFORMED");
+  });
+});
+
+describe("ZIP 실행 콘텐츠·암호화·폴리글랏·이름", () => {
+  it("HWPX Scripts 디렉터리는 MACRO, 매니페스트 encryption-data는 ENCRYPTED", () => {
+    expect(reasonOf(withExtra(hwpxEntries(), { name: "Scripts/headerScripts", data: "x" }))).toBe(
+      "MACRO",
+    );
+    const manifest =
+      '<manifest><file-entry><Encryption-Data algorithm="x"/></file-entry></manifest>';
+    const encrypted = hwpxEntries().map((entry) =>
+      entry.name === "META-INF/manifest.xml" ? { ...entry, data: manifest } : entry,
+    );
+    expect(reasonOf(buildZip(encrypted))).toBe("ENCRYPTED");
+  });
+
+  it("PPTX의 VBA·ActiveX 콘텐츠 형식과 파트는 MACRO", () => {
+    const vbaDefault =
+      '<Types><Default Extension="bin" ContentType="application/vnd.ms-office.vbaProject"/>' +
+      `<Override PartName="/ppt/presentation.xml" ContentType="${PPTX_MAIN_TYPE}"/></Types>`;
+    expect(reasonOf(pptxWithContentTypes(vbaDefault))).toBe("MACRO");
+    const activeX = contentTypesXml([
+      { partName: "/ppt/presentation.xml", contentType: PPTX_MAIN_TYPE },
+      {
+        partName: "/ppt/activeX/activeX1.xml",
+        contentType: "application/vnd.ms-office.activeX+xml",
+      },
+    ]);
+    expect(reasonOf(pptxWithContentTypes(activeX))).toBe("MACRO");
+    expect(
+      reasonOf(withExtra(pptxEntries(), { name: "ppt/activeX/activeX1.bin", data: "x" })),
+    ).toBe("MACRO");
+    expect(reasonOf(withExtra(pptxEntries(), { name: "VBAPROJECT.BIN", data: "x" }))).toBe("MACRO");
+  });
+
+  it("데이터 서술자를 쓴 정상 엔트리는 받는다", () => {
+    const entries = pptxEntries().map((entry, index) => ({
+      ...entry,
+      dataDescriptor: index % 2 === 0 ? ("signed" as const) : ("plain" as const),
+    }));
+    expect(reasonOf(buildZip(entries))).toBe("OK:PPTX");
+  });
+
+  it("엔트리 사이·마지막 엔트리 뒤 빈틈과 앞 1KiB의 PDF 헤더는 POLYGLOT", () => {
+    const entries = pptxEntries();
+    const gapFirst = entries.map((entry, index) =>
+      index === 0 ? { ...entry, gapAfter: noise(10) } : entry,
+    );
+    expect(reasonOf(buildZip(gapFirst))).toBe("POLYGLOT");
+    const gapLast = entries.map((entry, index) =>
+      index === entries.length - 1 ? { ...entry, gapAfter: noise(10) } : entry,
+    );
+    expect(reasonOf(buildZip(gapLast))).toBe("POLYGLOT");
+    const pdfHeader = [{ name: "a.txt", data: "%PDF-1.7", method: 0 }, ...entries];
+    expect(reasonOf(buildZip(pdfHeader))).toBe("POLYGLOT");
+  });
+
+  it.each(["a/./b.xml", "a//b.xml", "a/.. /b.xml", "a/.../b.xml", "a/b.xml:stream", "./a.xml"])(
+    "정규화 후 위험한 이름 %j는 PATH_TRAVERSAL",
+    (name) => {
+      expect(reasonOf(withExtra(pptxEntries(), { name, data: "x" }))).toBe("PATH_TRAVERSAL");
+    },
+  );
+
+  it("디렉터리 엔트리(`dir/`)는 허용한다", () => {
+    expect(reasonOf(withExtra(pptxEntries(), { name: "ppt/media/", method: 0 }))).toBe("OK:PPTX");
+  });
+
+  it("Unicode Path 추가 필드는 UNSUPPORTED, Unix 심볼릭 링크는 PATH_TRAVERSAL", () => {
+    const unicodePath = new Uint8Array([0x75, 0x70, 0x05, 0x00, 1, 0, 0, 0, 0x78]);
+    expect(
+      reasonOf(withExtra(pptxEntries(), { name: "a.xml", data: "x", extra: unicodePath })),
+    ).toBe("UNSUPPORTED");
+    const symlink = {
+      name: "link",
+      data: "../../etc/passwd",
+      method: 0,
+      versionMadeBy: 0x0314,
+      externalAttributes: 0xa1ff0000,
+    };
+    expect(reasonOf(withExtra(pptxEntries(), symlink))).toBe("PATH_TRAVERSAL");
+  });
+
+  it("NFC 정규화 후 같은 이름은 중복으로 MALFORMED", () => {
+    const composed = { name: "ppt/media/한글.xml".normalize("NFC"), data: "x" };
+    const decomposed = { name: "ppt/media/한글.xml".normalize("NFD"), data: "y" };
+    expect(reasonOf(withExtra(pptxEntries(), composed, decomposed))).toBe("MALFORMED");
+  });
+});
+
+describe("PDF 꼬리 폴리글랏·암호화", () => {
+  it("본문이 1KiB를 넘는 정상 PDF는 받는다", () => {
+    expect(reasonOf(paddedPdf())).toBe("OK:PDF");
+  });
+
+  it("%%EOF가 없으면 MALFORMED", () => {
+    expect(reasonOf(encoder.encode("%PDF-1.7\n1 0 obj\n<< >>\nendobj\n"))).toBe("MALFORMED");
+  });
+
+  it("trailer의 /Encrypt는 ENCRYPTED", () => {
+    expect(reasonOf(paddedPdf("trailer\n<< /Root 1 0 R /Encrypt 5 0 R >>\n%%EOF\n"))).toBe(
+      "ENCRYPTED",
+    );
+  });
+
+  it("마지막 %%EOF 뒤의 ZIP·CFB, EOCD 주석으로 꼬리를 덮은 ZIP은 POLYGLOT", () => {
+    expect(reasonOf(concatBytes(paddedPdf(), buildZip(pptxEntries())))).toBe("POLYGLOT");
+    expect(reasonOf(concatBytes(paddedPdf(), syntheticPpt().bytes))).toBe("POLYGLOT");
+    const covered = buildZip(pptxEntries(), { comment: encoder.encode("\n%%EOF\n") });
+    expect(reasonOf(concatBytes(paddedPdf(), covered))).toBe("POLYGLOT");
+  });
+
+  it("CFB 앞 1KiB 안의 %PDF- 헤더는 POLYGLOT", () => {
+    const fixture = syntheticPpt();
+    fixture.bytes.set(encoder.encode("%PDF-1.7"), 600);
+    expect(reasonOf(fixture.bytes)).toBe("POLYGLOT");
   });
 });

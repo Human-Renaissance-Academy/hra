@@ -38,6 +38,21 @@ const EOCD_SEARCH_BYTES = EOCD_BYTES + 0xffff;
 const MAX_ENTRIES = 2000;
 const MAX_TOTAL_UNCOMPRESSED_BYTES = 300 * 1024 * 1024;
 const MAX_INFLATED_ENTRY_BYTES = 1024 * 1024;
+/** 해제 대상 엔트리의 압축 크기 상한: 출력 상한 + 작은 여유(무압축 블록 헤더 등) */
+const MAX_INFLATE_INPUT_BYTES = MAX_INFLATED_ENTRY_BYTES + 64 * 1024;
+/** XML 스캐너 상한: `Default`/`Override` 요소 수, 속성 이름·값 길이, 태그 이름 길이 */
+const MAX_XML_ELEMENTS = 4096;
+const MAX_XML_ATTRIBUTE_NAME = 256;
+const MAX_XML_ATTRIBUTE_VALUE = 4096;
+const MAX_XML_TAG_NAME = 256;
+/** 데이터 서술자 시그니처(선택 사항) */
+const DATA_DESCRIPTOR = 0x08074b50;
+/** Info-ZIP Unicode Path 추가 필드 ID. 중앙 디렉터리 이름과 다른 이름을 숨길 수 있어 거부합니다. */
+const EXTRA_UNICODE_PATH = 0x7075;
+/** 생성 호스트 3(Unix)의 외부 속성 상위 16비트 파일 형식 중 심볼릭 링크(S_IFLNK) */
+const HOST_UNIX = 3;
+const UNIX_FILE_TYPE_MASK = 0xf000;
+const UNIX_SYMLINK = 0xa000;
 
 /** 일반 목적 비트 플래그: bit 0 암호화, bit 3 데이터 서술자, bit 6 강한 암호화, bit 11 UTF-8 이름 */
 const FLAG_ENCRYPTED = 1 << 0;
@@ -113,12 +128,43 @@ function decodeName(nameBytes: Uint8Array, flags: number): string {
   return String.fromCharCode(...nameBytes);
 }
 
-/** 압축 해제 시 파일 시스템 밖을 가리킬 수 있는 이름을 거부합니다. */
+/** 세그먼트 끝의 공백·점을 제거합니다(Windows 경로 정규화 모사). 정규식 역추적을 피하려고 반복문을 씁니다. */
+function trimTrailingDotsAndSpaces(segment: string): string {
+  let end = segment.length;
+  while (end > 0 && (segment[end - 1] === " " || segment[end - 1] === ".")) end -= 1;
+  return segment.slice(0, end);
+}
+
+/**
+ * 압축 해제 시 파일 시스템 밖을 가리키거나 판독기마다 다르게 해석될 수 있는 이름을 거부합니다.
+ * - NUL·역슬래시·콜론(드라이브 문자, NTFS 대체 스트림)·선행 `/`
+ * - 빈 세그먼트(`a//b`), `.`·`..` 세그먼트, 끝의 공백·점을 지우면 비거나 `..`가 되는 세그먼트
+ *   (마지막 세그먼트가 빈 경우는 디렉터리 엔트리 `dir/`이므로 허용합니다)
+ */
 function assertSafeName(name: string): void {
   if (name.length === 0) reject();
-  if (name.includes("\0") || name.includes("\\") || name.startsWith("/")) reject("PATH_TRAVERSAL");
-  if (/^[A-Za-z]:/.test(name)) reject("PATH_TRAVERSAL");
-  if (name.split("/").some((segment) => segment === "..")) reject("PATH_TRAVERSAL");
+  if (name.includes("\0") || name.includes("\\") || name.includes(":") || name.startsWith("/"))
+    reject("PATH_TRAVERSAL");
+  const segments = name.split("/");
+  segments.forEach((segment, index) => {
+    if (segment === "" && index === segments.length - 1 && index > 0) return;
+    const trimmed = trimTrailingDotsAndSpaces(segment);
+    if (trimmed === "" || trimmed === "..") reject("PATH_TRAVERSAL");
+  });
+}
+
+/** 중앙 디렉터리 추가 필드를 범위 검사하며 순회하고, 허용하지 않는 필드를 거부합니다. */
+function assertExtraFields(view: DataView, start: number, length: number): void {
+  let cursor = start;
+  const end = start + length;
+  while (cursor < end) {
+    if (cursor + 4 > end) reject();
+    const id = view.getUint16(cursor, true);
+    const size = view.getUint16(cursor + 2, true);
+    if (cursor + 4 + size > end) reject();
+    if (id === EXTRA_UNICODE_PATH) reject("UNSUPPORTED");
+    cursor += 4 + size;
+  }
 }
 
 /** EOCD 레코드를 검증하고 중앙 디렉터리 위치·엔트리 수를 반환합니다. */
@@ -158,6 +204,7 @@ function readCentralDirectory(bytes: Uint8Array, view: DataView): ZipEntry[] {
   for (let index = 0; index < totalEntries; index += 1) {
     if (cursor + CENTRAL_HEADER_BYTES > directoryEnd) reject();
     if (view.getUint32(cursor, true) !== CENTRAL_HEADER) reject();
+    const versionMadeBy = view.getUint16(cursor + 4, true);
     const flags = view.getUint16(cursor + 8, true);
     const method = view.getUint16(cursor + 10, true);
     const crc = view.getUint32(cursor + 16, true);
@@ -167,6 +214,7 @@ function readCentralDirectory(bytes: Uint8Array, view: DataView): ZipEntry[] {
     const extraLength = view.getUint16(cursor + 30, true);
     const commentLength = view.getUint16(cursor + 32, true);
     const diskStart = view.getUint16(cursor + 34, true);
+    const externalAttributes = view.getUint32(cursor + 38, true);
     const localOffset = view.getUint32(cursor + 42, true);
     const recordEnd = cursor + CENTRAL_HEADER_BYTES + nameLength + extraLength + commentLength;
     if (recordEnd > directoryEnd) reject();
@@ -191,7 +239,15 @@ function readCentralDirectory(bytes: Uint8Array, view: DataView): ZipEntry[] {
     );
     const name = decodeName(nameBytes, flags);
     assertSafeName(name);
-    const key = name.toLowerCase();
+    assertExtraFields(view, cursor + CENTRAL_HEADER_BYTES + nameLength, extraLength);
+    // Unix에서 만든 심볼릭 링크 엔트리는 해제 시 임의 경로를 가리킬 수 있으므로 거부합니다.
+    if (
+      versionMadeBy >>> 8 === HOST_UNIX &&
+      ((externalAttributes >>> 16) & UNIX_FILE_TYPE_MASK) === UNIX_SYMLINK
+    )
+      reject("PATH_TRAVERSAL");
+    // 유니코드 정규화(NFC) 후 대소문자를 무시해 중복을 비교합니다(조합형/완성형 한글 이름 우회 방지).
+    const key = name.normalize("NFC").toLowerCase();
     if (names.has(key)) reject();
     names.add(key);
 
@@ -222,7 +278,9 @@ function readCentralDirectory(bytes: Uint8Array, view: DataView): ZipEntry[] {
  * 로컬 헤더를 중앙 디렉터리와 교차 검증합니다.
  * - 첫 로컬 헤더는 오프셋 0에 있어야 합니다(앞에 붙은 데이터 거부).
  * - 이름·플래그·압축 방식·크기·CRC가 중앙 디렉터리와 일치해야 합니다(데이터 서술자 사용 시 크기·CRC는 0 허용).
- * - 엔트리 데이터가 서로 겹치거나 중앙 디렉터리를 침범하면 거부합니다(겹침 기반 압축 폭탄 방지).
+ * - 엔트리는 빈틈 없이 연속해야 합니다. 각 엔트리 끝(헤더+이름+추가 필드+압축 데이터+데이터 서술자)이
+ *   다음 엔트리 시작과 같고, 마지막 엔트리 끝은 중앙 디렉터리 시작과 같아야 합니다.
+ *   겹침 기반 압축 폭탄과 엔트리 사이에 다른 형식을 숨기는 폴리글랏을 함께 막습니다.
  */
 function verifyLocalHeaders(
   bytes: Uint8Array,
@@ -264,8 +322,24 @@ function verifyLocalHeaders(
     }
     entry.dataOffset = nameStart + nameLength + extraLength;
     const dataEnd = entry.dataOffset + entry.compressedSize;
-    const limit = index + 1 < ordered.length ? ordered[index + 1].localOffset : directoryOffset;
-    if (dataEnd > limit) reject();
+    const next = index + 1 < ordered.length ? ordered[index + 1].localOffset : directoryOffset;
+    if (dataEnd > next) reject();
+    const gap = next - dataEnd;
+    if (!deferred) {
+      if (gap !== 0) reject("POLYGLOT");
+      return;
+    }
+    // 데이터 서술자: 시그니처 없는 12바이트(CRC·압축 크기·원본 크기) 또는 시그니처 포함 16바이트.
+    // ZIP64는 거부하므로 24바이트 형식은 받지 않습니다. 내용은 중앙 디렉터리 값과 같아야 합니다.
+    let descriptor = dataEnd;
+    if (gap === 16 && view.getUint32(dataEnd, true) === DATA_DESCRIPTOR) descriptor += 4;
+    else if (gap !== 12) reject("POLYGLOT");
+    if (
+      view.getUint32(descriptor, true) !== entry.crc ||
+      view.getUint32(descriptor + 4, true) !== entry.compressedSize ||
+      view.getUint32(descriptor + 8, true) !== entry.uncompressedSize
+    )
+      reject();
   });
 }
 
@@ -275,6 +349,7 @@ function verifyLocalHeaders(
  */
 function readEntry(bytes: Uint8Array, entry: ZipEntry): Uint8Array {
   if (entry.uncompressedSize > MAX_INFLATED_ENTRY_BYTES) reject("ZIP_LIMIT");
+  if (entry.compressedSize > MAX_INFLATE_INPUT_BYTES) reject("ZIP_LIMIT");
   const data = bytes.subarray(entry.dataOffset, entry.dataOffset + entry.compressedSize);
   let output: Uint8Array;
   if (entry.method === METHOD_STORED) {
@@ -301,52 +376,142 @@ function decodeXml(data: Uint8Array): string {
   }
 }
 
-/** `<Override .../>` 태그 속성을 단순 파싱합니다. 정규식은 태그 하나 범위로 제한됩니다. */
-function parseOverrides(xml: string): { partName: string; contentType: string }[] {
-  const overrides: { partName: string; contentType: string }[] = [];
-  for (const tag of xml.matchAll(/<(?:[A-Za-z_][\w.-]*:)?Override\b([^>]*)>/g)) {
-    const attributes = new Map<string, string>();
-    for (const attribute of tag[1].matchAll(/([A-Za-z_][\w.:-]*)\s*=\s*(?:"([^"]*)"|'([^']*)')/g)) {
-      attributes.set(attribute[1], attribute[2] ?? attribute[3] ?? "");
+/** 공백 문자(XML S 생성 규칙) 여부 */
+function isXmlSpace(char: string): boolean {
+  return char === " " || char === "\t" || char === "\n" || char === "\r";
+}
+
+/** `[Content_Types].xml`의 `Default`·`Override` 요소 하나 */
+interface ContentTypeElement {
+  kind: "Default" | "Override";
+  attributes: Map<string, string>;
+}
+
+/**
+ * 태그 하나의 속성을 왼쪽에서 오른쪽으로 한 번만 훑어 읽습니다.
+ * 정규식을 쓰지 않으므로 태그 길이에 선형 시간이며, 이름·값 길이 상한을 넘거나 문법이 틀리면 손상으로 봅니다.
+ */
+function parseAttributes(tag: string, start: number): Map<string, string> {
+  const attributes = new Map<string, string>();
+  let cursor = start;
+  for (;;) {
+    while (cursor < tag.length && isXmlSpace(tag[cursor])) cursor += 1;
+    if (cursor >= tag.length || tag[cursor] === "/") return attributes;
+    // 속성 이름: 공백·`=`·`/` 전까지, 길이 상한 적용
+    const nameStart = cursor;
+    while (
+      cursor < tag.length &&
+      !isXmlSpace(tag[cursor]) &&
+      tag[cursor] !== "=" &&
+      tag[cursor] !== "/"
+    ) {
+      cursor += 1;
+      if (cursor - nameStart > MAX_XML_ATTRIBUTE_NAME) reject();
     }
-    overrides.push({
-      partName: attributes.get("PartName") ?? "",
-      contentType: (attributes.get("ContentType") ?? "").trim(),
-    });
+    const name = tag.slice(nameStart, cursor);
+    if (name === "") reject();
+    while (cursor < tag.length && isXmlSpace(tag[cursor])) cursor += 1;
+    if (tag[cursor] !== "=") reject();
+    cursor += 1;
+    while (cursor < tag.length && isXmlSpace(tag[cursor])) cursor += 1;
+    // 속성 값: 같은 따옴표가 다시 나올 때까지. indexOf는 태그 안에서만 한 번 수행됩니다.
+    const quote = tag[cursor];
+    if (quote !== '"' && quote !== "'") reject();
+    const valueEnd = tag.indexOf(quote, cursor + 1);
+    if (valueEnd === -1 || valueEnd - cursor - 1 > MAX_XML_ATTRIBUTE_VALUE) reject();
+    if (attributes.has(name)) reject();
+    attributes.set(name, tag.slice(cursor + 1, valueEnd));
+    cursor = valueEnd + 1;
   }
-  return overrides;
 }
 
-/** HWPX 필수 구조를 확인합니다. `mimetype`은 오프셋 0의 무압축 첫 엔트리여야 합니다. */
-function checkHwpx(entries: Map<string, ZipEntry>): void {
+/**
+ * `[Content_Types].xml`에서 `Default`·`Override` 요소만 선형 스캔으로 추출합니다.
+ * - `<`와 `>`를 indexOf로 찾고 닫히지 않은 태그는 손상으로 거부합니다(입력 전체를 한 번만 순회).
+ * - 처리 명령(`<?`), 주석·선언(`<!`), 닫는 태그(`</`)는 건너뜁니다.
+ * - 요소 수는 4096개까지 허용합니다.
+ * 정규식 역추적에 의한 서비스 거부(ReDoS)를 피하려고 정규식 없이 구현합니다.
+ */
+function scanContentTypes(xml: string): ContentTypeElement[] {
+  const elements: ContentTypeElement[] = [];
+  let cursor = 0;
+  for (;;) {
+    const open = xml.indexOf("<", cursor);
+    if (open === -1) return elements;
+    const close = xml.indexOf(">", open + 1);
+    if (close === -1) reject();
+    cursor = close + 1;
+    const tag = xml.slice(open + 1, close);
+    if (tag === "" || tag[0] === "?" || tag[0] === "!" || tag[0] === "/") continue;
+    // 태그 이름: 공백·`/` 전까지, 길이 상한 적용. 네임스페이스 접두어는 떼고 비교합니다.
+    let nameEnd = 0;
+    while (nameEnd < tag.length && !isXmlSpace(tag[nameEnd]) && tag[nameEnd] !== "/") {
+      nameEnd += 1;
+      if (nameEnd > MAX_XML_TAG_NAME) reject();
+    }
+    const qualified = tag.slice(0, nameEnd);
+    const localName = qualified.slice(qualified.lastIndexOf(":") + 1);
+    if (localName !== "Default" && localName !== "Override") continue;
+    if (elements.length >= MAX_XML_ELEMENTS) reject("ZIP_LIMIT");
+    elements.push({ kind: localName, attributes: parseAttributes(tag, nameEnd) });
+  }
+}
+
+/**
+ * HWPX 필수 구조와 실행 콘텐츠·암호화를 확인합니다. `mimetype`은 오프셋 0의 무압축 첫 엔트리여야 합니다.
+ * 실제 한컴 샘플 확인 필요: `META-INF/manifest.xml`의 `encryption-data` 표기로 암호 문서를 판별한다는
+ * 가정은 ODF 매니페스트 관례를 따른 것입니다.
+ */
+function checkHwpx(bytes: Uint8Array, entries: ZipEntry[]): void {
+  const names = new Set(entries.map((entry) => entry.name));
   for (const required of ["Contents/content.hpf", "Contents/header.xml"]) {
-    if (!entries.has(required)) reject();
+    if (!names.has(required)) reject();
   }
-  const hasSection = [...entries.keys()].some((name) => /^Contents\/section\d+\.xml$/.test(name));
+  const hasSection = entries.some((entry) => /^Contents\/section\d+\.xml$/.test(entry.name));
   if (!hasSection) reject();
+  // 스크립트 디렉터리는 실행 콘텐츠이므로 매크로로 거부합니다.
+  if (entries.some((entry) => entry.name.toLowerCase().startsWith("scripts/"))) reject("MACRO");
+  // 매니페스트는 1MiB 상한으로만 해제하고, includes로 선형 검색합니다.
+  const manifest = entries.find((entry) => entry.name.toLowerCase() === "meta-inf/manifest.xml");
+  if (manifest && decodeXml(readEntry(bytes, manifest)).toLowerCase().includes("encryption-data"))
+    reject("ENCRYPTED");
 }
 
-/** PPTX 필수 구조와 매크로 여부를 확인합니다. 발표자료가 아닌 OOXML은 미지원으로 거부합니다. */
+/**
+ * PPTX 필수 구조와 매크로·ActiveX 여부를 확인합니다. 발표자료가 아닌 OOXML은 미지원으로 거부합니다.
+ *
+ * 미탐지(한계): OLE 개체 임베드(`ppt/embeddings/`)와 외부 관계(`TargetMode="External"`)는 허용합니다.
+ * 서버는 문서를 렌더링·실행하지 않고 다운로드는 attachment로만 제공하므로 열람 프로그램의 보호에 맡깁니다.
+ */
 function checkOfficeOpenXml(
   bytes: Uint8Array,
   entries: ZipEntry[],
   contentTypes: ZipEntry,
 ): DetectionResult {
-  // 매크로 프로젝트 파트는 경로와 무관하게 발견되면 거부합니다.
-  if (entries.some((entry) => /(^|\/)vbaProject\.bin$/i.test(entry.name))) return fail("MACRO");
-  const overrides = parseOverrides(decodeXml(readEntry(bytes, contentTypes)));
-  if (overrides.some((override) => override.contentType.toLowerCase().includes("macroenabled")))
+  // 매크로 프로젝트와 ActiveX 파트는 경로와 무관하게(대소문자 무시) 발견되면 거부합니다.
+  const lowerNames = entries.map((entry) => entry.name.toLowerCase());
+  if (lowerNames.some((name) => name === "vbaproject.bin" || name.endsWith("/vbaproject.bin")))
     return fail("MACRO");
+  if (lowerNames.some((name) => name.startsWith("ppt/activex/"))) return fail("MACRO");
+  const elements = scanContentTypes(decodeXml(readEntry(bytes, contentTypes)));
+  // Default·Override의 모든 콘텐츠 형식에서 매크로·VBA·ActiveX 표식을 찾습니다.
+  const executable = elements.some((element) => {
+    const type = (element.attributes.get("ContentType") ?? "").toLowerCase();
+    return type.includes("macroenabled") || type.includes("vbaproject") || type.includes("activex");
+  });
+  if (executable) return fail("MACRO");
   // OPC 파트 이름은 대소문자를 구분하지 않습니다.
-  const presentation = overrides.find(
-    (override) => override.partName.toLowerCase() === "/ppt/presentation.xml",
+  const presentation = elements.find(
+    (element) =>
+      element.kind === "Override" &&
+      (element.attributes.get("PartName") ?? "").toLowerCase() === "/ppt/presentation.xml",
   );
   if (!presentation) return fail("UNSUPPORTED");
-  if (presentation.contentType === PPTM_MAIN_CONTENT_TYPE) return fail("MACRO");
+  const mainType = (presentation.attributes.get("ContentType") ?? "").trim();
+  if (mainType === PPTM_MAIN_CONTENT_TYPE) return fail("MACRO");
   // 슬라이드쇼(.ppsx)·서식(.potx) 등 다른 본문 형식은 받지 않습니다.
-  if (presentation.contentType !== PPTX_MAIN_CONTENT_TYPE) return fail("UNSUPPORTED");
-  const lowerNames = new Set(entries.map((entry) => entry.name.toLowerCase()));
-  if (!lowerNames.has("_rels/.rels") || !lowerNames.has("ppt/presentation.xml"))
+  if (mainType !== PPTX_MAIN_CONTENT_TYPE) return fail("UNSUPPORTED");
+  if (!lowerNames.includes("_rels/.rels") || !lowerNames.includes("ppt/presentation.xml"))
     return fail("MALFORMED");
   return { ok: true, format: "PPTX" };
 }
@@ -359,7 +524,6 @@ export function detectZipDocument(bytes: Uint8Array): DetectionResult {
   try {
     const view = viewOf(bytes);
     const entries = readCentralDirectory(bytes, view);
-    const byName = new Map(entries.map((entry) => [entry.name, entry]));
 
     // HWPX: 오프셋 0의 첫 엔트리가 무압축 `mimetype`이고 내용이 정확히 application/hwp+zip
     const first = entries.find((entry) => entry.localOffset === 0);
@@ -370,7 +534,7 @@ export function detectZipDocument(bytes: Uint8Array): DetectionResult {
       const mimetype = readEntry(bytes, first);
       if (mimetype.some((byte, at) => byte !== HWPX_MIMETYPE.charCodeAt(at)))
         return fail("UNSUPPORTED");
-      checkHwpx(byName);
+      checkHwpx(bytes, entries);
       return { ok: true, format: "HWPX" };
     }
 
