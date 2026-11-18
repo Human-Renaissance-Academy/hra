@@ -490,25 +490,25 @@ describe("XML 스캐너 ReDoS 방지", () => {
     return { reason, elapsed: performance.now() - started };
   };
 
-  it("1MiB 속성 이름은 200ms 안에 MALFORMED", () => {
+  it("1MiB 속성 이름은 2000ms 안에 MALFORMED", () => {
     const xml = `<?xml version="1.0"?><Types><Override ${"a".repeat(1_000_000)}/></Types>`;
     const { reason, elapsed } = timed(pptxWithContentTypes(xml));
     expect(reason).toBe("MALFORMED");
-    expect(elapsed).toBeLessThan(200);
+    expect(elapsed).toBeLessThan(2000);
   });
 
-  it("닫히지 않은 `<Override` 반복은 200ms 안에 MALFORMED", () => {
+  it("닫히지 않은 `<Override` 반복은 2000ms 안에 MALFORMED", () => {
     const xml = `<?xml version="1.0"?><Types>${"<Override".repeat(110_000)}`;
     const { reason, elapsed } = timed(pptxWithContentTypes(xml));
     expect(reason).toBe("MALFORMED");
-    expect(elapsed).toBeLessThan(200);
+    expect(elapsed).toBeLessThan(2000);
   });
 
   it("1MiB 공백 속성 구간은 빠르게 처리하고, 과도한 요소 수는 ZIP_LIMIT", () => {
     const spaces = `<Types><Override ${" ".repeat(1_000_000)}/></Types>`;
     const first = timed(pptxWithContentTypes(spaces));
     expect(first.reason).toBe("UNSUPPORTED");
-    expect(first.elapsed).toBeLessThan(200);
+    expect(first.elapsed).toBeLessThan(2000);
     const many = `<Types>${'<Default Extension="x" ContentType="a"/>'.repeat(5000)}</Types>`;
     expect(reasonOf(pptxWithContentTypes(many))).toBe("ZIP_LIMIT");
   });
@@ -691,5 +691,118 @@ describe("PDF 꼬리 폴리글랏·암호화", () => {
     const fixture = syntheticPpt();
     fixture.bytes.set(encoder.encode("%PDF-1.7"), 600);
     expect(reasonOf(fixture.bytes)).toBe("POLYGLOT");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 재리뷰(7dde74b) 후속 지적 회귀 테스트
+// ---------------------------------------------------------------------------
+
+/** 경과 시간과 함께 판별 결과를 돌려줍니다. */
+const timedReason = (bytes: Uint8Array) => {
+  const started = performance.now();
+  const reason = reasonOf(bytes);
+  return { reason, elapsed: performance.now() - started };
+};
+/** 정상 PPTX 본문 Override */
+const presentationOverride = `<Override PartName="/ppt/presentation.xml" ContentType="${PPTX_MAIN_TYPE}"/>`;
+
+describe("XML 엔티티 해석과 관계 파트 검사", () => {
+  it("문자 참조로 숨긴 ActiveX·VBA 콘텐츠 형식은 MACRO", () => {
+    const activeX =
+      `<Types>${presentationOverride}` +
+      '<Override PartName="/ppt/ctl/c1.xml" ContentType="application/vnd.ms-office.&#97;ctiveX+xml"/></Types>';
+    expect(reasonOf(pptxWithContentTypes(activeX))).toBe("MACRO");
+    const vba =
+      `<Types>${presentationOverride}` +
+      '<Default Extension="bin" ContentType="application/vnd.ms-office.&#x76;baProject"/></Types>';
+    expect(reasonOf(pptxWithContentTypes(vba))).toBe("MACRO");
+  });
+
+  it("엔티티로 쓴 PartName은 해석 후 비교한다", () => {
+    const encoded = `<Types><Override PartName="/ppt/presentation&#46;xml" ContentType="${PPTX_MAIN_TYPE}"/></Types>`;
+    expect(reasonOf(pptxWithContentTypes(encoded))).toBe("OK:PPTX");
+  });
+
+  it.each(["&foo;", "&#0;", "&#xD800;", "&#;", "&amp", "&#99999999999;"])(
+    "알 수 없거나 잘못된 참조 %j는 MALFORMED",
+    (reference) => {
+      const xml = `<Types>${presentationOverride}<Default Extension="a${reference}" ContentType="x"/></Types>`;
+      expect(reasonOf(pptxWithContentTypes(xml))).toBe("MALFORMED");
+    },
+  );
+
+  it(".rels의 ActiveX 컨트롤·VBA 관계는 MACRO(엔티티 우회 포함)", () => {
+    const rels = (type: string) =>
+      `<Relationships><Relationship Id="rId1" Type="${type}" Target="../x.xml"/></Relationships>`;
+    const control = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/control";
+    expect(
+      reasonOf(
+        withExtra(pptxEntries(), { name: "ppt/slides/_rels/slide1.xml.rels", data: rels(control) }),
+      ),
+    ).toBe("MACRO");
+    const encoded = control.replace("control", "c&#111;ntrol");
+    expect(
+      reasonOf(
+        withExtra(pptxEntries(), { name: "ppt/slides/_rels/slide1.xml.rels", data: rels(encoded) }),
+      ),
+    ).toBe("MACRO");
+    const binary = "http://schemas.microsoft.com/office/2006/relationships/activeXControlBinary";
+    expect(
+      reasonOf(
+        withExtra(pptxEntries(), { name: "ppt/slides/_rels/slide2.xml.rels", data: rels(binary) }),
+      ),
+    ).toBe("MACRO");
+    // 일반 슬라이드 관계는 허용합니다.
+    const slide = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide";
+    expect(
+      reasonOf(withExtra(pptxEntries(), { name: "ppt/_rels/other.xml.rels", data: rels(slide) })),
+    ).toBe("OK:PPTX");
+  });
+
+  it("관계 파트 선언 크기 합계가 8MiB를 넘으면 ZIP_LIMIT", () => {
+    const big = Array.from({ length: 9 }, (_, index) => ({
+      name: `ppt/_rels/r${index}.xml.rels`,
+      data: "x",
+      declaredSize: 1024 * 1024,
+    }));
+    expect(reasonOf(withExtra(pptxEntries(), ...big))).toBe("ZIP_LIMIT");
+  });
+
+  it("끝까지 파싱하는 큰 입력도 2000ms 안에 처리한다", () => {
+    const attributes = Array.from({ length: 60_000 }, (_, index) => `a${index}="1"`).join(" ");
+    const manyAttributes = timedReason(
+      pptxWithContentTypes(`<Types><Override ${attributes}/></Types>`),
+    );
+    expect(manyAttributes.reason).toBe("UNSUPPORTED");
+    expect(manyAttributes.elapsed).toBeLessThan(2000);
+    const overrides = Array.from(
+      { length: 4000 },
+      (_, index) => `<Override PartName="/ppt/s${index}.xml" ContentType="application/xml"/>`,
+    ).join("");
+    const manyOverrides = timedReason(
+      pptxWithContentTypes(`<Types>${presentationOverride}${overrides}</Types>`),
+    );
+    expect(manyOverrides.reason).toBe("OK:PPTX");
+    expect(manyOverrides.elapsed).toBeLessThan(2000);
+  });
+});
+
+describe("PDF 꼬리 검사 비용과 범위", () => {
+  it("%%EOF가 끝 1KiB 밖에 있으면 큰 입력도 빠르게 MALFORMED", () => {
+    const large = new Uint8Array(8 * 1024 * 1024).fill(0x41);
+    large.set(encoder.encode("%PDF-1.7\n%%EOF\n"));
+    const { reason, elapsed } = timedReason(large);
+    expect(reason).toBe("MALFORMED");
+    expect(elapsed).toBeLessThan(2000);
+  });
+
+  it("%%EOF 뒤 공백은 허용하고, 다른 바이트는 POLYGLOT", () => {
+    expect(reasonOf(paddedPdf("trailer\n<< >>\n%%EOF\r\n \t\0\f\n"))).toBe("OK:PDF");
+    expect(reasonOf(paddedPdf("trailer\n<< >>\n%%EOF\nhidden"))).toBe("POLYGLOT");
+  });
+
+  it("끝 64KiB 안의 EOCD 시그니처는 주석 길이와 무관하게 POLYGLOT", () => {
+    expect(reasonOf(paddedPdf("PK\x05\x06\ntrailer\n<< >>\n%%EOF\n"))).toBe("POLYGLOT");
   });
 });

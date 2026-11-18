@@ -32,7 +32,6 @@ import {
   ZIP_LOCAL_SIGNATURE,
   fail,
   indexOfBytes,
-  viewOf,
   startsWithAt,
 } from "./types";
 
@@ -54,51 +53,64 @@ function hasSignatureNearStart(
 const PDF_EOF = [0x25, 0x25, 0x45, 0x4f, 0x46] as const;
 const PDF_ENCRYPT = [0x2f, 0x45, 0x6e, 0x63, 0x72, 0x79, 0x70, 0x74] as const;
 const ZIP_EOCD_SIGNATURE = [0x50, 0x4b, 0x05, 0x06] as const;
-/** PDF 꼬리 검사 범위: trailer·암호화 사전과 ZIP EOCD(22바이트 + 주석 최대 65,535바이트)가 놓일 수 있는 구간 */
+/** `%%EOF`는 파일 끝 1KiB 안에 있어야 합니다. */
+const PDF_EOF_SCAN_BYTES = 1024;
+/** trailer·암호화 사전 검사 범위 */
 const PDF_TRAILER_SCAN_BYTES = 64 * 1024;
-const ZIP_EOCD_SCAN_BYTES = 22 + 0xffff;
+/** 다른 컨테이너 시그니처 검사 범위: ZIP EOCD(22바이트 + 주석 최대 65,535바이트)가 놓일 수 있는 구간 */
+const PDF_CONTAINER_SCAN_BYTES = 22 + 0xffff;
 
-/** `signature`가 마지막으로 나타나는 위치(없으면 -1). 뒤에서부터 한 번만 훑습니다. */
-function lastIndexOfBytes(bytes: Uint8Array, signature: readonly number[]): number {
-  for (let offset = bytes.length - signature.length; offset >= 0; offset -= 1) {
-    if (startsWithAt(bytes, offset, signature)) return offset;
-  }
-  return -1;
+/** PDF가 `%%EOF` 뒤에 허용하는 공백(공백·탭·CR·LF·NUL·FF) */
+function isPdfWhitespace(byte: number): boolean {
+  return (
+    byte === 0x20 ||
+    byte === 0x09 ||
+    byte === 0x0d ||
+    byte === 0x0a ||
+    byte === 0x00 ||
+    byte === 0x0c
+  );
 }
 
 /**
- * 파일 끝 65,557바이트 안에 ZIP 판독기가 받아들일 EOCD(주석 길이가 정확히 파일 끝에 닿는 레코드)가
- * 있는지 확인합니다. EOCD 주석으로 PDF 꼬리를 덮는 폴리글랏을 찾기 위한 검사입니다.
- */
-function hasTrailingZipEndRecord(bytes: Uint8Array): boolean {
-  const view = viewOf(bytes);
-  const start = Math.max(0, bytes.length - ZIP_EOCD_SCAN_BYTES);
-  for (let offset = bytes.length - 22; offset >= start; offset -= 1) {
-    if (!startsWithAt(bytes, offset, ZIP_EOCD_SIGNATURE)) continue;
-    if (offset + 22 + view.getUint16(offset + 20, true) === bytes.length) return true;
-  }
-  return false;
-}
-
-/**
- * PDF 원본을 검사합니다.
- * - 앞 1KiB에 ZIP/CFB 시그니처가 섞이면 폴리글랏으로 거부합니다.
- * - 마지막 `%%EOF`가 없으면 잘린 파일로 보고 거부합니다.
- * - 마지막 `%%EOF` 뒤에 ZIP 로컬 헤더·EOCD·CFB 시그니처가 있거나, 꼬리에 유효한 ZIP EOCD가 있으면
- *   폴리글랏으로 거부합니다.
- * - 정책: 이슈 #516은 암호화 문서를 거부 대상으로 정하므로 꼬리 64KiB에 `/Encrypt`가 있으면 거부합니다.
- * 본문 구조(xref·객체)는 해석하지 않습니다. 서버는 PDF를 렌더링·변환하지 않습니다.
+ * PDF 원본을 검사합니다. 모든 꼬리 검사는 파일 끝 고정 범위만 훑으므로 입력 크기와 무관하게 상수 시간입니다.
+ * 1) 앞 1KiB에 ZIP/CFB 시그니처가 섞이면 폴리글랏으로 거부합니다.
+ * 2) 끝 65,557바이트 안에 ZIP 로컬 헤더·EOCD·CFB 시그니처가 있으면 폴리글랏으로 거부합니다.
+ *    ZIP 판독기는 EOCD를 이 범위에서만 찾으므로, PDF 뒤에 ZIP을 붙이거나 EOCD 주석으로 PDF 꼬리를
+ *    덮는 경우를 모두 막습니다.
+ * 3) 마지막 `%%EOF`는 끝 1KiB 안에 있어야 하며(없으면 잘린 파일로 MALFORMED),
+ *    그 뒤에는 공백만 올 수 있습니다(다른 바이트가 있으면 POLYGLOT).
+ * 4) 정책: 이슈 #516은 암호화 문서를 거부 대상으로 정하므로 끝 64KiB에 `/Encrypt`가 있으면 거부합니다.
+ *    소유자 암호만 설정된(열람은 가능한) PDF도 정책상 함께 거부됩니다.
+ *
+ * 알려진 한계:
+ * - `/Encr#79pt`처럼 16진 이스케이프한 이름은 탐지하지 않습니다.
+ * - 선형화(linearized) PDF에서 `/Encrypt`가 첫 페이지 trailer에만 있고 끝 64KiB에 없으면 탐지하지 않습니다.
+ * - 본문 구조(xref·객체)는 해석하지 않습니다. 서버는 PDF를 렌더링·변환하지 않습니다.
  */
 function detectPdfDocument(bytes: Uint8Array): DetectionResult {
   if (hasSignatureNearStart(bytes, [ZIP_LOCAL_SIGNATURE, CFB_SIGNATURE], PDF_SIGNATURE.length))
     return fail("POLYGLOT");
-  const eof = lastIndexOfBytes(bytes, PDF_EOF);
-  if (eof === -1) return fail("MALFORMED");
-  const afterEof = eof + PDF_EOF.length;
+  const containerStart = Math.max(0, bytes.length - PDF_CONTAINER_SCAN_BYTES);
   const trailingContainer = [ZIP_LOCAL_SIGNATURE, ZIP_EOCD_SIGNATURE, CFB_SIGNATURE].some(
-    (signature) => indexOfBytes(bytes, signature, afterEof) !== -1,
+    (signature) => indexOfBytes(bytes, signature, containerStart) !== -1,
   );
-  if (trailingContainer || hasTrailingZipEndRecord(bytes)) return fail("POLYGLOT");
+  if (trailingContainer) return fail("POLYGLOT");
+
+  // 끝 1KiB 안에서 마지막 `%%EOF`를 뒤에서부터 찾습니다.
+  const eofStart = Math.max(0, bytes.length - PDF_EOF_SCAN_BYTES);
+  let eof = -1;
+  for (let offset = bytes.length - PDF_EOF.length; offset >= eofStart; offset -= 1) {
+    if (startsWithAt(bytes, offset, PDF_EOF)) {
+      eof = offset;
+      break;
+    }
+  }
+  if (eof === -1) return fail("MALFORMED");
+  for (let offset = eof + PDF_EOF.length; offset < bytes.length; offset += 1) {
+    if (!isPdfWhitespace(bytes[offset])) return fail("POLYGLOT");
+  }
+
   const trailerStart = Math.max(0, bytes.length - PDF_TRAILER_SCAN_BYTES);
   if (indexOfBytes(bytes, PDF_ENCRYPT, trailerStart) !== -1) return fail("ENCRYPTED");
   return { ok: true, format: "PDF" };

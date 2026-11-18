@@ -45,6 +45,10 @@ const MAX_XML_ELEMENTS = 4096;
 const MAX_XML_ATTRIBUTE_NAME = 256;
 const MAX_XML_ATTRIBUTE_VALUE = 4096;
 const MAX_XML_TAG_NAME = 256;
+/** 문자 참조(`&#NNN;`·`&#xHH;`)와 이름 참조의 최대 길이(`&`·`;` 제외) */
+const MAX_XML_REFERENCE = 10;
+/** `.rels` 관계 파트 검사 시 선언 원본 크기 합계 상한. 엔트리별 1MiB 상한과 함께 해제량을 제한합니다. */
+const MAX_RELATIONSHIP_BYTES = 8 * 1024 * 1024;
 /** 데이터 서술자 시그니처(선택 사항) */
 const DATA_DESCRIPTOR = 0x08074b50;
 /** Info-ZIP Unicode Path 추가 필드 ID. 중앙 디렉터리 이름과 다른 이름을 숨길 수 있어 거부합니다. */
@@ -381,10 +385,79 @@ function isXmlSpace(char: string): boolean {
   return char === " " || char === "\t" || char === "\n" || char === "\r";
 }
 
-/** `[Content_Types].xml`의 `Default`·`Override` 요소 하나 */
-interface ContentTypeElement {
-  kind: "Default" | "Override";
+/** 스캐너가 추출한 요소 하나(네임스페이스 접두어를 뗀 지역 이름과 엔티티를 해석한 속성) */
+interface XmlElement {
+  kind: string;
   attributes: Map<string, string>;
+}
+
+/** XML 1.0 Char 생성 규칙에 맞는 코드 포인트인지 확인합니다. */
+function isXmlCodePoint(code: number): boolean {
+  return (
+    code === 0x9 ||
+    code === 0xa ||
+    code === 0xd ||
+    (code >= 0x20 && code <= 0xd7ff) ||
+    (code >= 0xe000 && code <= 0xfffd) ||
+    (code >= 0x10000 && code <= 0x10ffff)
+  );
+}
+
+/** 미리 정의된 XML 이름 참조 */
+const XML_NAMED_REFERENCES: Readonly<Record<string, string>> = {
+  lt: "<",
+  gt: ">",
+  amp: "&",
+  quot: '"',
+  apos: "'",
+};
+
+/**
+ * 속성 값의 엔티티를 왼쪽에서 오른쪽으로 한 번만 훑어 해석합니다.
+ * - `&#NNN;`(10진)·`&#xHH;`(16진) 문자 참조와 lt·gt·amp·quot·apos 이름 참조만 허용합니다.
+ * - 그 밖의 `&` 시퀀스(정의되지 않은 엔티티, 닫히지 않은 참조)나 XML 문자가 아닌 코드 포인트는 손상으로 봅니다.
+ * `&#97;ctiveX`처럼 문자 참조로 매크로 표식을 숨기는 우회를 막기 위해, 비교 전에 반드시 해석합니다.
+ */
+function decodeXmlAttribute(raw: string): string {
+  if (!raw.includes("&")) return raw;
+  let output = "";
+  let cursor = 0;
+  while (cursor < raw.length) {
+    const amp = raw.indexOf("&", cursor);
+    if (amp === -1) {
+      output += raw.slice(cursor);
+      break;
+    }
+    output += raw.slice(cursor, amp);
+    // 참조 길이를 제한해 `;` 탐색이 상수 범위 안에서 끝나게 합니다.
+    let end = amp + 1;
+    while (end < raw.length && raw[end] !== ";" && end - amp <= MAX_XML_REFERENCE) end += 1;
+    if (raw[end] !== ";") reject();
+    const body = raw.slice(amp + 1, end);
+    if (body.startsWith("#")) {
+      const hex = body[1] === "x";
+      const digits = body.slice(hex ? 2 : 1);
+      if (digits === "") reject();
+      let code = 0;
+      for (const digit of digits) {
+        const value = hex
+          ? "0123456789abcdef".indexOf(digit.toLowerCase())
+          : "0123456789".indexOf(digit);
+        if (value === -1) reject();
+        code = code * (hex ? 16 : 10) + value;
+      }
+      if (!isXmlCodePoint(code)) reject();
+      output += String.fromCodePoint(code);
+    } else {
+      const named = Object.hasOwn(XML_NAMED_REFERENCES, body)
+        ? XML_NAMED_REFERENCES[body]
+        : undefined;
+      if (named === undefined) reject();
+      output += named;
+    }
+    cursor = end + 1;
+  }
+  return output;
 }
 
 /**
@@ -420,20 +493,21 @@ function parseAttributes(tag: string, start: number): Map<string, string> {
     const valueEnd = tag.indexOf(quote, cursor + 1);
     if (valueEnd === -1 || valueEnd - cursor - 1 > MAX_XML_ATTRIBUTE_VALUE) reject();
     if (attributes.has(name)) reject();
-    attributes.set(name, tag.slice(cursor + 1, valueEnd));
+    attributes.set(name, decodeXmlAttribute(tag.slice(cursor + 1, valueEnd)));
     cursor = valueEnd + 1;
   }
 }
 
 /**
- * `[Content_Types].xml`에서 `Default`·`Override` 요소만 선형 스캔으로 추출합니다.
+ * XML에서 `wanted`에 든 지역 이름의 요소만 선형 스캔으로 추출합니다.
+ * (`[Content_Types].xml`의 Default·Override, `.rels`의 Relationship)
  * - `<`와 `>`를 indexOf로 찾고 닫히지 않은 태그는 손상으로 거부합니다(입력 전체를 한 번만 순회).
  * - 처리 명령(`<?`), 주석·선언(`<!`), 닫는 태그(`</`)는 건너뜁니다.
- * - 요소 수는 4096개까지 허용합니다.
+ * - 대상 요소 수는 파일당 4096개까지 허용합니다.
  * 정규식 역추적에 의한 서비스 거부(ReDoS)를 피하려고 정규식 없이 구현합니다.
  */
-function scanContentTypes(xml: string): ContentTypeElement[] {
-  const elements: ContentTypeElement[] = [];
+function scanElements(xml: string, wanted: readonly string[]): XmlElement[] {
+  const elements: XmlElement[] = [];
   let cursor = 0;
   for (;;) {
     const open = xml.indexOf("<", cursor);
@@ -451,7 +525,7 @@ function scanContentTypes(xml: string): ContentTypeElement[] {
     }
     const qualified = tag.slice(0, nameEnd);
     const localName = qualified.slice(qualified.lastIndexOf(":") + 1);
-    if (localName !== "Default" && localName !== "Override") continue;
+    if (!wanted.includes(localName)) continue;
     if (elements.length >= MAX_XML_ELEMENTS) reject("ZIP_LIMIT");
     elements.push({ kind: localName, attributes: parseAttributes(tag, nameEnd) });
   }
@@ -478,6 +552,27 @@ function checkHwpx(bytes: Uint8Array, entries: ZipEntry[]): void {
 }
 
 /**
+ * 모든 `.rels` 관계 파트에서 ActiveX 컨트롤·VBA 관계를 찾습니다.
+ * - 관계 Type 끝 세그먼트가 `control`이거나 `activeXControlBinary`·`vbaProject`를 포함하면 실행 콘텐츠입니다.
+ * - 선언 원본 크기 합계를 8MiB로 먼저 제한하고, 엔트리마다 1MiB 상한으로 해제합니다.
+ */
+function hasExecutableRelationship(bytes: Uint8Array, entries: ZipEntry[]): boolean {
+  const relationshipParts = entries.filter((entry) => entry.name.toLowerCase().endsWith(".rels"));
+  const declared = relationshipParts.reduce((sum, entry) => sum + entry.uncompressedSize, 0);
+  if (declared > MAX_RELATIONSHIP_BYTES) reject("ZIP_LIMIT");
+  return relationshipParts.some((entry) =>
+    scanElements(decodeXml(readEntry(bytes, entry)), ["Relationship"]).some((element) => {
+      const type = (element.attributes.get("Type") ?? "").toLowerCase();
+      return (
+        type.slice(type.lastIndexOf("/") + 1) === "control" ||
+        type.includes("activexcontrolbinary") ||
+        type.includes("vbaproject")
+      );
+    }),
+  );
+}
+
+/**
  * PPTX 필수 구조와 매크로·ActiveX 여부를 확인합니다. 발표자료가 아닌 OOXML은 미지원으로 거부합니다.
  *
  * 미탐지(한계): OLE 개체 임베드(`ppt/embeddings/`)와 외부 관계(`TargetMode="External"`)는 허용합니다.
@@ -493,13 +588,14 @@ function checkOfficeOpenXml(
   if (lowerNames.some((name) => name === "vbaproject.bin" || name.endsWith("/vbaproject.bin")))
     return fail("MACRO");
   if (lowerNames.some((name) => name.startsWith("ppt/activex/"))) return fail("MACRO");
-  const elements = scanContentTypes(decodeXml(readEntry(bytes, contentTypes)));
+  const elements = scanElements(decodeXml(readEntry(bytes, contentTypes)), ["Default", "Override"]);
   // Default·Override의 모든 콘텐츠 형식에서 매크로·VBA·ActiveX 표식을 찾습니다.
   const executable = elements.some((element) => {
     const type = (element.attributes.get("ContentType") ?? "").toLowerCase();
     return type.includes("macroenabled") || type.includes("vbaproject") || type.includes("activex");
   });
   if (executable) return fail("MACRO");
+  if (hasExecutableRelationship(bytes, entries)) return fail("MACRO");
   // OPC 파트 이름은 대소문자를 구분하지 않습니다.
   const presentation = elements.find(
     (element) =>
