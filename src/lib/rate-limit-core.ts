@@ -63,6 +63,14 @@ export const UPLOAD_RATE_LIMIT = {
 } as const;
 
 /**
+ * 공개 기사 클릭의 단순 반복 집계를 억제하는 기본값입니다.
+ * 같은 IP·기사는 분당 한 번, 한 IP의 전체 기사는 분당 60회까지 예약합니다.
+ * 고유 방문자 통계가 아니며 NAT·unknown IP는 여러 독자의 예산을 공유합니다.
+ */
+export const PRESS_VIEW_PAIR_RATE_LIMIT = { windowMs: 60 * 1000, maxAttempts: 1 } as const;
+export const PRESS_VIEW_IP_RATE_LIMIT = { windowMs: 60 * 1000, maxAttempts: 60 } as const;
+
+/**
  * 지원서 제출 IP 시간당 rate limit 정책.
  *
  * 값 근거:

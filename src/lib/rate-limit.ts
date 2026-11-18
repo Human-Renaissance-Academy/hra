@@ -17,6 +17,8 @@ import {
   LOGIN_EMAIL_RATE_LIMIT,
   LOGIN_IP_RATE_LIMIT,
   LOGIN_RATE_LIMIT,
+  PRESS_VIEW_PAIR_RATE_LIMIT,
+  PRESS_VIEW_IP_RATE_LIMIT,
   RESOURCE_READ_BURST_RATE_LIMIT,
   RESOURCE_READ_HOURLY_RATE_LIMIT,
   UPLOAD_RATE_LIMIT,
@@ -46,7 +48,10 @@ const reservationRowSchema = z.object({
 
 // 저장소 장애를 정책 차단(429)과 구분해 503으로 응답하는 호출자의 오류 범위입니다.
 // 이 범위도 장애 시 blocked=true(fail-closed)는 그대로이며 unavailable만 추가로 표시합니다.
-const storageAwareScopes = new Set(["rate-limit/reserve-login", "rate-limit/reserve-resource-read"]);
+const storageAwareScopes = new Set([
+  "rate-limit/reserve-login",
+  "rate-limit/reserve-resource-read",
+]);
 
 // 축마다 해시 도메인을 분리해 같은 원본 키도 서로 연결되지 않게 합니다.
 function hashLimitKey(scope: string, key: string): string {
@@ -56,10 +61,22 @@ function hashLimitKey(scope: string, key: string): string {
 /** 여러 제한 축을 원자적으로 예약합니다. DB 오류는 제한 우회가 없도록 차단합니다. */
 async function reserve(axes: LimitAxis[], errorScope: string): Promise<RateLimitReservation> {
   try {
-    const scopes = sql`ARRAY[${sql.join(axes.map((axis) => sql`${axis.scope}`), sql`, `)}]::text[]`;
-    const hashes = sql`ARRAY[${sql.join(axes.map((axis) => sql`${hashLimitKey(axis.scope, axis.key)}`), sql`, `)}]::text[]`;
-    const limits = sql`ARRAY[${sql.join(axes.map((axis) => sql`${axis.maxAttempts}`), sql`, `)}]::integer[]`;
-    const windows = sql`ARRAY[${sql.join(axes.map((axis) => sql`${axis.windowMs / 1000}`), sql`, `)}]::integer[]`;
+    const scopes = sql`ARRAY[${sql.join(
+      axes.map((axis) => sql`${axis.scope}`),
+      sql`, `,
+    )}]::text[]`;
+    const hashes = sql`ARRAY[${sql.join(
+      axes.map((axis) => sql`${hashLimitKey(axis.scope, axis.key)}`),
+      sql`, `,
+    )}]::text[]`;
+    const limits = sql`ARRAY[${sql.join(
+      axes.map((axis) => sql`${axis.maxAttempts}`),
+      sql`, `,
+    )}]::integer[]`;
+    const windows = sql`ARRAY[${sql.join(
+      axes.map((axis) => sql`${axis.windowMs / 1000}`),
+      sql`, `,
+    )}]::integer[]`;
     const result = await db.execute(sql`
       SELECT allowed, retry_after_sec, reservation_id
       FROM reserve_rate_limit(${scopes}, ${hashes}, ${limits}, ${windows})
@@ -85,9 +102,7 @@ async function reserve(axes: LimitAxis[], errorScope: string): Promise<RateLimit
 /** 로그인 실패의 조합·IP·이메일 독립 상한을 bcrypt 실행 전에 예약합니다. */
 export function reserveLoginAttempt(ip: string, rawEmail: unknown): Promise<RateLimitReservation> {
   const email = normalizeEmailForRateLimit(rawEmail);
-  const axes: LimitAxis[] = [
-    { scope: "login-ip", key: ip, ...LOGIN_IP_RATE_LIMIT },
-  ];
+  const axes: LimitAxis[] = [{ scope: "login-ip", key: ip, ...LOGIN_IP_RATE_LIMIT }];
   if (email) {
     axes.push(
       { scope: "login-pair", key: `${ip}\0${email}`, ...LOGIN_RATE_LIMIT },
@@ -98,7 +113,10 @@ export function reserveLoginAttempt(ip: string, rawEmail: unknown): Promise<Rate
 }
 
 /** 로그인에 성공한 요청의 임시 예약을 삭제해 실패 시도만 상한에 남깁니다. */
-export async function releaseSuccessfulLogin(reservationId: string | null, requireStorage = false): Promise<void> {
+export async function releaseSuccessfulLogin(
+  reservationId: string | null,
+  requireStorage = false,
+): Promise<void> {
   if (!reservationId) return;
   try {
     await db.delete(rateLimitEvents).where(eq(rateLimitEvents.reservationId, reservationId));
@@ -112,7 +130,24 @@ export async function releaseSuccessfulLogin(reservationId: string | null, requi
 
 /** 인증된 이미지 업로드 요청을 파일을 읽기 전에 예약합니다. */
 export function reserveUploadAttempt(ip: string): Promise<RateLimitReservation> {
-  return reserve([{ scope: "upload-ip", key: ip, ...UPLOAD_RATE_LIMIT }], "rate-limit/reserve-upload");
+  return reserve(
+    [{ scope: "upload-ip", key: ip, ...UPLOAD_RATE_LIMIT }],
+    "rate-limit/reserve-upload",
+  );
+}
+
+/**
+ * 공개 기사 클릭의 IP·기사 조합과 전체 IP 예산을 한 SQL에서 함께 예약합니다.
+ * 허용된 예약은 증가 저장 실패에도 남겨 반복을 억제하며 로그인처럼 해제하지 않습니다.
+ */
+export function reservePressView(ip: string, articleId: string): Promise<RateLimitReservation> {
+  return reserve(
+    [
+      { scope: "press-view-pair", key: `${ip}\0${articleId}`, ...PRESS_VIEW_PAIR_RATE_LIMIT },
+      { scope: "press-view-ip", key: ip, ...PRESS_VIEW_IP_RATE_LIMIT },
+    ],
+    "rate-limit/reserve-press-view",
+  );
 }
 
 /**
@@ -121,21 +156,31 @@ export function reserveUploadAttempt(ip: string): Promise<RateLimitReservation> 
  * 키는 다른 축과 마찬가지로 범위별 SHA-256 해시로만 저장합니다.
  */
 export function reserveResourceRead(userId: string): Promise<RateLimitReservation> {
-  return reserve([
-    { scope: "resource-read-user-minute", key: userId, ...RESOURCE_READ_BURST_RATE_LIMIT },
-    { scope: "resource-read-user-hour", key: userId, ...RESOURCE_READ_HOURLY_RATE_LIMIT },
-  ], "rate-limit/reserve-resource-read");
+  return reserve(
+    [
+      { scope: "resource-read-user-minute", key: userId, ...RESOURCE_READ_BURST_RATE_LIMIT },
+      { scope: "resource-read-user-hour", key: userId, ...RESOURCE_READ_HOURLY_RATE_LIMIT },
+    ],
+    "rate-limit/reserve-resource-read",
+  );
 }
 
 /** 공유 IP 상한을 완화하고 지원자 이메일별 일일 상한을 함께 예약합니다. */
-export function reserveApplicationSubmission(ip: string, rawEmail: unknown): Promise<RateLimitReservation> {
+export function reserveApplicationSubmission(
+  ip: string,
+  rawEmail: unknown,
+): Promise<RateLimitReservation> {
   const email = normalizeEmailForRateLimit(rawEmail);
   const axes: LimitAxis[] = [
     { scope: "submission-ip-hour", key: ip, ...APPLICATION_SUBMISSION_HOURLY_RATE_LIMIT },
     { scope: "submission-ip-day", key: ip, ...APPLICATION_SUBMISSION_DAILY_RATE_LIMIT },
   ];
   if (email) {
-    axes.push({ scope: "submission-email-day", key: email, ...APPLICATION_SUBMISSION_EMAIL_DAILY_RATE_LIMIT });
+    axes.push({
+      scope: "submission-email-day",
+      key: email,
+      ...APPLICATION_SUBMISSION_EMAIL_DAILY_RATE_LIMIT,
+    });
   }
   return reserve(axes, "rate-limit/reserve-submission");
 }
