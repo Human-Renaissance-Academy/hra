@@ -21,8 +21,13 @@ import { projectBlobHost } from "./src/lib/blob-host";
 import { isRestrictedPreview } from "./src/lib/preview-boundary";
 
 // HTML nonce 정책은 Proxy가 요청별로 제공한다. 파일 API의 임베드 경계만 정적으로 둔다.
-const downloadCsp =
+// 자료실 PDF 미리보기(`?inline=1`)는 같은 출처의 자료실 페이지 iframe에만 임베드한다.
+// Chromium은 sandbox CSP에서도 PDF를 표시했지만 Firefox·Safari 뷰어 호환성은 확인 전이라(#513) 기존 값을 유지한다.
+const inlinePdfCsp =
   "frame-ancestors 'self'; base-uri 'self'; object-src 'none'; form-action 'self'";
+// 그 외 자료실 첨부 다운로드·이미지는 문서로 열려도 스크립트·하위 리소스가 실행되지 않도록
+// API v1 파일·학사 제출 파일과 같은 sandbox 경계를 둔다. 같은 출처 임베드 허용 범위는 유지한다.
+const attachmentCsp = "sandbox; default-src 'none'; frame-ancestors 'self'";
 // Auth.js의 API HTML 응답에도 기존 정적 보호를 유지한다. HTML nonce 경로와는 겹치지 않는다.
 const apiCsp = "frame-ancestors 'none'; base-uri 'self'; object-src 'none'; form-action 'self'";
 
@@ -57,12 +62,20 @@ const nextConfig: NextConfig = {
         ],
       },
       {
-        // PDF는 같은 출처의 자료실 페이지에만 임베드합니다.
+        // 자료실 파일은 기본적으로 sandbox 첨부 경계를 적용합니다. PDF는 같은 출처에만 임베드합니다.
         source: "/api/resources/:kind/:id/download",
         headers: [
           { key: "X-Frame-Options", value: "SAMEORIGIN" },
-          { key: "Content-Security-Policy", value: downloadCsp },
+          { key: "Content-Security-Policy", value: attachmentCsp },
         ],
+      },
+      {
+        // `inline=1` 미리보기 요청만 뒤에서 PDF 뷰어용 정책으로 덮어씁니다.
+        // Next는 같은 query가 반복되면 마지막 값을, Route는 첫 값을 읽습니다. 두 값이 어긋나면
+        // sandbox가 붙은 PDF 또는 기존 정책의 첨부 다운로드가 되므로 보호가 약해지지 않습니다.
+        source: "/api/resources/:kind/:id/download",
+        has: [{ type: "query", key: "inline", value: "1" }],
+        headers: [{ key: "Content-Security-Policy", value: inlinePdfCsp }],
       },
       {
         // Next의 정적 헤더가 Route 응답보다 우선하므로 학사 파일 sandbox를 마지막에 고정한다.
