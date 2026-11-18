@@ -6,16 +6,16 @@
 
 ## 1. 먼저 익힐 용어
 
-| 용어 | 의미 | 예 |
-| --- | --- | --- |
-| 테이블 | 같은 종류의 데이터를 모은 표 | `users`: 회원 표 |
-| 행 | 데이터 한 건 | 회원 한 명 |
-| 컬럼 | 한 항목 | `email`, `role` |
-| 기본 키(ID) | 한 건을 구분하는 식별자 | 이름이 같아도 다른 회원을 구분 |
-| 외래 키(FK) | 다른 표의 데이터와 연결하는 규칙 | 지원 답변이 어느 질문에 속하는지 |
-| 제약 | 저장할 수 있는 값에 대한 규칙 | 같은 대상의 중복 저장 방지 |
-| 트랜잭션 | 여러 변경을 하나의 작업으로 확정하는 단위 | 답변 저장 실패 시 제출 정보도 취소 |
-| 마이그레이션 | DB 구조·함수를 변경하는 절차 | 새 컬럼이나 저장 함수 추가 |
+| 용어         | 의미                                      | 예                                 |
+| ------------ | ----------------------------------------- | ---------------------------------- |
+| 테이블       | 같은 종류의 데이터를 모은 표              | `users`: 회원 표                   |
+| 행           | 데이터 한 건                              | 회원 한 명                         |
+| 컬럼         | 한 항목                                   | `email`, `role`                    |
+| 기본 키(ID)  | 한 건을 구분하는 식별자                   | 이름이 같아도 다른 회원을 구분     |
+| 외래 키(FK)  | 다른 표의 데이터와 연결하는 규칙          | 지원 답변이 어느 질문에 속하는지   |
+| 제약         | 저장할 수 있는 값에 대한 규칙             | 같은 대상의 중복 저장 방지         |
+| 트랜잭션     | 여러 변경을 하나의 작업으로 확정하는 단위 | 답변 저장 실패 시 제출 정보도 취소 |
+| 마이그레이션 | DB 구조·함수를 변경하는 절차              | 새 컬럼이나 저장 함수 추가         |
 
 더 많은 용어는 [용어집](getting-started/glossary.md)에 있습니다.
 
@@ -31,20 +31,20 @@ Neon 관리 화면이나 SQL 도구에서 데이터를 볼 때도 **프로젝트
 
 코드의 변수명과 실제 DB 테이블명은 다를 수 있습니다. 정본은 `src/lib/db/schema.ts`입니다.
 
-| 데이터 | 코드에서 부르는 이름 | 실제 DB 테이블 |
-| --- | --- | --- |
-| 회원 | `users` | `users` |
-| 기수 | `cohorts` | `cohorts` |
-| 교수진 | `faculty` | `faculty` |
-| 공지 | `notices` | `notices` |
-| 갤러리·사진 연결 | `galleries`, `galleryImages` | `galleries`, `gallery_images` |
-| 강의자료 | `classMaterials` | `class_materials` |
-| 주차별 텍스트 | `weeklyTexts` | `weekly_texts` |
-| 수업일지 | `classLogs` | `class_logs` |
-| 가이드북·보고서 양식 | `guidebooks`, `reportTemplates` | `guidebooks`, `report_templates` |
-| 내부 지원서 양식·질문 | `applicationForms`, `applicationQuestions` | `application_forms`, `application_questions` |
+| 데이터                | 코드에서 부르는 이름                           | 실제 DB 테이블                                   |
+| --------------------- | ---------------------------------------------- | ------------------------------------------------ |
+| 회원                  | `users`                                        | `users`                                          |
+| 기수                  | `cohorts`                                      | `cohorts`                                        |
+| 교수진                | `faculty`                                      | `faculty`                                        |
+| 공지                  | `notices`                                      | `notices`                                        |
+| 갤러리·사진 연결      | `galleries`, `galleryImages`                   | `galleries`, `gallery_images`                    |
+| 강의자료              | `classMaterials`                               | `class_materials`                                |
+| 주차별 텍스트         | `weeklyTexts`                                  | `weekly_texts`                                   |
+| 수업일지              | `classLogs`                                    | `class_logs`                                     |
+| 가이드북·보고서 양식  | `guidebooks`, `reportTemplates`                | `guidebooks`, `report_templates`                 |
+| 내부 지원서 양식·질문 | `applicationForms`, `applicationQuestions`     | `application_forms`, `application_questions`     |
 | 내부 지원서 제출·답변 | `applicationSubmissions`, `applicationAnswers` | `application_submissions`, `application_answers` |
-| 이전 지원 시스템 | `legacyApplications` | `applications` |
+| 이전 지원 시스템      | `legacyApplications`                           | `applications`                                   |
 
 공지사항 본문은 DB에 저장합니다. 현재 공지 운영을 `content/notices/`의 GitHub CMS로 설명하는 것은 맞지 않습니다. 자료실도 `resources`라는 단일 테이블이 아니라 위 기능별 테이블로 나뉩니다. `legacyApplications`는 **코드 변수명**이며 DB가 `legacy_applications`로 이름 변경됐다는 뜻은 아닙니다.
 
@@ -52,12 +52,12 @@ Neon 관리 화면이나 SQL 도구에서 데이터를 볼 때도 **프로젝트
 
 ## 4. 회원 역할과 학사 권한
 
-| 역할 | 의미 | 기본 범위 |
-| --- | --- | --- |
-| `PENDING` | 가입 후 승인 대기 | 자료실 이용 불가 |
-| `MEMBER` | 승인 회원 | 공동 자료 열람, 배정된 본인 기수의 텍스트·일지 작성 |
-| `FACULTY` | 교수 계정 | 공동 자료 및 교수용 강의자료 이용 |
-| `ADMIN` | 홈페이지 관리자 | 홈페이지 콘텐츠·회원 관리 |
+| 역할      | 의미              | 기본 범위                                           |
+| --------- | ----------------- | --------------------------------------------------- |
+| `PENDING` | 가입 후 승인 대기 | 자료실 이용 불가                                    |
+| `MEMBER`  | 승인 회원         | 공동 자료 열람, 배정된 본인 기수의 텍스트·일지 작성 |
+| `FACULTY` | 교수 계정         | 공동 자료 및 교수용 강의자료 이용                   |
+| `ADMIN`   | 홈페이지 관리자   | 홈페이지 콘텐츠·회원 관리                           |
 
 홈페이지 ADMIN과 학사 운영 책임자는 별개입니다. ADMIN 또는 FACULTY 역할만으로 출결 담당자가 되지 않습니다. 현재 학사 책임자 지정과 앞으로 구현할 어드바이저·조교 업무는 [학사 로드맵](ACADEMIC-MANAGEMENT-ROADMAP.md)을 따릅니다.
 
@@ -71,7 +71,7 @@ Neon 관리 화면이나 SQL 도구에서 데이터를 볼 때도 **프로젝트
 
 - 새 계정을 만들 DB가 맞고 회원 테이블·세션 관련 컬럼이 준비됐는지 확인합니다.
 - 비공개 `.env` 또는 승인된 비밀 관리 수단으로 `DATABASE_URL`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`를 준비합니다. 필요하면 `ADMIN_NAME`도 설정합니다.
-- 실제 비밀번호를 명령문·Git·공유 로그에 넣지 않습니다. 스크립트가 이메일·이름을 출력하므로 실행 기록도 공유 전에 확인합니다.
+- 실제 비밀번호를 명령문·Git·공유 로그에 넣지 않습니다. 스크립트는 이메일·이름·원문 DB 오류를 출력하지 않지만 실행 기록도 공유 전에 확인합니다.
 
 ### 새 관리자 생성
 
@@ -79,17 +79,39 @@ Neon 관리 화면이나 SQL 도구에서 데이터를 볼 때도 **프로젝트
 npm run seed-admin -- --confirm-create
 ```
 
-**정상 결과:** 새 ADMIN 계정이 생기고 준비한 비밀번호로 로그인할 수 있습니다. 기존 이메일이 있으면 계정 상태에 따라 중단하거나 이미 존재함을 알립니다. 결과가 불명확하면 새 계정이 만들어졌는지 확인한 뒤 재시도를 결정합니다.
+**정상 결과:** 새 ADMIN 계정이 생기고 준비한 비밀번호로 로그인할 수 있습니다. 새 이메일은 JS `trim().toLowerCase()`로 저장합니다. 같은 PG 식별키의 기존 이메일이 있으면 계정 상태에 따라 중단하거나 이미 존재함을 알립니다. 둘 이상이면 관리자 행이 있어도 선택하지 않습니다. `--confirm-create`로 기존 계정을 승격하지 않습니다. 결과가 불명확하면 새 계정이 만들어졌는지 확인한 뒤 재시도를 결정합니다.
 
 ### 기존 계정 승격
 
-기존 계정의 승격에는 `--confirm-promote=대상이메일` 확인 인자가 필요합니다. 다음은 합성 주소를 사용한 형식 예입니다. 실제 실행에서는 `ADMIN_EMAIL`과 확인한 대상이 일치해야 합니다.
+기존 계정의 승격에는 `--confirm-promote=대상이메일` 확인 인자가 필요합니다. 다음은 합성 주소를 사용한 형식 예입니다. 확인 인자는 정규화된 결과가 아니라 **입력한 `ADMIN_EMAIL` 원문과 정확히** 일치해야 합니다. 대소문자·공백을 바꾸어 확인 권한을 확대하지 않습니다.
 
 ```bash
 npm run seed-admin -- --confirm-promote=operator@example.invalid
 ```
 
 승격 시 역할·비밀번호 해시·세션 버전이 함께 변경됩니다. 기존 ADMIN 계정에 대해서는 이 스크립트가 비밀번호를 바꾸지 않습니다. **비밀번호 재설정 도구로 반복 실행하지 말고** 담당자의 계정 복구 절차를 따릅니다.
+
+### 이메일 식별 규칙과 운영 적용 전 준비 (#507)
+
+인증·요청 제한·seed는 하나의 순수 JS 정규화 구현을 공유합니다. 별칭·Gmail 점/plus 제거·Unicode NFKC·새 ASCII 제한을 추가하지 않습니다. credentials·OAuth·seed 조회는 DB 컬럼과 정규화된 입력 양쪽에 `lower(btrim(...))`를 적용하고 최대 2행까지만 확인합니다. 복수 결과는 없음과 구분해 거부하며 이메일이 같다는 이유로 다른 계정의 권한을 인계하지 않습니다.
+
+| 입력/저장 상태                            | 현재 준비 코드의 의미                                                                                                                                                           |
+| ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| ASCII 대소문자·앞뒤 일반 공백 legacy 주소 | PG 식별키로 조회하되 기존 표시용 주소를 자동 재작성하지 않습니다.                                                                                                               |
+| 새 OAuth/seed 주소                        | 기존 JS trim/lowercase 결과로 저장합니다. provider/accountId tuple 원문은 유지합니다.                                                                                           |
+| 이미 바인딩된 OAuth 주소                  | tuple을 우선해 자기 row로만 로그인합니다. 주소가 모호하거나 다른 계정과 겹치면 placeholder 승격을 하지 않습니다.                                                                |
+| Kakao placeholder 승격                    | 원본 claim 정확 일치·유효/검증 flag를 먼저 확인한 뒤 정규 주소로 조건부 갱신합니다. 검증 전에 정규화해 원문 불일치를 숨기지 않습니다.                                           |
+| NBSP·탭·비ASCII legacy 주소               | JS trim/lowercase와 PG btrim/lower는 Unicode 공백·locale 처리가 같지 않습니다. 새 정규 저장 행과 달리 일부 legacy 값은 자동으로 찾거나 고치지 못할 수 있으므로 별도 검토합니다. |
+
+`scripts/migrate-507-email-identity-unique.sql`은 `lower(btrim(email))`에 `users_email_identity_unique`를 추가하는 **검토 후보**입니다. 기존 `users_email_unique`와 OAuth tuple 제약은 남기며 데이터를 고치거나 병합하지 않습니다. 충돌 또는 동명 인덱스가 있으면 실패하고 `IF NOT EXISTS`로 기존 정의를 신뢰하지 않습니다. 동명 객체가 이미 있으면 반복 실행하기 전에 실제 catalog와 적용 이력을 별도 확인합니다. 잠금 5초·문장 30초 제한을 둔 일반 인덱스 생성이므로 실제 쓰기 부하·잠금·실패 후 상태는 운영 적용 검토 대상입니다.
+
+이 후보는 소유한 격리 PostgreSQL에서만 검사합니다. source inventory와 설치 대응표의 등록은 적용 이력이 아니며 운영 manifest는 계속 `unset`입니다. `schema.ts`의 기존 exact UNIQUE 선언이나 현재 fresh export/bundle이 새 식별 인덱스의 설치를 보증하는 것도 아닙니다. 준비 코드와 앱 배포만으로 기존 DB의 동시 생성까지 casefold UNIQUE가 보장됐다고 판단하지 않습니다. [#280](https://github.com/Human-Renaissance-Academy/hra-website/issues/280)의 실제 대상·collation/catalog·충돌 확인·백업/복구·승인·배포 gate를 거친 뒤 별도 적용해야 합니다. 충돌이 있으면 자동 병합하지 않고 개별 소유권·바인딩·권한을 확인하는 수동 처리 계획을 검토합니다.
+
+앱 rollback과 DB index 제거는 별개입니다. rollback을 이유로 인덱스나 기존 계정을 자동 삭제하지 않으며 구·신 앱 writer의 호환성과 forward fix를 검토합니다. read-only 집계가 0이거나 일부 가시 행에서 이상이 없더라도 전체 DB 가시성·제약·backup/baseline 준비 또는 #507/#280 완료를 뜻하지 않습니다.
+
+정규화·바인딩·seed·인덱스의 회귀 근거는 `tests/unit/auth-email-identity-postgres.test.ts`의 실제 App IO와 소유 PostgreSQL입니다. 기존 `verify:oauth-binding-security`는 별도 DB를 사용하는 과거 IO 미러 보조 도구이며 새 이메일 정규화와의 동등성 증거로 사용하지 않습니다. 이번 준비 작업에서 해당 원격 검증 도구를 실행하지 않습니다.
+
+예상한 이메일·tuple 제약 충돌만 일반 로그인 실패로 처리합니다. 다른 조회·저장 오류는 고정 scope의 기존 safe logger로 분류한 뒤 원문·cause 없는 고정 예외로 다시 실패시킵니다. logger가 실패해도 원문을 다시 던지지 않습니다. 설치된 Auth.js는 callback 예외의 cause/stack을 기록하므로 `auth-signin-error-boundary.test.ts`에서 실제 `AccessDenied` wrapper와 기본 logger까지 원문·이메일·비밀번호 sentinel 비노출을 확인합니다. 전역 Auth.js logger나 응답 계약을 바꾸는 작업은 아닙니다.
 
 ## 6. 회원 변경·삭제는 관리자 화면에서
 
@@ -112,12 +134,12 @@ SELECT COUNT(*) FROM application_submissions;
 
 `SELECT`는 조회, `UPDATE`는 변경, `DELETE`는 삭제입니다. 운영 조회도 권한과 목적에 맞는 범위만 사용합니다. 개인 정보가 포함된 결과는 공개 이슈에 붙이지 않습니다.
 
-| 결과·오류 | 의미와 다음 행동 |
-| --- | --- |
-| 0건 | 아직 데이터가 없거나 조건·환경이 다른 경우. 무조건 오타로 단정하지 않음 |
-| 테이블 없음 | 대상 DB와 적용 상태 확인 |
-| 외래 키 오류 | 다른 데이터와 연결되어 작업이 제한됨. 관련 보존 정책 확인 |
-| 역할 변경 후 접근 문제 | 변경 결과와 새 로그인 세션 확인 |
+| 결과·오류              | 의미와 다음 행동                                                        |
+| ---------------------- | ----------------------------------------------------------------------- |
+| 0건                    | 아직 데이터가 없거나 조건·환경이 다른 경우. 무조건 오타로 단정하지 않음 |
+| 테이블 없음            | 대상 DB와 적용 상태 확인                                                |
+| 외래 키 오류           | 다른 데이터와 연결되어 작업이 제한됨. 관련 보존 정책 확인               |
+| 역할 변경 후 접근 문제 | 변경 결과와 새 로그인 세션 확인                                         |
 
 ## 8. 컬럼·테이블을 바꾸려면
 

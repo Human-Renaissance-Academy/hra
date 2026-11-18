@@ -75,8 +75,14 @@ export const APPLICATION_SUBMISSION_HOURLY_RATE_LIMIT = {
 } as const;
 
 // 공유 네트워크의 정상 지원자를 보호하면서 장기적인 자동 제출은 제한합니다 (#121).
-export const APPLICATION_SUBMISSION_DAILY_RATE_LIMIT = { windowMs: 24 * 60 * 60 * 1000, maxAttempts: 200 } as const;
-export const APPLICATION_SUBMISSION_EMAIL_DAILY_RATE_LIMIT = { windowMs: 24 * 60 * 60 * 1000, maxAttempts: 5 } as const;
+export const APPLICATION_SUBMISSION_DAILY_RATE_LIMIT = {
+  windowMs: 24 * 60 * 60 * 1000,
+  maxAttempts: 200,
+} as const;
+export const APPLICATION_SUBMISSION_EMAIL_DAILY_RATE_LIMIT = {
+  windowMs: 24 * 60 * 60 * 1000,
+  maxAttempts: 5,
+} as const;
 
 /**
  * 자료실 파일·메타데이터 조회의 인증 사용자별 빈도 제한 정책 (#444).
@@ -94,7 +100,10 @@ export const APPLICATION_SUBMISSION_EMAIL_DAILY_RATE_LIMIT = { windowMs: 24 * 60
  *   - 차단된 요청은 DB 함수가 기록하지 않으므로 재시도 폭주가 대기 시간을 늘리지 않는다.
  */
 export const RESOURCE_READ_BURST_RATE_LIMIT = { windowMs: 60 * 1000, maxAttempts: 300 } as const;
-export const RESOURCE_READ_HOURLY_RATE_LIMIT = { windowMs: 60 * 60 * 1000, maxAttempts: 2000 } as const;
+export const RESOURCE_READ_HOURLY_RATE_LIMIT = {
+  windowMs: 60 * 60 * 1000,
+  maxAttempts: 2000,
+} as const;
 
 /**
  * unknown IP 를 나타내는 sentinel 값.
@@ -122,9 +131,10 @@ export const UNKNOWN_IP = "unknown" as const;
  */
 export function extractClientIp(headers: Headers): string {
   // Vercel이 설정하는 전용 헤더만 프로덕션 신뢰 경계로 사용합니다.
-  const names = process.env.VERCEL === "1"
-    ? ["x-vercel-forwarded-for"]
-    : ["x-vercel-forwarded-for", "x-forwarded-for", "x-real-ip", "cf-connecting-ip"];
+  const names =
+    process.env.VERCEL === "1"
+      ? ["x-vercel-forwarded-for"]
+      : ["x-vercel-forwarded-for", "x-forwarded-for", "x-real-ip", "cf-connecting-ip"];
   for (const name of names) {
     const candidate = headers.get(name)?.split(",")[0]?.trim();
     if (candidate && candidate.length <= 45 && isIP(candidate) !== 0) return candidate;
@@ -142,10 +152,7 @@ export function extractClientIp(headers: Headers): string {
  * rate limit 을 걸어야 한다 (그렇지 않으면 빈 문자열 email 로 통합된
  * 카운트가 legitimate 사용자에게 영향).
  */
-export function normalizeEmailForRateLimit(email: unknown): string {
-  if (typeof email !== "string") return "";
-  return email.trim().toLowerCase();
-}
+export { normalizeEmailIdentity as normalizeEmailForRateLimit } from "@/lib/email-identity.mjs";
 
 /**
  * 카운트 기반 blocked 판정.

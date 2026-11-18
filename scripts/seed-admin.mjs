@@ -17,6 +17,7 @@
 
 import { neon } from "@neondatabase/serverless";
 import { hash } from "bcryptjs";
+import { normalizeEmailIdentity } from "../src/lib/email-identity.mjs";
 
 const DATABASE_URL = process.env.DATABASE_URL;
 if (!DATABASE_URL) {
@@ -25,46 +26,55 @@ if (!DATABASE_URL) {
   process.exit(1);
 }
 
-const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "admin@hra.ac.kr";
+// 승격 확인 권한은 기존 입력 원문과 비교하고 조회·신규 저장에만 정규값을 사용합니다.
+const RAW_ADMIN_EMAIL = process.env.ADMIN_EMAIL || "admin@hra.ac.kr";
+const ADMIN_EMAIL = normalizeEmailIdentity(RAW_ADMIN_EMAIL);
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
 const ADMIN_NAME = process.env.ADMIN_NAME || "관리자";
 const args = new Set(process.argv.slice(2));
 
 // 확인 인자 없이 실행하면 DB 조회 전 중단해 잘못된 대상 연결도 피합니다.
-if (!args.has("--confirm-create") && !args.has(`--confirm-promote=${ADMIN_EMAIL}`)) {
+if (!args.has("--confirm-create") && !args.has(`--confirm-promote=${RAW_ADMIN_EMAIL}`)) {
   console.error("❌ --confirm-create 또는 --confirm-promote=대상이메일 인자가 필요합니다.");
+  process.exit(1);
+}
+
+if (!ADMIN_EMAIL) {
+  console.error("❌ 관리자 이메일을 확인해주세요.");
   process.exit(1);
 }
 
 if (!ADMIN_PASSWORD) {
   console.error("❌ ADMIN_PASSWORD 환경변수가 설정되지 않았습니다.");
   console.error("   사용 예시:");
-  console.error(
-    '   ADMIN_PASSWORD="your-secure-password" npm run seed-admin'
-  );
+  console.error('   ADMIN_PASSWORD="your-secure-password" npm run seed-admin');
   process.exit(1);
 }
 
 async function seedAdmin() {
   const sql = neon(DATABASE_URL);
 
-  console.log(`\n🔐 관리자 계정 생성 중...`);
-  console.log(`   이메일: ${ADMIN_EMAIL}`);
-  console.log(`   이름: ${ADMIN_NAME}`);
+  console.log("관리자 계정 준비를 시작합니다.");
 
   // 기존 사용자 확인
-  const existing = await sql`SELECT id, role, session_version FROM users WHERE email = ${ADMIN_EMAIL}`;
+  const existing = await sql`SELECT id, role, session_version FROM users
+    WHERE lower(btrim(email)) = lower(btrim(${ADMIN_EMAIL})) LIMIT 2`;
+
+  // 이미 관리자 행이 있어도 모호한 주소에서는 임의 계정을 선택하지 않습니다.
+  if (existing.length > 1) throw new Error("관리자 이메일을 단일 계정으로 확인할 수 없습니다.");
 
   if (existing.length > 0) {
     if (existing[0].role === "ADMIN") {
-      console.log(`\n⚠️  이미 관리자 계정이 존재합니다 (${ADMIN_EMAIL}).`);
-      console.log("   비밀번호 변경 시 DB의 같은 UPDATE 문장에서 password_hash 수정과 session_version = session_version + 1을 함께 적용하세요.");
+      console.log("이미 관리자 계정이 존재합니다.");
+      console.log(
+        "   비밀번호 변경 시 DB의 같은 UPDATE 문장에서 password_hash 수정과 session_version = session_version + 1을 함께 적용하세요.",
+      );
       process.exit(0);
     }
 
     // 기존 계정 승격은 대상 이메일을 명시한 확인 인자가 있을 때만 허용합니다.
-    if (!args.has(`--confirm-promote=${ADMIN_EMAIL}`)) {
-      throw new Error(`기존 ${existing[0].role} 계정의 승격이 중단되었습니다. --confirm-promote=${ADMIN_EMAIL} 인자가 필요합니다.`);
+    if (!args.has(`--confirm-promote=${RAW_ADMIN_EMAIL}`)) {
+      throw new Error("기존 계정 승격에는 입력 원문과 일치하는 명시 확인 인자가 필요합니다.");
     }
 
     // 역할·세션 버전을 함께 확인해 조회 후 다른 변경이 있으면 덮어쓰지 않습니다.
@@ -76,6 +86,7 @@ async function seedAdmin() {
       WHERE id = ${existing[0].id}
         AND role = ${existing[0].role}
         AND session_version = ${existing[0].session_version}
+        AND lower(btrim(email)) = lower(btrim(${ADMIN_EMAIL}))
       RETURNING id
     `;
     if (promoted.length !== 1) {
@@ -96,12 +107,12 @@ async function seedAdmin() {
   `;
 
   console.log(`\n✅ 관리자 계정이 생성되었습니다!`);
-  console.log(`   이메일: ${ADMIN_EMAIL}`);
   console.log(`   역할: ADMIN`);
   console.log(`\n   이제 로그인 페이지에서 이메일/비밀번호로 로그인할 수 있습니다.`);
 }
 
-seedAdmin().catch((err) => {
-  console.error("\n❌ 관리자 계정 생성 실패:", err.message);
+seedAdmin().catch(() => {
+  // DB 오류 원문에는 주소·SQL·접속 정보가 들어갈 수 있어 고정 안내만 출력합니다.
+  console.error("관리자 계정 준비에 실패했습니다. 대상과 중복 여부를 안전한 절차로 확인해주세요.");
   process.exit(1);
 });
