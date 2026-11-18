@@ -15,6 +15,41 @@
   },
   "sources": [
     {
+      "ref": "scripts/migrate-507-email-identity-unique.sql",
+      "phase": "custom-definition",
+      "fresh": {
+        "disposition": "unresolved",
+        "required": true,
+        "reason": "이메일 식별 인덱스의 격리 검증 후보이며 실제 catalog·collation·충돌 처리와 운영 승인 및 fresh bundle 편입 검토 전에는 설치를 확정하지 않는다."
+      },
+      "objects": [
+        "email-identity-unique"
+      ],
+      "requires": [
+        "web-base"
+      ],
+      "checks": [
+        "소유 PostgreSQL에서 lower(btrim(email)) 동시 INSERT·UPDATE와 기존 충돌 실패·데이터 보존을 검증한다.",
+        "기존 exact UNIQUE·OAuth tuple 제약을 유지하며 동명 객체를 IF NOT EXISTS로 신뢰하지 않는다."
+      ],
+      "evidence": [
+        {
+          "file": "scripts/migrate-507-email-identity-unique.sql",
+          "line": 1,
+          "note": "운영 자동 적용기 없이 한 transaction의 인덱스 생성만 선언하는 검토 후보이다."
+        },
+        {
+          "file": "tests/unit/auth-email-identity-postgres.test.ts",
+          "line": 1,
+          "note": "실제 App IO·seed 자식·검토 UNIQUE의 소유 PostgreSQL 경합 회귀이며 전체 신규 설치를 증명하지 않는다."
+        }
+      ],
+      "unresolved": [
+        "실제 운영 대상·collation/catalog·권한·충돌 처리·백업/복구·승인과 #280 gate는 미완료다.",
+        "현재 schema export와 fresh bundle에 자동 편입하거나 운영 manifest를 적용됨으로 기록하지 않는다."
+      ]
+    },
+    {
       "ref": "scripts/migrate-mobile-sessions.sql",
       "phase": "schema-overlap",
       "fresh": { "disposition": "unresolved", "required": true, "reason": "모바일 세션 구조는 export가 소유하며 기존 DB의 엄격한 catalog 비교와 한국어 설명을 별도 원문으로 유지한다." },
@@ -1670,6 +1705,32 @@
   ],
   "objects": [
     {
+      "id": "email-identity-unique",
+      "kind": "index-set",
+      "names": [
+        "public.users_email_identity_unique"
+      ],
+      "owner": "scripts/migrate-507-email-identity-unique.sql",
+      "definitions": [
+        {
+          "source": "scripts/migrate-507-email-identity-unique.sql",
+          "relationship": "primary",
+          "reason": "PG lower(btrim(email)) 식별키의 UNIQUE를 선언한 검토 후보 원문이다. 실제 설치 상태를 증명하지 않는다."
+        }
+      ],
+      "requires": [
+        "web-base"
+      ],
+      "checks": [
+        "동일 식별키 경합에서 한 행만 성공하고 SQLSTATE 23505가 나머지를 거부하는지 확인한다.",
+        "충돌·동명 객체 실패 시 기존 행과 exact UNIQUE·OAuth binding을 보존한다."
+      ],
+      "unresolved": [
+        "운영 catalog 관측과 승인된 upgrade·fresh bundle 편입은 #280 후속 검토 대상이다."
+      ],
+      "requiredForFresh": true
+    },
+    {
       "id": "mobile-sessions",
       "kind": "table-set",
       "names": ["public.mobile_sessions", "public.mobile_session_refresh_history"],
@@ -3017,6 +3078,10 @@
         }
       ],
       "exclusions": [
+        {
+          "ref": "scripts/migrate-507-email-identity-unique.sql",
+          "reason": "기존 통합 fixture는 #507 검토 인덱스를 적용하지 않는다. 전용 auth 격리 경합 검증과 별개로 fresh bundle·운영 편입은 미해결이다."
+        },
         { "ref": "scripts/migrate-mobile-sessions.sql", "reason": "이 기존 학사 fixture는 모바일 로그인 설치를 수행하지 않는다." },
         { "ref": "scripts/db/candidates/db-fresh/mobile-sessions.sql", "reason": "모바일 세션 신규 후보는 별도 소유 로컬 시험 범위다." },
         {
@@ -3204,6 +3269,10 @@
         }
       ],
       "exclusions": [
+        {
+          "ref": "scripts/migrate-507-email-identity-unique.sql",
+          "reason": "기존 통합 fixture는 #507 검토 인덱스를 적용하지 않는다. 전용 auth 격리 경합 검증과 별개로 fresh bundle·운영 편입은 미해결이다."
+        },
         { "ref": "scripts/migrate-mobile-sessions.sql", "reason": "이 기존 경로 fixture는 모바일 로그인 설치를 수행하지 않는다." },
         { "ref": "scripts/db/candidates/db-fresh/mobile-sessions.sql", "reason": "모바일 세션 신규 후보는 별도 소유 로컬 시험 범위다." },
         {

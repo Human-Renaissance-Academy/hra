@@ -160,10 +160,7 @@ export function extractClientIp(headers: Headers): string {
  * rate limit 을 걸어야 한다 (그렇지 않으면 빈 문자열 email 로 통합된
  * 카운트가 legitimate 사용자에게 영향).
  */
-export function normalizeEmailForRateLimit(email: unknown): string {
-  if (typeof email !== "string") return "";
-  return email.trim().toLowerCase();
-}
+export { normalizeEmailIdentity as normalizeEmailForRateLimit } from "@/lib/email-identity.mjs";
 
 /**
  * 카운트 기반 blocked 판정.
