@@ -786,14 +786,14 @@
       "usedApi": "Expo SDK 58.0.23의 @expo/cli 58.1.19·@expo/fingerprint 0.21.9 및 Jest 도구는 glob 13.0.6과 minimatch 10.2.6으로 프로젝트 파일을 탐색하고, 설정·테스트 도구의 deepmerge 4.3.1은 고정된 로컬 입력을 병합한다. 등록된 파일·glob 패턴을 외부 사용자 요청에서 받지 않는다. 새 설치 npm audit에서는 @expo/config, @expo/config-plugins, @expo/metro-config의 기존 상위 취약 경로 및 CLI Zod high 경로가 더는 보고되지 않는다.",
       "callLocations": "apps/mobile의 app.config.ts, plugins/ 로컬 설정 및 expo start·export·prebuild·expo-doctor·Jest 실행; node_modules/glob, node_modules/glob/node_modules/minimatch, node_modules/@expo/fingerprint/node_modules/minimatch, node_modules/deepmerge. 모바일 앱 릴리스 번들에서 외부 입력을 받아 파일 탐색하거나 병합하는 API 경로가 아니다.",
       "assessment": "glob GHSA-3g3m-2fjr-6pw4는 호출자가 AbortSignal로 순회를 취소한 뒤에도 파일 처리가 이어지는 문제이고, minimatch GHSA-g3hv-75wg-m249는 공격자가 통제하는 패턴의 확장 폭주로 인한 DoS다. deepmerge GHSA-gcqx-w48m-w2h4는 보안 취약점이 아니라는 사유로 2026-11-16(UTC) 철회되어 평가 대상에서 제외했다. deepmerge 4.3.1의 설치·사용은 그대로이며 수정 버전 적용이나 라이브러리 제거가 아니다. 이 경로의 패턴과 병합 입력은 저장소가 소유한 설정이며 외부 요청 본문이 도달하지 않으므로 영향은 개발·CI 빌드 시간의 가용성으로 한정된다.",
-      "residualAssumptions": "2026-11-08 npm audit의 Expo SDK 58.0.23 설치본은 CLI의 zod high advisory 및 기존 config/metro-config meta advisory를 더는 보고하지 않는다. 남은 glob/minimatch는 npm 보고 범위와 로컬 입력 가정에 따라 P2로 유지한다. 수정본 glob 14 전이를 포함한 SDK 지원성과 외부 입력 연결 여부는 원래 기한인 2026-11-25까지 재검토한다. 외부 요청에서 탐색 패턴이나 병합 객체를 받게 되면 즉시 재분류한다."
+      "residualAssumptions": "2026-11-19(UTC) registry 재확인: GHSA-3g3m-2fjr-6pw4(glob >=9.0.0 <=14.0.1, 첫 수정 14.0.2)와 GHSA-g3hv-75wg-m249(minimatch >=7.0.0 <11.0.1, 첫 수정 11.0.1)는 철회되지 않았고 glob 13.x 최신 13.0.7·minimatch 10.x 최신 10.2.6도 영향 범위다. expo 58.0.23이 허용하는 범위(@expo/cli ^58.1.19, @expo/fingerprint ^0.21.9) 안의 @expo/cli 58.1.20·58.1.21은 glob 의존을 없앴고 @expo/fingerprint 0.21.10도 glob을 없앴다(minimatch ^10.2.6은 유지). 이 부분 수정본은 Dependabot expo-sdk 그룹 PR(#531)에 포함되지만 재생성된 원장과 맞지 않아 아직 적용하지 않았다. 수정본이 있는데 적용하지 못한 사용면이므로 검토일부터 2주인 2026-12-03까지 SDK 패치 적용 또는 재평가를 하고, 외부 요청에서 탐색 패턴이나 병합 객체를 받게 되면 즉시 재분류한다."
     },
     {
       "id": "jest-test-runner",
       "usedApi": "jest 30.5.2·jest-expo 58.0.13·babel-jest·babel-plugin-istanbul·test-exclude가 테스트 파일 탐색과 커버리지 계측에 glob 10.5.0·13.0.6, minimatch 9.0.9·10.2.6, deepmerge를 쓴다. expo-router의 선택적 peer(@testing-library/react-native) 때문에 npm lock의 dev 값이 false로 기록됐을 뿐 앱 소스는 jest 계열을 import하지 않는다.",
       "callLocations": "apps/mobile package.json의 test 명령, jest.config.cjs·jest.e2e.config.cjs, tests/·e2e/의 테스트; node_modules/jest*, node_modules/@jest/*, node_modules/*/node_modules/test-exclude/node_modules/glob. CI와 개발자 로컬 테스트 실행에서만 로드된다.",
       "assessment": "남은 공격 조건은 glob·minimatch 권고와 같고 입력은 저장소가 소유한 jest 설정의 testMatch·coverage 패턴과 테스트 파일 경로다. 외부 요청이나 앱 사용자 입력이 도달하지 않으며 영향은 테스트 실행 시간의 가용성으로 한정된다. Metro release 번들에는 jest 계열이 들어가지 않는다.",
-      "residualAssumptions": "2026-11-04 기준 test-exclude는 glob ^10.4.1, jest-config·jest-runtime은 glob ^13.0.6을 요구해 수정본(14.0.2 이상)이 범위 밖이다. npm dev=false로 기록된 테스트 도구 DoS이므로 3주 뒤 2026-11-25까지 jest·jest-expo 갱신을 재검토한다. 테스트가 외부에서 받은 패턴을 쓰게 되면 즉시 재분류한다."
+      "residualAssumptions": "2026-11-19(UTC) registry 재확인: jest 30.5.2와 babel-plugin-istanbul 8.0.0이 최신이다. jest-config·jest-runtime·@jest/reporters 30.5.2는 glob ^13.0.6, babel-plugin-istanbul 8.0.0은 test-exclude ^7.0.1(설치 7.0.2, glob ^10.4.1·minimatch ^10.2.2)을 요구하고 최신 test-exclude 8.0.0도 glob ^13.0.6·minimatch ^10.2.2라 수정본(glob 14.0.2·minimatch 11.0.1 이상)이 범위 밖이다. 범위 밖 major override는 적용하지 않는다. npm dev=false로 기록된 테스트 도구 DoS이므로 검토일부터 3주인 2026-12-10까지 jest·jest-expo 갱신을 재검토한다. 테스트가 외부에서 받은 패턴을 쓰게 되면 즉시 재분류한다."
     },
     {
       "id": "eslint-lint-tooling",
@@ -809,135 +809,135 @@
       "contextId": "expo-cli-config-glob",
       "priority": "P2",
       "owner": "repo-maintainers",
-      "reviewedOn": "2026-11-08",
-      "reviewBy": "2026-11-25",
-      "attackCondition": "glob 전이 advisory의 공격 조건을 해당 패키지 항목에서 별도로 검토한다. 2026-11-04 모바일 lock 최초 등록 시 확인한 경로이며 2026-11-25까지 함께 재검토한다."
+      "reviewedOn": "2026-11-19",
+      "reviewBy": "2026-12-03",
+      "attackCondition": "glob 전이 advisory의 공격 조건을 해당 패키지 항목에서 별도로 검토한다. 2026-11-04 모바일 lock 최초 등록 시 확인한 경로이며 2026-11-19(UTC) registry 재확인 후 2026-12-03까지 함께 재검토한다."
     },
     {
       "key": "@expo/fingerprint:glob",
       "contextId": "expo-cli-config-glob",
       "priority": "P2",
       "owner": "repo-maintainers",
-      "reviewedOn": "2026-11-08",
-      "reviewBy": "2026-11-25",
-      "attackCondition": "glob 전이 advisory의 공격 조건을 해당 패키지 항목에서 별도로 검토한다. 2026-11-04 모바일 lock 최초 등록 시 확인한 경로이며 2026-11-25까지 함께 재검토한다."
+      "reviewedOn": "2026-11-19",
+      "reviewBy": "2026-12-03",
+      "attackCondition": "glob 전이 advisory의 공격 조건을 해당 패키지 항목에서 별도로 검토한다. 2026-11-04 모바일 lock 최초 등록 시 확인한 경로이며 2026-11-19(UTC) registry 재확인 후 2026-12-03까지 함께 재검토한다."
     },
     {
       "key": "@expo/fingerprint:minimatch",
       "contextId": "expo-cli-config-glob",
       "priority": "P2",
       "owner": "repo-maintainers",
-      "reviewedOn": "2026-11-08",
-      "reviewBy": "2026-11-25",
-      "attackCondition": "minimatch 전이 advisory의 공격 조건을 해당 패키지 항목에서 별도로 검토한다. 2026-11-04 모바일 lock 최초 등록 시 확인한 경로이며 2026-11-25까지 함께 재검토한다."
+      "reviewedOn": "2026-11-19",
+      "reviewBy": "2026-12-03",
+      "attackCondition": "minimatch 전이 advisory의 공격 조건을 해당 패키지 항목에서 별도로 검토한다. 2026-11-04 모바일 lock 최초 등록 시 확인한 경로이며 2026-11-19(UTC) registry 재확인 후 2026-12-03까지 함께 재검토한다."
     },
     {
       "key": "@jest/core:@jest/reporters",
       "contextId": "jest-test-runner",
       "priority": "P2",
       "owner": "repo-maintainers",
-      "reviewedOn": "2026-11-04",
-      "reviewBy": "2026-11-25",
-      "attackCondition": "@jest/reporters 전이 advisory의 공격 조건을 해당 패키지 항목에서 별도로 검토한다. 2026-11-04 모바일 lock 최초 등록 시 확인한 경로이며 2026-11-25까지 함께 재검토한다."
+      "reviewedOn": "2026-11-19",
+      "reviewBy": "2026-12-10",
+      "attackCondition": "@jest/reporters 전이 advisory의 공격 조건을 해당 패키지 항목에서 별도로 검토한다. 2026-11-04 모바일 lock 최초 등록 시 확인한 경로이며 2026-11-19(UTC) registry 재확인 후 2026-12-10까지 함께 재검토한다."
     },
     {
       "key": "@jest/core:@jest/transform",
       "contextId": "jest-test-runner",
       "priority": "P2",
       "owner": "repo-maintainers",
-      "reviewedOn": "2026-11-04",
-      "reviewBy": "2026-11-25",
-      "attackCondition": "@jest/transform 전이 advisory의 공격 조건을 해당 패키지 항목에서 별도로 검토한다. 2026-11-04 모바일 lock 최초 등록 시 확인한 경로이며 2026-11-25까지 함께 재검토한다."
+      "reviewedOn": "2026-11-19",
+      "reviewBy": "2026-12-10",
+      "attackCondition": "@jest/transform 전이 advisory의 공격 조건을 해당 패키지 항목에서 별도로 검토한다. 2026-11-04 모바일 lock 최초 등록 시 확인한 경로이며 2026-11-19(UTC) registry 재확인 후 2026-12-10까지 함께 재검토한다."
     },
     {
       "key": "@jest/core:jest-config",
       "contextId": "jest-test-runner",
       "priority": "P2",
       "owner": "repo-maintainers",
-      "reviewedOn": "2026-11-04",
-      "reviewBy": "2026-11-25",
-      "attackCondition": "jest-config 전이 advisory의 공격 조건을 해당 패키지 항목에서 별도로 검토한다. 2026-11-04 모바일 lock 최초 등록 시 확인한 경로이며 2026-11-25까지 함께 재검토한다."
+      "reviewedOn": "2026-11-19",
+      "reviewBy": "2026-12-10",
+      "attackCondition": "jest-config 전이 advisory의 공격 조건을 해당 패키지 항목에서 별도로 검토한다. 2026-11-04 모바일 lock 최초 등록 시 확인한 경로이며 2026-11-19(UTC) registry 재확인 후 2026-12-10까지 함께 재검토한다."
     },
     {
       "key": "@jest/core:jest-resolve-dependencies",
       "contextId": "jest-test-runner",
       "priority": "P2",
       "owner": "repo-maintainers",
-      "reviewedOn": "2026-11-04",
-      "reviewBy": "2026-11-25",
-      "attackCondition": "jest-resolve-dependencies 전이 advisory의 공격 조건을 해당 패키지 항목에서 별도로 검토한다. 2026-11-04 모바일 lock 최초 등록 시 확인한 경로이며 2026-11-25까지 함께 재검토한다."
+      "reviewedOn": "2026-11-19",
+      "reviewBy": "2026-12-10",
+      "attackCondition": "jest-resolve-dependencies 전이 advisory의 공격 조건을 해당 패키지 항목에서 별도로 검토한다. 2026-11-04 모바일 lock 최초 등록 시 확인한 경로이며 2026-11-19(UTC) registry 재확인 후 2026-12-10까지 함께 재검토한다."
     },
     {
       "key": "@jest/core:jest-runner",
       "contextId": "jest-test-runner",
       "priority": "P2",
       "owner": "repo-maintainers",
-      "reviewedOn": "2026-11-04",
-      "reviewBy": "2026-11-25",
-      "attackCondition": "jest-runner 전이 advisory의 공격 조건을 해당 패키지 항목에서 별도로 검토한다. 2026-11-04 모바일 lock 최초 등록 시 확인한 경로이며 2026-11-25까지 함께 재검토한다."
+      "reviewedOn": "2026-11-19",
+      "reviewBy": "2026-12-10",
+      "attackCondition": "jest-runner 전이 advisory의 공격 조건을 해당 패키지 항목에서 별도로 검토한다. 2026-11-04 모바일 lock 최초 등록 시 확인한 경로이며 2026-11-19(UTC) registry 재확인 후 2026-12-10까지 함께 재검토한다."
     },
     {
       "key": "@jest/core:jest-runtime",
       "contextId": "jest-test-runner",
       "priority": "P2",
       "owner": "repo-maintainers",
-      "reviewedOn": "2026-11-04",
-      "reviewBy": "2026-11-25",
-      "attackCondition": "jest-runtime 전이 advisory의 공격 조건을 해당 패키지 항목에서 별도로 검토한다. 2026-11-04 모바일 lock 최초 등록 시 확인한 경로이며 2026-11-25까지 함께 재검토한다."
+      "reviewedOn": "2026-11-19",
+      "reviewBy": "2026-12-10",
+      "attackCondition": "jest-runtime 전이 advisory의 공격 조건을 해당 패키지 항목에서 별도로 검토한다. 2026-11-04 모바일 lock 최초 등록 시 확인한 경로이며 2026-11-19(UTC) registry 재확인 후 2026-12-10까지 함께 재검토한다."
     },
     {
       "key": "@jest/core:jest-snapshot",
       "contextId": "jest-test-runner",
       "priority": "P2",
       "owner": "repo-maintainers",
-      "reviewedOn": "2026-11-04",
-      "reviewBy": "2026-11-25",
-      "attackCondition": "jest-snapshot 전이 advisory의 공격 조건을 해당 패키지 항목에서 별도로 검토한다. 2026-11-04 모바일 lock 최초 등록 시 확인한 경로이며 2026-11-25까지 함께 재검토한다."
+      "reviewedOn": "2026-11-19",
+      "reviewBy": "2026-12-10",
+      "attackCondition": "jest-snapshot 전이 advisory의 공격 조건을 해당 패키지 항목에서 별도로 검토한다. 2026-11-04 모바일 lock 최초 등록 시 확인한 경로이며 2026-11-19(UTC) registry 재확인 후 2026-12-10까지 함께 재검토한다."
     },
     {
       "key": "@jest/expect:jest-snapshot",
       "contextId": "jest-test-runner",
       "priority": "P2",
       "owner": "repo-maintainers",
-      "reviewedOn": "2026-11-04",
-      "reviewBy": "2026-11-25",
-      "attackCondition": "jest-snapshot 전이 advisory의 공격 조건을 해당 패키지 항목에서 별도로 검토한다. 2026-11-04 모바일 lock 최초 등록 시 확인한 경로이며 2026-11-25까지 함께 재검토한다."
+      "reviewedOn": "2026-11-19",
+      "reviewBy": "2026-12-10",
+      "attackCondition": "jest-snapshot 전이 advisory의 공격 조건을 해당 패키지 항목에서 별도로 검토한다. 2026-11-04 모바일 lock 최초 등록 시 확인한 경로이며 2026-11-19(UTC) registry 재확인 후 2026-12-10까지 함께 재검토한다."
     },
     {
       "key": "@jest/globals:@jest/expect",
       "contextId": "jest-test-runner",
       "priority": "P2",
       "owner": "repo-maintainers",
-      "reviewedOn": "2026-11-04",
-      "reviewBy": "2026-11-25",
-      "attackCondition": "@jest/expect 전이 advisory의 공격 조건을 해당 패키지 항목에서 별도로 검토한다. 2026-11-04 모바일 lock 최초 등록 시 확인한 경로이며 2026-11-25까지 함께 재검토한다."
+      "reviewedOn": "2026-11-19",
+      "reviewBy": "2026-12-10",
+      "attackCondition": "@jest/expect 전이 advisory의 공격 조건을 해당 패키지 항목에서 별도로 검토한다. 2026-11-04 모바일 lock 최초 등록 시 확인한 경로이며 2026-11-19(UTC) registry 재확인 후 2026-12-10까지 함께 재검토한다."
     },
     {
       "key": "@jest/reporters:@jest/transform",
       "contextId": "jest-test-runner",
       "priority": "P2",
       "owner": "repo-maintainers",
-      "reviewedOn": "2026-11-04",
-      "reviewBy": "2026-11-25",
-      "attackCondition": "@jest/transform 전이 advisory의 공격 조건을 해당 패키지 항목에서 별도로 검토한다. 2026-11-04 모바일 lock 최초 등록 시 확인한 경로이며 2026-11-25까지 함께 재검토한다."
+      "reviewedOn": "2026-11-19",
+      "reviewBy": "2026-12-10",
+      "attackCondition": "@jest/transform 전이 advisory의 공격 조건을 해당 패키지 항목에서 별도로 검토한다. 2026-11-04 모바일 lock 최초 등록 시 확인한 경로이며 2026-11-19(UTC) registry 재확인 후 2026-12-10까지 함께 재검토한다."
     },
     {
       "key": "@jest/reporters:glob",
       "contextId": "jest-test-runner",
       "priority": "P2",
       "owner": "repo-maintainers",
-      "reviewedOn": "2026-11-04",
-      "reviewBy": "2026-11-25",
-      "attackCondition": "glob 전이 advisory의 공격 조건을 해당 패키지 항목에서 별도로 검토한다. 2026-11-04 모바일 lock 최초 등록 시 확인한 경로이며 2026-11-25까지 함께 재검토한다."
+      "reviewedOn": "2026-11-19",
+      "reviewBy": "2026-12-10",
+      "attackCondition": "glob 전이 advisory의 공격 조건을 해당 패키지 항목에서 별도로 검토한다. 2026-11-04 모바일 lock 최초 등록 시 확인한 경로이며 2026-11-19(UTC) registry 재확인 후 2026-12-10까지 함께 재검토한다."
     },
     {
       "key": "@jest/transform:babel-plugin-istanbul",
       "contextId": "jest-test-runner",
       "priority": "P2",
       "owner": "repo-maintainers",
-      "reviewedOn": "2026-11-04",
-      "reviewBy": "2026-11-25",
-      "attackCondition": "babel-plugin-istanbul 전이 advisory의 공격 조건을 해당 패키지 항목에서 별도로 검토한다. 2026-11-04 모바일 lock 최초 등록 시 확인한 경로이며 2026-11-25까지 함께 재검토한다."
+      "reviewedOn": "2026-11-19",
+      "reviewBy": "2026-12-10",
+      "attackCondition": "babel-plugin-istanbul 전이 advisory의 공격 조건을 해당 패키지 항목에서 별도로 검토한다. 2026-11-04 모바일 lock 최초 등록 시 확인한 경로이며 2026-11-19(UTC) registry 재확인 후 2026-12-10까지 함께 재검토한다."
     },
     {
       "key": "@typescript-eslint/eslint-plugin:@typescript-eslint/type-utils",
@@ -1007,270 +1007,270 @@
       "contextId": "jest-test-runner",
       "priority": "P2",
       "owner": "repo-maintainers",
-      "reviewedOn": "2026-11-04",
-      "reviewBy": "2026-11-25",
-      "attackCondition": "@jest/transform 전이 advisory의 공격 조건을 해당 패키지 항목에서 별도로 검토한다. 2026-11-04 모바일 lock 최초 등록 시 확인한 경로이며 2026-11-25까지 함께 재검토한다."
+      "reviewedOn": "2026-11-19",
+      "reviewBy": "2026-12-10",
+      "attackCondition": "@jest/transform 전이 advisory의 공격 조건을 해당 패키지 항목에서 별도로 검토한다. 2026-11-04 모바일 lock 최초 등록 시 확인한 경로이며 2026-11-19(UTC) registry 재확인 후 2026-12-10까지 함께 재검토한다."
     },
     {
       "key": "babel-jest:babel-plugin-istanbul",
       "contextId": "jest-test-runner",
       "priority": "P2",
       "owner": "repo-maintainers",
-      "reviewedOn": "2026-11-04",
-      "reviewBy": "2026-11-25",
-      "attackCondition": "babel-plugin-istanbul 전이 advisory의 공격 조건을 해당 패키지 항목에서 별도로 검토한다. 2026-11-04 모바일 lock 최초 등록 시 확인한 경로이며 2026-11-25까지 함께 재검토한다."
+      "reviewedOn": "2026-11-19",
+      "reviewBy": "2026-12-10",
+      "attackCondition": "babel-plugin-istanbul 전이 advisory의 공격 조건을 해당 패키지 항목에서 별도로 검토한다. 2026-11-04 모바일 lock 최초 등록 시 확인한 경로이며 2026-11-19(UTC) registry 재확인 후 2026-12-10까지 함께 재검토한다."
     },
     {
       "key": "babel-plugin-istanbul:test-exclude",
       "contextId": "jest-test-runner",
       "priority": "P2",
       "owner": "repo-maintainers",
-      "reviewedOn": "2026-11-04",
-      "reviewBy": "2026-11-25",
-      "attackCondition": "test-exclude 전이 advisory의 공격 조건을 해당 패키지 항목에서 별도로 검토한다. 2026-11-04 모바일 lock 최초 등록 시 확인한 경로이며 2026-11-25까지 함께 재검토한다."
+      "reviewedOn": "2026-11-19",
+      "reviewBy": "2026-12-10",
+      "attackCondition": "test-exclude 전이 advisory의 공격 조건을 해당 패키지 항목에서 별도로 검토한다. 2026-11-04 모바일 lock 최초 등록 시 확인한 경로이며 2026-11-19(UTC) registry 재확인 후 2026-12-10까지 함께 재검토한다."
     },
     {
       "key": "expo:@expo/fingerprint",
       "contextId": "expo-cli-config-glob",
       "priority": "P2",
       "owner": "repo-maintainers",
-      "reviewedOn": "2026-11-08",
-      "reviewBy": "2026-11-25",
-      "attackCondition": "@expo/fingerprint 전이 advisory의 공격 조건을 해당 패키지 항목에서 별도로 검토한다. 2026-11-04 모바일 lock 최초 등록 시 확인한 경로이며 2026-11-25까지 함께 재검토한다."
+      "reviewedOn": "2026-11-19",
+      "reviewBy": "2026-12-03",
+      "attackCondition": "@expo/fingerprint 전이 advisory의 공격 조건을 해당 패키지 항목에서 별도로 검토한다. 2026-11-04 모바일 lock 최초 등록 시 확인한 경로이며 2026-11-19(UTC) registry 재확인 후 2026-12-03까지 함께 재검토한다."
     },
     {
       "key": "glob:minimatch",
       "contextId": "expo-cli-config-glob",
       "priority": "P2",
       "owner": "repo-maintainers",
-      "reviewedOn": "2026-11-04",
-      "reviewBy": "2026-11-25",
-      "attackCondition": "minimatch 전이 advisory의 공격 조건을 해당 패키지 항목에서 별도로 검토한다. 2026-11-04 모바일 lock 최초 등록 시 확인한 경로이며 2026-11-25까지 함께 재검토한다."
+      "reviewedOn": "2026-11-19",
+      "reviewBy": "2026-12-03",
+      "attackCondition": "minimatch 전이 advisory의 공격 조건을 해당 패키지 항목에서 별도로 검토한다. 2026-11-04 모바일 lock 최초 등록 시 확인한 경로이며 2026-11-19(UTC) registry 재확인 후 2026-12-03까지 함께 재검토한다."
     },
     {
       "key": "glob:1244013",
       "contextId": "expo-cli-config-glob",
       "priority": "P2",
       "owner": "repo-maintainers",
-      "reviewedOn": "2026-11-04",
-      "reviewBy": "2026-11-25",
-      "attackCondition": "GHSA-3g3m-2fjr-6pw4: 호출자가 AbortSignal로 glob 순회를 취소한 뒤에도 파일 처리가 이어지는 조건이 필요하다. 패턴과 루트는 Expo·jest 설정에 고정되어 외부 입력이 도달하지 않는다."
+      "reviewedOn": "2026-11-19",
+      "reviewBy": "2026-12-03",
+      "attackCondition": "GHSA-3g3m-2fjr-6pw4: 호출자가 AbortSignal로 glob 순회를 취소한 뒤에도 파일 처리가 이어지는 조건이 필요하다. 패턴과 루트는 Expo·jest 설정에 고정되어 외부 입력이 도달하지 않는다. 2026-11-19(UTC) registry 재확인에서 권고가 철회되지 않았고 이 패키지의 설치 major 안 수정본이 없음을 확인했다."
     },
     {
       "key": "jest:@jest/core",
       "contextId": "jest-test-runner",
       "priority": "P2",
       "owner": "repo-maintainers",
-      "reviewedOn": "2026-11-04",
-      "reviewBy": "2026-11-25",
-      "attackCondition": "@jest/core 전이 advisory의 공격 조건을 해당 패키지 항목에서 별도로 검토한다. 2026-11-04 모바일 lock 최초 등록 시 확인한 경로이며 2026-11-25까지 함께 재검토한다."
+      "reviewedOn": "2026-11-19",
+      "reviewBy": "2026-12-10",
+      "attackCondition": "@jest/core 전이 advisory의 공격 조건을 해당 패키지 항목에서 별도로 검토한다. 2026-11-04 모바일 lock 최초 등록 시 확인한 경로이며 2026-11-19(UTC) registry 재확인 후 2026-12-10까지 함께 재검토한다."
     },
     {
       "key": "jest:jest-cli",
       "contextId": "jest-test-runner",
       "priority": "P2",
       "owner": "repo-maintainers",
-      "reviewedOn": "2026-11-04",
-      "reviewBy": "2026-11-25",
-      "attackCondition": "jest-cli 전이 advisory의 공격 조건을 해당 패키지 항목에서 별도로 검토한다. 2026-11-04 모바일 lock 최초 등록 시 확인한 경로이며 2026-11-25까지 함께 재검토한다."
+      "reviewedOn": "2026-11-19",
+      "reviewBy": "2026-12-10",
+      "attackCondition": "jest-cli 전이 advisory의 공격 조건을 해당 패키지 항목에서 별도로 검토한다. 2026-11-04 모바일 lock 최초 등록 시 확인한 경로이며 2026-11-19(UTC) registry 재확인 후 2026-12-10까지 함께 재검토한다."
     },
     {
       "key": "jest-circus:@jest/expect",
       "contextId": "jest-test-runner",
       "priority": "P2",
       "owner": "repo-maintainers",
-      "reviewedOn": "2026-11-04",
-      "reviewBy": "2026-11-25",
-      "attackCondition": "@jest/expect 전이 advisory의 공격 조건을 해당 패키지 항목에서 별도로 검토한다. 2026-11-04 모바일 lock 최초 등록 시 확인한 경로이며 2026-11-25까지 함께 재검토한다."
+      "reviewedOn": "2026-11-19",
+      "reviewBy": "2026-12-10",
+      "attackCondition": "@jest/expect 전이 advisory의 공격 조건을 해당 패키지 항목에서 별도로 검토한다. 2026-11-04 모바일 lock 최초 등록 시 확인한 경로이며 2026-11-19(UTC) registry 재확인 후 2026-12-10까지 함께 재검토한다."
     },
     {
       "key": "jest-circus:jest-runtime",
       "contextId": "jest-test-runner",
       "priority": "P2",
       "owner": "repo-maintainers",
-      "reviewedOn": "2026-11-04",
-      "reviewBy": "2026-11-25",
-      "attackCondition": "jest-runtime 전이 advisory의 공격 조건을 해당 패키지 항목에서 별도로 검토한다. 2026-11-04 모바일 lock 최초 등록 시 확인한 경로이며 2026-11-25까지 함께 재검토한다."
+      "reviewedOn": "2026-11-19",
+      "reviewBy": "2026-12-10",
+      "attackCondition": "jest-runtime 전이 advisory의 공격 조건을 해당 패키지 항목에서 별도로 검토한다. 2026-11-04 모바일 lock 최초 등록 시 확인한 경로이며 2026-11-19(UTC) registry 재확인 후 2026-12-10까지 함께 재검토한다."
     },
     {
       "key": "jest-circus:jest-snapshot",
       "contextId": "jest-test-runner",
       "priority": "P2",
       "owner": "repo-maintainers",
-      "reviewedOn": "2026-11-04",
-      "reviewBy": "2026-11-25",
-      "attackCondition": "jest-snapshot 전이 advisory의 공격 조건을 해당 패키지 항목에서 별도로 검토한다. 2026-11-04 모바일 lock 최초 등록 시 확인한 경로이며 2026-11-25까지 함께 재검토한다."
+      "reviewedOn": "2026-11-19",
+      "reviewBy": "2026-12-10",
+      "attackCondition": "jest-snapshot 전이 advisory의 공격 조건을 해당 패키지 항목에서 별도로 검토한다. 2026-11-04 모바일 lock 최초 등록 시 확인한 경로이며 2026-11-19(UTC) registry 재확인 후 2026-12-10까지 함께 재검토한다."
     },
     {
       "key": "jest-cli:@jest/core",
       "contextId": "jest-test-runner",
       "priority": "P2",
       "owner": "repo-maintainers",
-      "reviewedOn": "2026-11-04",
-      "reviewBy": "2026-11-25",
-      "attackCondition": "@jest/core 전이 advisory의 공격 조건을 해당 패키지 항목에서 별도로 검토한다. 2026-11-04 모바일 lock 최초 등록 시 확인한 경로이며 2026-11-25까지 함께 재검토한다."
+      "reviewedOn": "2026-11-19",
+      "reviewBy": "2026-12-10",
+      "attackCondition": "@jest/core 전이 advisory의 공격 조건을 해당 패키지 항목에서 별도로 검토한다. 2026-11-04 모바일 lock 최초 등록 시 확인한 경로이며 2026-11-19(UTC) registry 재확인 후 2026-12-10까지 함께 재검토한다."
     },
     {
       "key": "jest-cli:jest-config",
       "contextId": "jest-test-runner",
       "priority": "P2",
       "owner": "repo-maintainers",
-      "reviewedOn": "2026-11-04",
-      "reviewBy": "2026-11-25",
-      "attackCondition": "jest-config 전이 advisory의 공격 조건을 해당 패키지 항목에서 별도로 검토한다. 2026-11-04 모바일 lock 최초 등록 시 확인한 경로이며 2026-11-25까지 함께 재검토한다."
+      "reviewedOn": "2026-11-19",
+      "reviewBy": "2026-12-10",
+      "attackCondition": "jest-config 전이 advisory의 공격 조건을 해당 패키지 항목에서 별도로 검토한다. 2026-11-04 모바일 lock 최초 등록 시 확인한 경로이며 2026-11-19(UTC) registry 재확인 후 2026-12-10까지 함께 재검토한다."
     },
     {
       "key": "jest-config:babel-jest",
       "contextId": "jest-test-runner",
       "priority": "P2",
       "owner": "repo-maintainers",
-      "reviewedOn": "2026-11-04",
-      "reviewBy": "2026-11-25",
-      "attackCondition": "babel-jest 전이 advisory의 공격 조건을 해당 패키지 항목에서 별도로 검토한다. 2026-11-04 모바일 lock 최초 등록 시 확인한 경로이며 2026-11-25까지 함께 재검토한다."
+      "reviewedOn": "2026-11-19",
+      "reviewBy": "2026-12-10",
+      "attackCondition": "babel-jest 전이 advisory의 공격 조건을 해당 패키지 항목에서 별도로 검토한다. 2026-11-04 모바일 lock 최초 등록 시 확인한 경로이며 2026-11-19(UTC) registry 재확인 후 2026-12-10까지 함께 재검토한다."
     },
     {
       "key": "jest-config:glob",
       "contextId": "jest-test-runner",
       "priority": "P2",
       "owner": "repo-maintainers",
-      "reviewedOn": "2026-11-04",
-      "reviewBy": "2026-11-25",
-      "attackCondition": "glob 전이 advisory의 공격 조건을 해당 패키지 항목에서 별도로 검토한다. 2026-11-04 모바일 lock 최초 등록 시 확인한 경로이며 2026-11-25까지 함께 재검토한다."
+      "reviewedOn": "2026-11-19",
+      "reviewBy": "2026-12-10",
+      "attackCondition": "glob 전이 advisory의 공격 조건을 해당 패키지 항목에서 별도로 검토한다. 2026-11-04 모바일 lock 최초 등록 시 확인한 경로이며 2026-11-19(UTC) registry 재확인 후 2026-12-10까지 함께 재검토한다."
     },
     {
       "key": "jest-config:jest-circus",
       "contextId": "jest-test-runner",
       "priority": "P2",
       "owner": "repo-maintainers",
-      "reviewedOn": "2026-11-04",
-      "reviewBy": "2026-11-25",
-      "attackCondition": "jest-circus 전이 advisory의 공격 조건을 해당 패키지 항목에서 별도로 검토한다. 2026-11-04 모바일 lock 최초 등록 시 확인한 경로이며 2026-11-25까지 함께 재검토한다."
+      "reviewedOn": "2026-11-19",
+      "reviewBy": "2026-12-10",
+      "attackCondition": "jest-circus 전이 advisory의 공격 조건을 해당 패키지 항목에서 별도로 검토한다. 2026-11-04 모바일 lock 최초 등록 시 확인한 경로이며 2026-11-19(UTC) registry 재확인 후 2026-12-10까지 함께 재검토한다."
     },
     {
       "key": "jest-config:jest-runner",
       "contextId": "jest-test-runner",
       "priority": "P2",
       "owner": "repo-maintainers",
-      "reviewedOn": "2026-11-04",
-      "reviewBy": "2026-11-25",
-      "attackCondition": "jest-runner 전이 advisory의 공격 조건을 해당 패키지 항목에서 별도로 검토한다. 2026-11-04 모바일 lock 최초 등록 시 확인한 경로이며 2026-11-25까지 함께 재검토한다."
+      "reviewedOn": "2026-11-19",
+      "reviewBy": "2026-12-10",
+      "attackCondition": "jest-runner 전이 advisory의 공격 조건을 해당 패키지 항목에서 별도로 검토한다. 2026-11-04 모바일 lock 최초 등록 시 확인한 경로이며 2026-11-19(UTC) registry 재확인 후 2026-12-10까지 함께 재검토한다."
     },
     {
       "key": "jest-expo:jest-watch-typeahead",
       "contextId": "jest-test-runner",
       "priority": "P2",
       "owner": "repo-maintainers",
-      "reviewedOn": "2026-11-08",
-      "reviewBy": "2026-11-25",
-      "attackCondition": "jest-watch-typeahead 전이 advisory의 공격 조건을 해당 패키지 항목에서 별도로 검토한다. 2026-11-04 모바일 lock 최초 등록 시 확인한 경로이며 2026-11-25까지 함께 재검토한다."
+      "reviewedOn": "2026-11-19",
+      "reviewBy": "2026-12-10",
+      "attackCondition": "jest-watch-typeahead 전이 advisory의 공격 조건을 해당 패키지 항목에서 별도로 검토한다. 2026-11-04 모바일 lock 최초 등록 시 확인한 경로이며 2026-11-19(UTC) registry 재확인 후 2026-12-10까지 함께 재검토한다."
     },
     {
       "key": "jest-resolve-dependencies:jest-snapshot",
       "contextId": "jest-test-runner",
       "priority": "P2",
       "owner": "repo-maintainers",
-      "reviewedOn": "2026-11-04",
-      "reviewBy": "2026-11-25",
-      "attackCondition": "jest-snapshot 전이 advisory의 공격 조건을 해당 패키지 항목에서 별도로 검토한다. 2026-11-04 모바일 lock 최초 등록 시 확인한 경로이며 2026-11-25까지 함께 재검토한다."
+      "reviewedOn": "2026-11-19",
+      "reviewBy": "2026-12-10",
+      "attackCondition": "jest-snapshot 전이 advisory의 공격 조건을 해당 패키지 항목에서 별도로 검토한다. 2026-11-04 모바일 lock 최초 등록 시 확인한 경로이며 2026-11-19(UTC) registry 재확인 후 2026-12-10까지 함께 재검토한다."
     },
     {
       "key": "jest-runner:@jest/transform",
       "contextId": "jest-test-runner",
       "priority": "P2",
       "owner": "repo-maintainers",
-      "reviewedOn": "2026-11-04",
-      "reviewBy": "2026-11-25",
-      "attackCondition": "@jest/transform 전이 advisory의 공격 조건을 해당 패키지 항목에서 별도로 검토한다. 2026-11-04 모바일 lock 최초 등록 시 확인한 경로이며 2026-11-25까지 함께 재검토한다."
+      "reviewedOn": "2026-11-19",
+      "reviewBy": "2026-12-10",
+      "attackCondition": "@jest/transform 전이 advisory의 공격 조건을 해당 패키지 항목에서 별도로 검토한다. 2026-11-04 모바일 lock 최초 등록 시 확인한 경로이며 2026-11-19(UTC) registry 재확인 후 2026-12-10까지 함께 재검토한다."
     },
     {
       "key": "jest-runner:jest-runtime",
       "contextId": "jest-test-runner",
       "priority": "P2",
       "owner": "repo-maintainers",
-      "reviewedOn": "2026-11-04",
-      "reviewBy": "2026-11-25",
-      "attackCondition": "jest-runtime 전이 advisory의 공격 조건을 해당 패키지 항목에서 별도로 검토한다. 2026-11-04 모바일 lock 최초 등록 시 확인한 경로이며 2026-11-25까지 함께 재검토한다."
+      "reviewedOn": "2026-11-19",
+      "reviewBy": "2026-12-10",
+      "attackCondition": "jest-runtime 전이 advisory의 공격 조건을 해당 패키지 항목에서 별도로 검토한다. 2026-11-04 모바일 lock 최초 등록 시 확인한 경로이며 2026-11-19(UTC) registry 재확인 후 2026-12-10까지 함께 재검토한다."
     },
     {
       "key": "jest-runtime:@jest/globals",
       "contextId": "jest-test-runner",
       "priority": "P2",
       "owner": "repo-maintainers",
-      "reviewedOn": "2026-11-04",
-      "reviewBy": "2026-11-25",
-      "attackCondition": "@jest/globals 전이 advisory의 공격 조건을 해당 패키지 항목에서 별도로 검토한다. 2026-11-04 모바일 lock 최초 등록 시 확인한 경로이며 2026-11-25까지 함께 재검토한다."
+      "reviewedOn": "2026-11-19",
+      "reviewBy": "2026-12-10",
+      "attackCondition": "@jest/globals 전이 advisory의 공격 조건을 해당 패키지 항목에서 별도로 검토한다. 2026-11-04 모바일 lock 최초 등록 시 확인한 경로이며 2026-11-19(UTC) registry 재확인 후 2026-12-10까지 함께 재검토한다."
     },
     {
       "key": "jest-runtime:@jest/transform",
       "contextId": "jest-test-runner",
       "priority": "P2",
       "owner": "repo-maintainers",
-      "reviewedOn": "2026-11-04",
-      "reviewBy": "2026-11-25",
-      "attackCondition": "@jest/transform 전이 advisory의 공격 조건을 해당 패키지 항목에서 별도로 검토한다. 2026-11-04 모바일 lock 최초 등록 시 확인한 경로이며 2026-11-25까지 함께 재검토한다."
+      "reviewedOn": "2026-11-19",
+      "reviewBy": "2026-12-10",
+      "attackCondition": "@jest/transform 전이 advisory의 공격 조건을 해당 패키지 항목에서 별도로 검토한다. 2026-11-04 모바일 lock 최초 등록 시 확인한 경로이며 2026-11-19(UTC) registry 재확인 후 2026-12-10까지 함께 재검토한다."
     },
     {
       "key": "jest-runtime:glob",
       "contextId": "jest-test-runner",
       "priority": "P2",
       "owner": "repo-maintainers",
-      "reviewedOn": "2026-11-04",
-      "reviewBy": "2026-11-25",
-      "attackCondition": "glob 전이 advisory의 공격 조건을 해당 패키지 항목에서 별도로 검토한다. 2026-11-04 모바일 lock 최초 등록 시 확인한 경로이며 2026-11-25까지 함께 재검토한다."
+      "reviewedOn": "2026-11-19",
+      "reviewBy": "2026-12-10",
+      "attackCondition": "glob 전이 advisory의 공격 조건을 해당 패키지 항목에서 별도로 검토한다. 2026-11-04 모바일 lock 최초 등록 시 확인한 경로이며 2026-11-19(UTC) registry 재확인 후 2026-12-10까지 함께 재검토한다."
     },
     {
       "key": "jest-runtime:jest-snapshot",
       "contextId": "jest-test-runner",
       "priority": "P2",
       "owner": "repo-maintainers",
-      "reviewedOn": "2026-11-04",
-      "reviewBy": "2026-11-25",
-      "attackCondition": "jest-snapshot 전이 advisory의 공격 조건을 해당 패키지 항목에서 별도로 검토한다. 2026-11-04 모바일 lock 최초 등록 시 확인한 경로이며 2026-11-25까지 함께 재검토한다."
+      "reviewedOn": "2026-11-19",
+      "reviewBy": "2026-12-10",
+      "attackCondition": "jest-snapshot 전이 advisory의 공격 조건을 해당 패키지 항목에서 별도로 검토한다. 2026-11-04 모바일 lock 최초 등록 시 확인한 경로이며 2026-11-19(UTC) registry 재확인 후 2026-12-10까지 함께 재검토한다."
     },
     {
       "key": "jest-snapshot:@jest/transform",
       "contextId": "jest-test-runner",
       "priority": "P2",
       "owner": "repo-maintainers",
-      "reviewedOn": "2026-11-04",
-      "reviewBy": "2026-11-25",
-      "attackCondition": "@jest/transform 전이 advisory의 공격 조건을 해당 패키지 항목에서 별도로 검토한다. 2026-11-04 모바일 lock 최초 등록 시 확인한 경로이며 2026-11-25까지 함께 재검토한다."
+      "reviewedOn": "2026-11-19",
+      "reviewBy": "2026-12-10",
+      "attackCondition": "@jest/transform 전이 advisory의 공격 조건을 해당 패키지 항목에서 별도로 검토한다. 2026-11-04 모바일 lock 최초 등록 시 확인한 경로이며 2026-11-19(UTC) registry 재확인 후 2026-12-10까지 함께 재검토한다."
     },
     {
       "key": "jest-watch-typeahead:jest",
       "contextId": "jest-test-runner",
       "priority": "P2",
       "owner": "repo-maintainers",
-      "reviewedOn": "2026-11-04",
-      "reviewBy": "2026-11-25",
-      "attackCondition": "jest 전이 advisory의 공격 조건을 해당 패키지 항목에서 별도로 검토한다. 2026-11-04 모바일 lock 최초 등록 시 확인한 경로이며 2026-11-25까지 함께 재검토한다."
+      "reviewedOn": "2026-11-19",
+      "reviewBy": "2026-12-10",
+      "attackCondition": "jest 전이 advisory의 공격 조건을 해당 패키지 항목에서 별도로 검토한다. 2026-11-04 모바일 lock 최초 등록 시 확인한 경로이며 2026-11-19(UTC) registry 재확인 후 2026-12-10까지 함께 재검토한다."
     },
     {
       "key": "minimatch:1244623",
       "contextId": "expo-cli-config-glob",
       "priority": "P2",
       "owner": "repo-maintainers",
-      "reviewedOn": "2026-11-05",
-      "reviewBy": "2026-11-25",
-      "attackCondition": "GHSA-g3hv-75wg-m249(2026-11-04T16:50Z 정정, >=7.0.0 <11.0.1): 공격자가 통제하는 glob 패턴으로 확장 폭주를 일으켜야 한다. 남은 minimatch 9.0.9·10.2.6을 쓰는 Expo·jest·typescript-eslint의 패턴은 저장소 설정과 패키지 기본값에 고정되어 있다."
+      "reviewedOn": "2026-11-19",
+      "reviewBy": "2026-12-03",
+      "attackCondition": "GHSA-g3hv-75wg-m249(2026-11-04T16:50Z 정정, >=7.0.0 <11.0.1): 공격자가 통제하는 glob 패턴으로 확장 폭주를 일으켜야 한다. 남은 minimatch 9.0.9·10.2.6을 쓰는 Expo·jest·typescript-eslint의 패턴은 저장소 설정과 패키지 기본값에 고정되어 있다. 2026-11-19(UTC) registry 재확인에서 권고가 철회되지 않았고 이 패키지의 설치 major 안 수정본이 없음을 확인했다."
     },
     {
       "key": "test-exclude:glob",
       "contextId": "jest-test-runner",
       "priority": "P2",
       "owner": "repo-maintainers",
-      "reviewedOn": "2026-11-04",
-      "reviewBy": "2026-11-25",
-      "attackCondition": "glob 전이 advisory의 공격 조건을 해당 패키지 항목에서 별도로 검토한다. 2026-11-04 모바일 lock 최초 등록 시 확인한 경로이며 2026-11-25까지 함께 재검토한다."
+      "reviewedOn": "2026-11-19",
+      "reviewBy": "2026-12-10",
+      "attackCondition": "glob 전이 advisory의 공격 조건을 해당 패키지 항목에서 별도로 검토한다. 2026-11-04 모바일 lock 최초 등록 시 확인한 경로이며 2026-11-19(UTC) registry 재확인 후 2026-12-10까지 함께 재검토한다."
     },
     {
       "key": "test-exclude:minimatch",
       "contextId": "jest-test-runner",
       "priority": "P2",
       "owner": "repo-maintainers",
-      "reviewedOn": "2026-11-04",
-      "reviewBy": "2026-11-25",
-      "attackCondition": "minimatch 전이 advisory의 공격 조건을 해당 패키지 항목에서 별도로 검토한다. 2026-11-04 모바일 lock 최초 등록 시 확인한 경로이며 2026-11-25까지 함께 재검토한다."
+      "reviewedOn": "2026-11-19",
+      "reviewBy": "2026-12-10",
+      "attackCondition": "minimatch 전이 advisory의 공격 조건을 해당 패키지 항목에서 별도로 검토한다. 2026-11-04 모바일 lock 최초 등록 시 확인한 경로이며 2026-11-19(UTC) registry 재확인 후 2026-12-10까지 함께 재검토한다."
     }
   ]
 }

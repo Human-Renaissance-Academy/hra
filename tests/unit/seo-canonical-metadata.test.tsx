@@ -53,7 +53,10 @@ describe("루트 레이아웃 메타데이터", () => {
     expect(metadata.robots).toBeUndefined();
     // 루트 canonical은 모든 하위·없는 페이지에 상속되므로 두지 않습니다.
     expect(metadata.alternates).toBeUndefined();
-    expect(metadata.title).toEqual({ default: "HRA - Human Renaissance Academy", template: "%s | HRA" });
+    expect(metadata.title).toEqual({
+      default: "HRA - Human Renaissance Academy",
+      template: "%s | HRA",
+    });
   });
 
   it("Preview는 자기 배포 주소를 기준으로 하고 noindex·nofollow를 붙인다", async () => {
@@ -82,10 +85,67 @@ describe("주요 공개 페이지 canonical", () => {
     ["@/app/(public)/faq/layout", "/faq", "자주 묻는 질문"],
   ];
 
-  it.each(pages)("%s 는 %s 를 대표 주소로 선언하고 제목을 유지한다", async (path, canonical, title) => {
-    const { metadata } = (await import(/* @vite-ignore */ path)) as { metadata: Metadata };
-    expect(metadata.alternates).toEqual({ canonical });
-    expect(metadata.title).toBe(title);
+  it.each(pages)(
+    "%s 는 %s 를 대표 주소로 선언하고 제목을 유지한다",
+    async (path, canonical, title) => {
+      const { metadata } = (await import(/* @vite-ignore */ path)) as { metadata: Metadata };
+      expect(metadata.alternates).toEqual({ canonical });
+      // 홈은 루트 템플릿("%s | HRA") 중복을 피하려고 절대 제목을 씁니다.
+      expect(metadata.title).toEqual(canonical === "/" ? { absolute: title } : title);
+    },
+  );
+
+  it("홈 제목은 루트 템플릿을 거치지 않아 브랜드가 중복되지 않는다", async () => {
+    const { metadata } = (await import("@/app/(public)/page")) as { metadata: Metadata };
+    expect(metadata.title).toEqual({ absolute: "HRA - Human Renaissance Academy" });
+  });
+});
+
+describe("공유 이미지(og:image/twitter:image) 유지 (#414)", () => {
+  const expectedUrl = "/opengraph-image";
+
+  it("홈은 openGraph를 직접 선언해도 기본 공유 이미지를 유지한다", async () => {
+    const { metadata } = (await import("@/app/(public)/page")) as { metadata: Metadata };
+    expect(metadata.openGraph?.url).toBe("/");
+    expect(metadata.openGraph?.images).toEqual([
+      expect.objectContaining({ url: expectedUrl, width: 1200, height: 630 }),
+    ]);
+  });
+
+  it("공지 상세는 openGraph·twitter 모두 기본 공유 이미지를 유지한다", async () => {
+    const { generateMetadata } = await import("@/app/(public)/notices/[id]/page");
+    mocks.notice.mockResolvedValue({
+      id,
+      title: "수업 안내",
+      content: "공개 본문",
+      viewCount: 0,
+      createdAt: new Date("2026-10-20T00:00:00Z"),
+    });
+    const found = await generateMetadata({ params: Promise.resolve({ id }) });
+    expect(found.openGraph?.images).toEqual([expect.objectContaining({ url: expectedUrl })]);
+    expect(found.twitter?.images).toEqual([expectedUrl]);
+  });
+
+  it("사진 없는 갤러리 앨범은 기본 이미지로, 사진이 있으면 첫 사진으로 공유한다", async () => {
+    const { generateMetadata } = await import("@/app/(public)/gallery/[id]/page");
+    mocks.gallery.mockResolvedValue({
+      id,
+      title: "수업 사진",
+      description: null,
+      viewCount: 0,
+      images: [],
+    });
+    const empty = await generateMetadata({ params: Promise.resolve({ id }) });
+    expect(empty.openGraph?.images).toEqual([expect.objectContaining({ url: expectedUrl })]);
+    expect(empty.twitter?.images).toEqual([expectedUrl]);
+  });
+
+  it("루트는 파일 컨벤션 이미지를 쓰므로 openGraph.images를 직접 두지 않고 twitter 카드는 큰 이미지다", async () => {
+    vi.stubEnv("VERCEL_ENV", "production");
+    vi.stubEnv("VERCEL_PROJECT_PRODUCTION_URL", "hra-website-theta.vercel.app");
+    const metadata = await loadRootMetadata();
+    expect(metadata.openGraph?.images).toBeUndefined();
+    expect(metadata.twitter).toMatchObject({ card: "summary_large_image" });
   });
 });
 
@@ -93,7 +153,11 @@ describe("동적 상세 canonical", () => {
   it("게시된 공지에만 자기 경로 canonical을 선언한다", async () => {
     const { generateMetadata } = await import("@/app/(public)/notices/[id]/page");
     mocks.notice.mockResolvedValue({
-      id, title: "수업 안내", content: "공개 본문", viewCount: 0, createdAt: new Date("2026-10-20T00:00:00Z"),
+      id,
+      title: "수업 안내",
+      content: "공개 본문",
+      viewCount: 0,
+      createdAt: new Date("2026-10-20T00:00:00Z"),
     });
     const found = await generateMetadata({ params: Promise.resolve({ id }) });
     expect(found.title).toBe("수업 안내");
@@ -101,18 +165,30 @@ describe("동적 상세 canonical", () => {
 
     // 서비스는 미발행·없는 공지를 null로 돌려줍니다. 이때 canonical을 선언하지 않습니다.
     mocks.notice.mockResolvedValue(null);
-    await expect(generateMetadata({ params: Promise.resolve({ id }) })).resolves.toEqual({ title: "공지사항" });
-    await expect(generateMetadata({ params: Promise.resolve({ id: "invalid-id" }) })).resolves.toEqual({ title: "공지사항" });
+    await expect(generateMetadata({ params: Promise.resolve({ id }) })).resolves.toEqual({
+      title: "공지사항",
+    });
+    await expect(
+      generateMetadata({ params: Promise.resolve({ id: "invalid-id" }) }),
+    ).resolves.toEqual({ title: "공지사항" });
   });
 
   it("존재하는 갤러리 앨범에만 자기 경로 canonical을 선언한다", async () => {
     const { generateMetadata } = await import("@/app/(public)/gallery/[id]/page");
-    mocks.gallery.mockResolvedValue({ id, title: "수업 사진", description: null, viewCount: 0, images: [] });
+    mocks.gallery.mockResolvedValue({
+      id,
+      title: "수업 사진",
+      description: null,
+      viewCount: 0,
+      images: [],
+    });
     const found = await generateMetadata({ params: Promise.resolve({ id }) });
     expect(found.title).toBe("수업 사진");
     expect(found.alternates).toEqual({ canonical: `/gallery/${id}` });
 
     mocks.gallery.mockResolvedValue(null);
-    await expect(generateMetadata({ params: Promise.resolve({ id }) })).resolves.toEqual({ title: "갤러리" });
+    await expect(generateMetadata({ params: Promise.resolve({ id }) })).resolves.toEqual({
+      title: "갤러리",
+    });
   });
 });
