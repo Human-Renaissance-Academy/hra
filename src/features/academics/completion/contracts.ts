@@ -124,7 +124,7 @@ const timestamp = z.string().transform((value, context) => {
 });
 const count = z.int().min(0);
 
-/** 수료 심사 보조 지표. 미입력 출결이 있으면 출석률 충족 여부(met)는 null(판단 보류)입니다. */
+/** 수료 심사 보조 지표. 시작된 수업이 없거나 미입력 출결이 있으면 출석률 충족 여부(met)는 null(판단 보류)입니다. */
 export const snapshotSchema = z.object({
   enrollmentId: z.uuid(),
   criteriaVersionId: z.uuid(),

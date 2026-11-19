@@ -218,7 +218,7 @@
     {
       "path": "scripts/migrate-academic-completion.sql",
       "role": "versioned_candidate",
-      "sha256": "cd8e83ded6f6ffc527cb81cc7e35090a782f46107e7b951766ca141a2ead9e06",
+      "sha256": "283c3c52e4616b698fae086fc6187780c04cbf99673b855688974b08f4fc1f6b",
       "id": "g3-completion",
       "predecessors": [
         "g1-students",

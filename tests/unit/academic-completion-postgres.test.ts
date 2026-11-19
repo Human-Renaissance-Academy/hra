@@ -300,6 +300,12 @@ describe.skipIf(!bin)("#163 수료 기준 버전과 수료 확정 이력(격리 
         "REVOKE EXECUTE ON FUNCTION public.compute_completion_snapshot(uuid, uuid) FROM completion_probe;",
       );
       expect(run(migration)).toMatchObject({ ok: true });
+      // 같은 이름의 다른 인자 다중 정의(우회 경로)가 남아 있어도 전체를 롤백합니다.
+      value(`CREATE FUNCTION public.compute_completion_snapshot(uuid) RETURNS jsonb LANGUAGE sql AS $$ SELECT '{}'::jsonb $$;
+        REVOKE ALL ON FUNCTION public.compute_completion_snapshot(uuid) FROM PUBLIC;`);
+      expect(run(migration)).toMatchObject({ ok: false });
+      value("DROP FUNCTION public.compute_completion_snapshot(uuid);");
+      expect(run(migration)).toMatchObject({ ok: true });
     });
   });
 
@@ -689,7 +695,8 @@ describe.skipIf(!bin)("#163 수료 기준 버전과 수료 확정 이력(격리 
       expect(entry?.snapshot?.attendance).toMatchObject({
         classCount: 0,
         attendancePercent: null,
-        met: true,
+        // 시작된 수업이 없으면 출석률 충족 여부는 판단 보류입니다.
+        met: null,
       });
 
       const decided = await recordCompletionDecision(principal("manager"), {

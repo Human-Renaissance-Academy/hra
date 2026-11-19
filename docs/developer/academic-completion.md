@@ -32,7 +32,9 @@ G1 학적·과제·제출, #165 운영 인력, #159 출결 SQL 뒤에 적용하�
 
 - 기존 `cohorts`·`cohort_enrollments`·`users`는 새 표의 외래키(`ON DELETE RESTRICT`)로만 참조하므로 **수료 기록이 있는 기수·학적·결정자 계정은 삭제할 수 없다.** 계정 탈퇴·기수 삭제 처리 방식은 보존 정책 승인 후 파기 절차에서 정한다.
 - 결정은 출결 표를 참조하지 않고 확정 당시 지표 **건수 요약**만 저장한다. 출결 보존기간(1년)이 끝나 승인된 파기 함수가 출결을 지워도 수료 기록과 판정 근거 요약은 남는다.
-- 쓰기는 트리거가 이 파일 함수의 트랜잭션 범위 표지(`hra.academic_completion_write`)가 켜진 동안만 허용한다. 공개된 기준·기록된 결정은 표지가 켜져 있어도 바꿀 수 없고 모든 DELETE·TRUNCATE를 거부한다(`HRA04`). [출결](academic-attendance.md) 2-1절과 같은 잔여 위험(표 쓰기 권한이 있는 세션의 표지 설정, 소유 역할의 트리거 비활성화)이 있으며 표 쓰기 권한을 앱 DB 소유 역할 밖으로 주지 않는 것이 전제다.
+- 쓰기는 트리거가 이 파일 함수의 트랜잭션 범위 표지(`hra.academic_completion_write`)가 켜진 동안만 허용한다. 공개된 기준·기록된 결정은 표지가 켜져 있어도 바꿀 수 없고 모든 DELETE·TRUNCATE를 거부한다(`HRA04`).
+- **잔여 위험:** 쓰기 표지는 사용자 정의 설정이라 **표 쓰기 권한이 있는 어떤 세션도** `SET LOCAL hra.academic_completion_write = 'on'`으로 켤 수 있다(소유 역할에 한정되지 않음). 또 소유 역할은 트리거를 끌 수 있다. 이 장치는 실수에 의한 직접 쓰기를 막을 뿐 권한 경계가 아니며, 표 쓰기 권한을 앱 DB 소유 역할 밖으로 주지 않는 것이 전제다. 직접 SQL 운영 변경은 [데이터베이스 변경 절차](database-change-procedure.md)의 승인 대상이다.
+- 기존 관리자 삭제 흐름은 이 기록이 참조하는 기수·회원의 외래키 위반(SQLSTATE `23503`·`23001`과 정확한 제약 이름)을 "학사 운영 이력이 연결된 기수는 삭제할 수 없습니다." / "학사 운영 이력이 연결된 회원은 삭제할 수 없습니다."로 안내한다(#165·#159 외래키 포함).
 
 ### 2-1. SQL 함수 (모두 `REVOKE ALL ... FROM PUBLIC`)
 
@@ -46,7 +48,7 @@ G1 학적·과제·제출, #165 운영 인력, #159 출결 SQL 뒤에 적용하�
 | `list_academic_completion_cohorts(actor)`·`list_academic_completion_roster(actor, cohort, criteria_version?)` | 관리자용 기수 목록·심사 명부(기준 버전, 학적별 지표·결정 이력) | `HRA01`·`HRA03` |
 | `list_own_academic_completion(actor)` | 학생 본인 수료 상태 | — |
 
-보조 지표: 이 학적이 수업일(KST 하루) 중 유효했고 이미 시작된 같은 기수 CLASS 수업일을 분모로 출석·지각·결석·인정결석·**미입력**을 센다. 미입력은 결석이 아니며, 미입력이 하나라도 있으면 출석률 충족 여부는 `null`(판단 보류)이다. 지각·인정결석 포함 여부는 적용 기준 버전을 따른다. 과제는 이 학적이 대상인 공개 과제 수와 최종 제출 수다. 함수를 교체해도 이전 GRANT가 남을 수 있으므로 적용 끝에 12개 함수의 소유자 외 `EXECUTE` 권한이나 기본 ACL이 있으면 전체를 롤백한다.
+보조 지표: 이 학적이 수업일(KST 하루) 중 유효했고 이미 시작된 같은 기수 CLASS 수업일을 분모로 출석·지각·결석·인정결석·**미입력**을 센다. 미입력은 결석이 아니며, 시작된 수업이 없거나 미입력이 하나라도 있으면 출석률 충족 여부는 `null`(판단 보류)이다. 지각·인정결석 포함 여부는 적용 기준 버전을 따른다. 과제는 이 학적이 대상인 공개 과제 수와 최종 제출 수다. 함수를 교체해도 이전 GRANT가 남을 수 있으므로 적용 끝에 12개 함수의 소유자 외 `EXECUTE` 권한이나 기본 ACL, 같은 이름의 다른 인자 다중 정의가 있으면 전체를 롤백한다.
 
 ## 3. 서버 계약과 화면
 
@@ -76,9 +78,10 @@ G1 학적·과제·제출, #165 운영 인력, #159 출결 SQL 뒤에 적용하�
 HRA_TEST_PG_BIN=/usr/lib/postgresql/14/bin npx vitest run tests/unit/academic-completion-postgres.test.ts --environment=node --maxWorkers=1 --testTimeout=180000
 node scripts/check-db-source-inventory.mjs && node scripts/check-db-installation-contract.mjs
 node scripts/check-environment-contract.mjs
+HRA_TEST_PG_BIN=/usr/lib/postgresql/14/bin npx vitest run tests/unit/users-admin-postgres.test.ts tests/unit/recruitment-admin-postgres.test.ts --maxWorkers=1
 ```
 
-격리 테스트는 SQL 2회 적용·구조 불일치(컬럼·CHECK·추가 트리거)·남은 EXECUTE 권한 롤백·PUBLIC 실행 권한 없음, 기준 형식 거부·초안 1개·초안 수정·공개 후 함수/직접 쓰기 불변·새 버전 번호·감사 순서, 관리자 지정 없는 `ADMIN`·`FACULTY`·지정 승인자·어드바이저·학생·`PENDING` 거부, 자기 결정 거부, 초안·다른 기수 기준 거부, 취소 조건, 순번 경합과 대체 이력·당시 기준 버전 유지, 결정·감사 수정·삭제 거부, 참조된 학적·기수 삭제 거부, 동시 확정 중 하나만 반영, 요청 멱등성, 보조 지표(시작된 수업·미입력 보류·지각/인정결석 포함 규칙·제출 수)와 확정 당시 지표 고정, 서비스 플래그·오류 변환·명부·학생 본인 조회를 확인한다.
+격리 테스트는 SQL 2회 적용·구조 불일치(컬럼·CHECK·추가 트리거)·남은 EXECUTE 권한·함수 다중 정의 롤백·PUBLIC 실행 권한 없음, 기준 형식 거부·초안 1개·초안 수정·공개 후 함수/직접 쓰기 불변·새 버전 번호·감사 순서, 관리자 지정 없는 `ADMIN`·`FACULTY`·지정 승인자·어드바이저·학생·`PENDING` 거부, 자기 결정 거부, 초안·다른 기수 기준 거부, 취소 조건, 순번 경합과 대체 이력·당시 기준 버전 유지, 결정·감사 수정·삭제 거부, 참조된 학적·기수 삭제 거부, 동시 확정 중 하나만 반영, 요청 멱등성, 보조 지표(시작된 수업·수업 없음/미입력 보류·지각/인정결석 포함 규칙·제출 수)와 확정 당시 지표 고정, 서비스 플래그·오류 변환·명부·학생 본인 조회를 확인한다.
 
 ## 7. 남은 작업
 

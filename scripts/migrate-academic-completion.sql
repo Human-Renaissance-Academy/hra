@@ -385,7 +385,7 @@ $replay$;
 
 -- 수료 심사 보조 지표(P14: 보조 계산만). 결정에 쓰지 않으며 자동 수료를 만들지 않습니다.
 -- 출결: 이 학적이 수업일(KST 하루) 중 유효했고 이미 시작된 같은 기수 CLASS 수업일을 분모로 하고, 미입력은 결석으로 세지 않습니다.
---       미입력이 있으면 출석률 충족 여부(met)는 판단 보류(null)입니다. 지각·인정결석 포함 여부는 기준 버전을 따릅니다.
+--       시작된 수업이 없거나 미입력이 있으면 출석률 충족 여부(met)는 판단 보류(null)입니다. 지각·인정결석 포함 여부는 기준 버전을 따릅니다.
 -- 과제: 이 학적이 대상인 공개(DRAFT 아님) 과제 수와 최종 제출이 있는 과제 수입니다.
 -- 호출자 인가는 하지 않으므로 이 함수는 인가를 마친 이 파일의 함수 안에서만 호출합니다(PUBLIC 실행 권한 없음).
 CREATE OR REPLACE FUNCTION public.compute_completion_snapshot(p_enrollment_id uuid, p_criteria_version_id uuid)
@@ -440,7 +440,9 @@ BEGIN
       'attendedCount', attended,
       'attendancePercent', CASE WHEN counts.classes = 0 THEN NULL ELSE round(attended * 100.0 / counts.classes, 1) END,
       'minAttendancePercent', minimum,
-      'met', CASE WHEN counts.unmarked > 0 THEN NULL ELSE attended * 100 >= minimum * counts.classes END),
+      -- 수업이 아직 없거나 미입력이 있으면 출석률을 판단할 근거가 부족하므로 판단 보류(null)입니다.
+      'met', CASE WHEN counts.classes = 0 OR counts.unmarked > 0 THEN NULL
+        ELSE attended * 100 >= minimum * counts.classes END),
     'submissions', jsonb_build_object(
       'assignedCount', submissions.assigned, 'submittedCount', submissions.submitted,
       'requiredCount', required, 'met', submissions.submitted >= required));
@@ -727,7 +729,8 @@ REVOKE ALL ON FUNCTION public.list_academic_completion_cohorts(uuid) FROM PUBLIC
 REVOKE ALL ON FUNCTION public.list_academic_completion_roster(uuid, uuid, uuid) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.list_own_academic_completion(uuid) FROM PUBLIC;
 
--- 함수를 교체해도 이전 GRANT가 남을 수 있으므로 소유자 외 EXECUTE 권한이 남아 있으면 중단합니다(#165·#159와 같은 검사).
+-- 함수를 교체해도 이전 GRANT가 남을 수 있으므로 소유자 외 EXECUTE 권한이 남아 있거나, 같은 이름의 다른 인자
+-- 다중 정의(이전 초안 시그니처 등 우회 경로)가 있으면 중단합니다(#165·#159·#161과 같은 검사).
 DO $acl$
 BEGIN
   IF EXISTS (
@@ -739,7 +742,12 @@ BEGIN
       'list_own_academic_completion')
       AND (p.proacl IS NULL OR EXISTS (SELECT 1 FROM aclexplode(p.proacl) a
         WHERE a.grantee <> p.proowner AND a.privilege_type = 'EXECUTE'))
-  ) THEN
+  ) OR (SELECT count(*) FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+    WHERE n.nspname = 'public' AND p.proname IN ('academic_completion_criteria_valid', 'guard_completion_write',
+      'guard_completion_events', 'academic_completion_replay', 'compute_completion_snapshot',
+      'create_academic_completion_criteria', 'update_academic_completion_criteria', 'publish_academic_completion_criteria',
+      'record_academic_completion_decision', 'list_academic_completion_cohorts', 'list_academic_completion_roster',
+      'list_own_academic_completion')) <> 12 THEN
     RAISE EXCEPTION 'completion_migration_function_acl_mismatch';
   END IF;
 END;

@@ -74,9 +74,9 @@ function describeCriteria(criteria: CompletionCriteria): string {
   } · 과제 제출 ${criteria.requiredSubmissionCount}건 이상`;
 }
 
-/** 보조 지표의 충족 여부 표시. 미입력 출결이 있으면 판단 보류입니다. */
+/** 보조 지표의 충족 여부 표시. 시작된 수업이 없거나 미입력 출결이 있으면 판단 보류입니다. */
 function metLabel(met: boolean | null): string {
-  if (met === null) return "판단 보류(미입력 있음)";
+  if (met === null) return "판단 보류(수업 없음 또는 미입력 있음)";
   return met ? "기준 충족" : "기준 미달";
 }
 
