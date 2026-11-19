@@ -13,6 +13,9 @@ import { registerHooks } from "node:module";
 import { fileURLToPath } from "node:url";
 import ts from "typescript";
 
+/** 변환을 허용하는 저장소 루트 URL(이 파일 기준 두 단계 위) */
+const REPO_ROOT_URL = new URL("../../", import.meta.url).href;
+
 let registered = false;
 
 /** 훅을 한 번만 등록한다. */
@@ -37,6 +40,8 @@ export function registerTypeScriptLoader() {
     },
     load(url, context, nextLoad) {
       if (!url.endsWith(".ts")) return nextLoad(url, context);
+      // 저장소 루트 밖의 .ts 파일은 변환하지 않는다(임의 경로 코드 실행 방지).
+      if (!url.startsWith(REPO_ROOT_URL)) return nextLoad(url, context);
       const source = readFileSync(fileURLToPath(url), "utf8");
       const output = ts.transpileModule(source, {
         compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 },

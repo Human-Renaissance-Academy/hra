@@ -12,7 +12,7 @@
  *   - 저장소 확인: `--allow-store <호스트>` 가 비공개 저장소 형식이어야 하고, 실제 응답 URL 의 호스트와 같아야 한다.
  *     다르면 본문을 읽지 않고 중단한다. 호스트·URL·토큰·경로는 출력하지 않는다(경로는 `file1`·`file2` 로만 표시).
  *   - 운영 저장소 오사용을 막기 위해 `--confirm-non-production` 을 요구한다.
- *   - 토큰은 `--store-token-file`(권한 600 이하) 또는 환경변수 ACADEMIC_SUBMISSION_READ_WRITE_TOKEN 에서만 받는다.
+ *   - 토큰은 `--store-token-file`(권한 600 이하)로만 받는다. 환경변수 대체 경로는 없다(운영 토큰 우발 사용 방지).
  * 출력: stdout 에 JSON 한 개. 종료 코드 0=PASS·WARN, 1=FAIL·읽기 실패, 2=입력 오류.
  */
 import { createHash } from "node:crypto";
@@ -80,8 +80,9 @@ export function parseArguments(argv) {
 }
 
 /** 토큰을 읽는다. 파일은 소유자 외 접근 권한이 있으면 거부한다. 값은 반환만 하고 어디에도 출력하지 않는다. */
-export function readToken({ storeTokenFile, env, readFile = readFileSync, stat = statSync }) {
-  if (storeTokenFile) {
+export function readToken({ storeTokenFile, readFile = readFileSync, stat = statSync }) {
+  if (!storeTokenFile) return { ok: false, code: "TOKEN_FILE_REQUIRED" };
+  {
     try {
       if (stat(storeTokenFile).mode & 0o077) return { ok: false, code: "TOKEN_FILE_PERMISSIONS" };
       const token = readFile(storeTokenFile, "utf8").trim();
@@ -91,8 +92,6 @@ export function readToken({ storeTokenFile, env, readFile = readFileSync, stat =
       return { ok: false, code: "TOKEN_FILE_UNREADABLE" };
     }
   }
-  const token = env.ACADEMIC_SUBMISSION_READ_WRITE_TOKEN;
-  return token ? { ok: true, token } : { ok: false, code: "TOKEN_MISSING" };
 }
 
 /** 응답 URL 의 호스트가 허용한 비공개 저장소와 같은지만 판정한다(값은 반환하지 않는다). */
@@ -170,6 +169,8 @@ export async function measureObject({ sdk, detect, now, pathname, token, allowSt
       chunks.push(value);
     }
   } catch {
+    // 읽기 실패 시 연결을 열어 두지 않도록 스트림을 취소한다.
+    await reader.cancel().catch(() => undefined);
     return { ...result, code: "READ_FAILED" };
   }
   const readEnd = now();
@@ -273,10 +274,7 @@ async function main() {
     process.exitCode = 2;
     return;
   }
-  const tokenResult = readToken({
-    storeTokenFile: parsed.options.storeTokenFile,
-    env: { ACADEMIC_SUBMISSION_READ_WRITE_TOKEN: process.env.ACADEMIC_SUBMISSION_READ_WRITE_TOKEN },
-  });
+  const tokenResult = readToken({ storeTokenFile: parsed.options.storeTokenFile });
   if (!tokenResult.ok) {
     emit({ ok: false, code: tokenResult.code });
     process.exitCode = 2;

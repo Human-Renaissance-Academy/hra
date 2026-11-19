@@ -205,7 +205,11 @@ export function measureHwpScriptStreams(bytes) {
   if (!scripts) return { hasScripts: false, streams: [] };
   return {
     hasScripts: true,
-    streams: childrenOf(scripts).map((entry) => ({ name: entry.name, bytes: entry.size })),
+    streams: childrenOf(scripts).map((entry) => ({
+      // 파일이 만든 이름이 출력에 섞이지 않도록 알려진 형태가 아니면 other 로 치환한다.
+      name: /^[A-Za-z0-9_]{1,31}$/.test(entry.name) ? entry.name : "other",
+      bytes: entry.size,
+    })),
   };
 }
 

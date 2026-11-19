@@ -110,31 +110,68 @@ test("벤치마크 인자: 경로 1~2개, 비공개 호스트, 비운영 확인�
 test("토큰: 파일 권한이 넓으면 거부하고 오류에 경로·값이 없다", () => {
   const loose = readToken({
     storeTokenFile: "/x/t",
-    env: {},
     stat: () => ({ mode: 0o644 }),
     readFile: () => SECRET_TOKEN,
   });
   assert.deepEqual(loose, { ok: false, code: "TOKEN_FILE_PERMISSIONS" });
   const good = readToken({
     storeTokenFile: "/x/t",
-    env: {},
     stat: () => ({ mode: 0o600 }),
     readFile: () => `${SECRET_TOKEN}\n`,
   });
   assert.equal(good.token, SECRET_TOKEN);
   const broken = readToken({
     storeTokenFile: "/x/t",
-    env: {},
     stat: () => {
       throw new Error("/x/t ENOENT");
     },
   });
   assert.deepEqual(broken, { ok: false, code: "TOKEN_FILE_UNREADABLE" });
-  assert.equal(readToken({ storeTokenFile: null, env: {} }).code, "TOKEN_MISSING");
-  assert.equal(
-    readToken({ storeTokenFile: null, env: { ACADEMIC_SUBMISSION_READ_WRITE_TOKEN: "t" } }).token,
-    "t",
+  // 환경변수 대체 경로는 없다: 파일 인자가 없으면 환경변수가 있어도 거부한다.
+  process.env.ACADEMIC_SUBMISSION_READ_WRITE_TOKEN = "env-token";
+  assert.equal(readToken({ storeTokenFile: null }).code, "TOKEN_FILE_REQUIRED");
+  delete process.env.ACADEMIC_SUBMISSION_READ_WRITE_TOKEN;
+  const source = readFileSync(
+    new URL("../ops/academic-artifact-read-benchmark.mjs", import.meta.url),
+    "utf8",
   );
+  assert.ok(!/process\.env/.test(source.replace(/\/\*[\s\S]*?\*\//, "")));
+});
+
+test("읽기 실패 시 스트림을 취소한다", async () => {
+  let cancelled = false;
+  // read 가 실패하는 reader 를 가진 가짜 스트림(실제 오류 스트림은 cancel 콜백을 부르지 않는다)
+  const stream = {
+    getReader: () => ({
+      read: async () => {
+        throw new Error("boom");
+      },
+      cancel: async () => {
+        cancelled = true;
+      },
+    }),
+  };
+  const url = `https://${HOST}/x`;
+  const sdk = {
+    head: async () => ({ url, size: 10 }),
+    get: async () => ({ statusCode: 200, stream, headers: new Headers(), blob: { url } }),
+  };
+  const result = await measureObject({
+    sdk,
+    detect: () => ({ ok: true }),
+    now: fakeClock(),
+    pathname: "a/b",
+    token: "t",
+    allowStore: HOST,
+    label: "file1",
+  });
+  assert.equal(result.code, "READ_FAILED");
+  assert.equal(cancelled, true);
+});
+
+test("CFB 스트림 이름은 안전한 형태가 아니면 other 로 출력한다", () => {
+  const measured = measureHwpScriptStreams(syntheticCfb([["Evil$Name!", 5]]));
+  assert.deepEqual(measured.streams, [{ name: "other", bytes: 5 }]);
 });
 
 test("측정: head·get 만 호출하고 서버와 같은 비공개·무캐시 옵션을 쓴다", async () => {
