@@ -105,6 +105,7 @@ const nextConfig: NextConfig = {
   experimental: {
     // 원본 문서는 Blob으로 직접 전송하고, Action은 메타데이터 중심으로 받습니다.
     // 기수 폼의 4MiB 이미지와 multipart 여유를 포함해 전체 본문은 5MiB로 제한합니다.
+    // Vercel에서는 플랫폼 수신 한도(약 4.5MB)가 이 값보다 먼저 적용되는 실효 상한입니다(2026-11-19 운영 실측, docs/developer/server-action-payload-limits.md).
     // 이 상한은 파일별 검증과 별개이며 큰 raw 호환 요청은 액션 실행 전에 거부됩니다.
     serverActions: {
       bodySizeLimit: "5mb",

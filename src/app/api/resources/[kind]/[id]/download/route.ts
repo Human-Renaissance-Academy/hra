@@ -14,7 +14,13 @@ import {
   ResourceReadRateLimitError,
 } from "@/features/resources/read-limit";
 import { db } from "@/lib/db";
-import { classLogImages, classMaterials, guidebooks, weeklyTextImages, weeklyTexts } from "@/lib/db/schema";
+import {
+  classLogImages,
+  classMaterials,
+  guidebooks,
+  weeklyTextImages,
+  weeklyTexts,
+} from "@/lib/db/schema";
 import { logServerError } from "@/lib/errors";
 import { requireSharedResourceReader } from "@/lib/resource-access";
 import { attachmentDisposition, resourceBlobAccess } from "@/lib/resource-download";
@@ -24,10 +30,19 @@ export const dynamic = "force-dynamic";
 type Context = { params: Promise<{ kind: string; id: string }> };
 
 /** 이 경로가 제공하는 자료 종류입니다. 아래 조회 분기와 같은 목록을 유지합니다. */
-const resourceKinds = new Set(["class-materials", "guidebooks", "weekly-texts", "weekly-text-images", "class-log-images"]);
+const resourceKinds = new Set([
+  "class-materials",
+  "guidebooks",
+  "weekly-texts",
+  "weekly-text-images",
+  "class-log-images",
+]);
 
 /** 빈도 제한 429·저장소 장애 503 평문 응답의 공통 헤더입니다. */
-const limitErrorHeaders = { "Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff" } as const;
+const limitErrorHeaders = {
+  "Cache-Control": "private, no-store",
+  "X-Content-Type-Options": "nosniff",
+} as const;
 
 /** 응답 시작 뒤의 읽기·취소 실패도 고정 오류로 처리하고 공급자 reader를 정리합니다. */
 function protectedStream(source: ReadableStream<Uint8Array>): ReadableStream<Uint8Array> {
@@ -77,7 +92,7 @@ function protectedStream(source: ReadableStream<Uint8Array>): ReadableStream<Uin
       cancelled = true;
       if (terminal) return;
       terminal = true;
-      if (!await cancelReader()) {
+      if (!(await cancelReader())) {
         logServerError("resources/download/cancel", new Error("파일 전송 취소에 실패했습니다."));
       }
     },
@@ -89,7 +104,8 @@ export async function GET(request: Request, { params }: Context): Promise<Respon
   const { kind, id } = await params;
   const parsedId = z.uuid().safeParse(id);
   // 알 수 없는 자료 종류도 잘못된 ID처럼 예산을 쓰지 않고 먼저 404로 끝냅니다(#444).
-  if (!parsedId.success || !resourceKinds.has(kind)) return new Response("자료를 찾을 수 없습니다.", { status: 404 });
+  if (!parsedId.success || !resourceKinds.has(kind))
+    return new Response("자료를 찾을 수 없습니다.", { status: 404 });
 
   // 인증·승인 역할 확인(미로그인·승인 대기는 위에서 이동)과 입력 확인 뒤에만 사용자 id로 조회 예산을 예약합니다.
   // 브라우저가 직접 여는 링크·<img> 경로라 기존 응답처럼 한국어 평문 본문을 유지하고 MIME 추측만 막습니다.
@@ -104,7 +120,10 @@ export async function GET(request: Request, { params }: Context): Promise<Respon
     }
     // 제한 저장소 장애는 예약 어댑터가 이미 기록했으므로 고정 문구의 503만 반환합니다.
     if (error instanceof ResourceReadLimitUnavailableError) {
-      return new Response("잠시 후 다시 시도해 주세요.", { status: 503, headers: limitErrorHeaders });
+      return new Response("잠시 후 다시 시도해 주세요.", {
+        status: 503,
+        headers: limitErrorHeaders,
+      });
     }
     throw error;
   }
@@ -112,24 +131,37 @@ export async function GET(request: Request, { params }: Context): Promise<Respon
   let file: { fileUrl: string; fileName: string | null } | undefined;
   let image = false;
   if (kind === "class-materials") {
-    [file] = await db.select({ fileUrl: classMaterials.fileUrl, fileName: classMaterials.fileName })
+    [file] = await db
+      .select({ fileUrl: classMaterials.fileUrl, fileName: classMaterials.fileName })
       .from(classMaterials)
       .where(and(eq(classMaterials.id, parsedId.data), classMaterialReadFilter(session.user)))
       .limit(1);
   } else if (kind === "guidebooks") {
-    [file] = await db.select({ fileUrl: guidebooks.fileUrl, fileName: guidebooks.fileName })
-      .from(guidebooks).where(eq(guidebooks.id, parsedId.data)).limit(1);
+    [file] = await db
+      .select({ fileUrl: guidebooks.fileUrl, fileName: guidebooks.fileName })
+      .from(guidebooks)
+      .where(eq(guidebooks.id, parsedId.data))
+      .limit(1);
   } else if (kind === "weekly-texts") {
-    [file] = await db.select({ fileUrl: weeklyTexts.fileUrl, fileName: weeklyTexts.fileName })
-      .from(weeklyTexts).where(eq(weeklyTexts.id, parsedId.data)).limit(1);
+    [file] = await db
+      .select({ fileUrl: weeklyTexts.fileUrl, fileName: weeklyTexts.fileName })
+      .from(weeklyTexts)
+      .where(eq(weeklyTexts.id, parsedId.data))
+      .limit(1);
   } else if (kind === "weekly-text-images") {
-    const [row] = await db.select({ fileUrl: weeklyTextImages.url })
-      .from(weeklyTextImages).where(eq(weeklyTextImages.id, parsedId.data)).limit(1);
+    const [row] = await db
+      .select({ fileUrl: weeklyTextImages.url })
+      .from(weeklyTextImages)
+      .where(eq(weeklyTextImages.id, parsedId.data))
+      .limit(1);
     file = row ? { ...row, fileName: null } : undefined;
     image = true;
   } else if (kind === "class-log-images") {
-    const [row] = await db.select({ fileUrl: classLogImages.url })
-      .from(classLogImages).where(eq(classLogImages.id, parsedId.data)).limit(1);
+    const [row] = await db
+      .select({ fileUrl: classLogImages.url })
+      .from(classLogImages)
+      .where(eq(classLogImages.id, parsedId.data))
+      .limit(1);
     file = row ? { ...row, fileName: null } : undefined;
     image = true;
   } else {
@@ -147,12 +179,15 @@ export async function GET(request: Request, { params }: Context): Promise<Respon
     if (access === "private" && !privateToken) {
       throw new Error("비공개 자료 저장소가 연결되지 않았습니다.");
     }
-    const blob = access === "private"
-      ? await get(file.fileUrl, {
-          access: "private", token: privateToken,
-          storeId: new URL(file.fileUrl).hostname.split(".")[0], useCache: false,
-        })
-      : await get(file.fileUrl, { access: "public" });
+    const blob =
+      access === "private"
+        ? await get(file.fileUrl, {
+            access: "private",
+            token: privateToken,
+            storeId: new URL(file.fileUrl).hostname.split(".")[0],
+            useCache: false,
+          })
+        : await get(file.fileUrl, { access: "public" });
     if (!blob || blob.statusCode !== 200) {
       return new Response("파일을 찾을 수 없습니다.", { status: 404 });
     }
@@ -166,12 +201,21 @@ export async function GET(request: Request, { params }: Context): Promise<Respon
       }
       return new Response("파일을 찾을 수 없습니다.", { status: 404 });
     }
-    const inlinePdf = !image && new URL(request.url).searchParams.get("inline") === "1" &&
-      file.fileName?.toLowerCase().endsWith(".pdf") && contentType === "application/pdf";
+    // inline 파라미터가 정확히 한 번 "1"일 때만 미리보기로 봅니다. Next의 has 규칙(마지막 값)과
+    // Route(첫 값)의 해석이 갈려 "inline 응답 + sandbox 없는 CSP"가 되는 것을 막습니다(#513).
+    const inlineValues = new URL(request.url).searchParams.getAll("inline");
+    const inlinePdf =
+      !image &&
+      inlineValues.length === 1 &&
+      inlineValues[0] === "1" &&
+      file.fileName?.toLowerCase().endsWith(".pdf") &&
+      contentType === "application/pdf";
     return new Response(protectedStream(blob.stream), {
       headers: {
         "Content-Type": contentType,
-        ...(image ? {} : { "Content-Disposition": attachmentDisposition(file.fileName, inlinePdf) }),
+        ...(image
+          ? {}
+          : { "Content-Disposition": attachmentDisposition(file.fileName, inlinePdf) }),
         "Cache-Control": "private, no-store",
         "X-Content-Type-Options": "nosniff",
       },

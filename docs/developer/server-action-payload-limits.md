@@ -79,11 +79,11 @@
 | Vercel Functions 요청·응답 본문 4.5MB 제한([Vercel Functions Limits](https://vercel.com/docs/functions/limitations)) | #511이 인용한 공식 문서의 서술입니다. 이 작업에서 문서를 다시 열어 확인하지 않았습니다. `docs/developer/academic-assignment-uploads.md:23`도 같은 전제입니다. |
 | `bodySizeLimit`이 raw 본문(multipart 오버헤드 포함)에 적용([serverActions](https://nextjs.org/docs/app/api-reference/config/next-config-js/serverActions)) | 설치된 Next 16 문서에서 확인했습니다. |
 | `5mb` 설정에서 Next가 초과 요청을 Action 실행 전에 거부 | `83084e7`이 5MiB 경계 QA를 로컬 서버에서 수행했다고 기록했습니다. 이 작업에서는 재실행하지 않았습니다. |
-| Vercel 배포 환경에서 4.5MB 초과 요청의 응답 코드·본문 형태 | **미검증.** 배포 환경에 요청하지 않았습니다. |
-| 4.5MB와 5MiB 사이 구간의 동작 | **미검증.** 플랫폼 한도가 4.5MB라면 Vercel에서는 이 구간이 Next 검사보다 먼저 막힐 수 있고 자체 호스팅에서는 5MiB까지 통과할 수 있습니다. 4.5MB의 단위(10^6 또는 MiB)도 확인하지 않았습니다. 기수 폼 이미지 요청(4,210,196바이트)은 어느 쪽 해석에서도 4.5MB 아래입니다. |
-| 413 응답을 사용자에게 한국어로 안내하는지 | **미검증.** 클라이언트 폼의 413 처리를 확인하지 않았습니다. |
+| Vercel 배포 환경에서 4.5MB 초과 요청의 응답 코드·본문 형태 | **확인(2026-11-19 운영 탐침).** 존재하지 않는 `Next-Action` 값으로 `/`에 POST했을 때 1KB는 앱이 400 `Invalid Server Action request.`로 응답했고, 4.8MB와 5.56MB는 앱에 도달하기 전에 Vercel이 413 `x-vercel-error: FUNCTION_PAYLOAD_TOO_LARGE`(text/plain)로 거부했습니다. |
+| 4.5MB와 5MiB 사이 구간의 동작 | 4.8MB가 Vercel에서 413이므로 Vercel에서는 플랫폼 4.5MB가 실효 상한이고 앱의 `5mb`는 자체 호스팅에서만 의미가 있습니다. 4.5MB의 정확한 단위(10^6 또는 MiB) 경계는 측정하지 않았습니다. 기수 폼 이미지 요청(4,210,196바이트)은 어느 해석에서도 4.5MB 아래입니다. |
+| 413 응답을 사용자에게 한국어로 안내하는지 | 플랫폼 413은 영문 text/plain이라 Next 클라이언트가 예상 밖 응답 오류를 던지며 앱이 한국어 메시지를 줄 수 없습니다. 서버 경유 파일 경로인 기수 이미지 폼(`cohort-form.tsx`)에는 서버와 같은 4MB 상한의 클라이언트 사전 검사와 한국어 안내를 추가해 이 구간에 도달하지 않게 했습니다. 서버 검증은 유지합니다. |
 
-따라서 이슈 #511의 "플랫폼 413 회귀 검증"은 이 문서만으로 완료로 볼 수 없습니다. 배포 환경 확인은 별도 운영 확인으로 남깁니다.
+플랫폼 413은 운영 탐침으로 확인했고, 실사용 폼 경로는 4MB 사전 검사로 4.5MB 미만에 머뭅니다. 다른 서버 경유 폼은 문자열·배열 상한으로 본문이 작아 이 구간에 닿지 않습니다.
 
 ## 유지 관리 규칙
 
