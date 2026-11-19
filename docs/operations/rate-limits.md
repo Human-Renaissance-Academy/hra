@@ -76,12 +76,13 @@ Vercel 전용 IP 헤더가 없거나 형식이 잘못되면 해당 요청들은 
 1. 정규화한 이메일의 이메일 축 키 해시를 계산합니다. 키는 `sha256("login-email" + "\0" + 정규화 이메일)`이며 서버 비밀(pepper)은 쓰지 않습니다. 정규화는 앞뒤 공백 제거와 소문자 변환입니다. 이메일은 환경 변수로 넘겨 명령 이력에 남기지 않습니다.
 
 ```bash
-TARGET_EMAIL='user@example.com' node -e '
+# 이메일을 화면에 표시하지 않고 입력받아 셸 이력에 남기지 않습니다.
+read -rs TARGET_EMAIL && export TARGET_EMAIL && node -e '
 const { createHash } = require("node:crypto");
 const email = String(process.env.TARGET_EMAIL ?? "").trim().toLowerCase();
 if (!email) process.exit(1);
 console.log(createHash("sha256").update("login-email").update("\0").update(email).digest("hex"));
-'
+'; unset TARGET_EMAIL
 ```
 
 2. 계산한 64자리 값을 `<KEY_HASH>`에 넣어 먼저 대상 행 수를 확인합니다. 기대와 다르면(예: 30보다 훨씬 많은 값) 중단합니다.
@@ -94,8 +95,11 @@ WHERE scope = 'login-email' AND key_hash = '<KEY_HASH>';
 3. 승인·백업 후 같은 조건으로만 삭제합니다. 다른 scope나 키는 지우지 않습니다. 삭제는 이메일 축만 풀며 같은 IP+이메일 조합(5회)·IP 축(50회)의 차단은 남습니다.
 
 ```sql
+BEGIN;
 DELETE FROM rate_limit_events
 WHERE scope = 'login-email' AND key_hash = '<KEY_HASH>';
+-- 삭제 행 수가 2단계의 count와 같을 때만 COMMIT, 다르면 ROLLBACK 합니다.
+COMMIT;
 ```
 
 4. 로그인이 가능한지 확인하고, 해제 사유·시각·승인자를 운영 기록에 남깁니다(이메일 원문 제외). 반복되면 공격 여부를 확인하고 이 절차를 반복 우회 수단으로 쓰지 않습니다.
