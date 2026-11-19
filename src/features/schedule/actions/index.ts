@@ -10,45 +10,90 @@ import { redirect } from "next/navigation";
 import { z } from "zod/v4";
 import { requireAdmin } from "@/lib/admin";
 import { logServerError } from "@/lib/errors";
+import { scheduleLimits } from "@/lib/server-action-input-limits";
 import { parseCalendarMonth } from "@/lib/query-params";
-import { listPublicScheduleMonth, serializePublicScheduleEvents } from "@/features/schedule/public/service";
-import { createAdminEvent, deleteAdminEvent, getAdminEvent, listAdminEvents, updateAdminEvent } from "@/features/schedule/admin/service";
+import {
+  listPublicScheduleMonth,
+  serializePublicScheduleEvents,
+} from "@/features/schedule/public/service";
+import {
+  createAdminEvent,
+  deleteAdminEvent,
+  getAdminEvent,
+  listAdminEvents,
+  updateAdminEvent,
+} from "@/features/schedule/admin/service";
 
 // 세션 슬롯 하나에 대한 유효성 검사
 const sessionSchema = z.object({
   // 폼의 로컬 키와 구분해 기존 세션의 영속 UUID만 받는다.
-  serverId: z.string().uuid().transform(value => value.toLowerCase()).optional(),
+  serverId: z
+    .string()
+    .uuid()
+    .transform((value) => value.toLowerCase())
+    .optional(),
   category: z.enum(["CLASSICS", "ENGLISH", "SPEECH", "SPECIAL_LECTURE", "CASE_STUDY"]),
   facultyId: z.string().uuid().optional().nullable(),
   content: z.string().trim().max(500).optional().nullable(),
   reportCategory: z.string().trim().max(50).optional().nullable(), // 케이스스터디 분야
-  subTitle: z.string().trim().max(300).optional().nullable(),       // 케이스스터디 제목
-  subDescription: z.string().trim().optional().nullable(),          // 케이스스터디 설명
+  subTitle: z.string().trim().max(300).optional().nullable(), // 케이스스터디 제목
+  subDescription: z
+    .string()
+    .trim()
+    .max(
+      scheduleLimits.subDescription,
+      `세션 설명은 ${scheduleLimits.subDescription.toLocaleString("ko-KR")}자 이하여야 합니다.`,
+    )
+    .optional()
+    .nullable(), // 케이스스터디 설명
   order: z.number().int().default(0),
 });
 
 // 이벤트 폼 전체 유효성 검사
 const scheduleEventFormSchema = z.object({
   // Date.UTC는 00~99년을 1900년대로 해석하므로 운영 가능한 연도도 제한한다.
-  eventDate: z.iso.date("올바른 날짜를 입력해주세요.")
-    .refine((value) => Number(value.slice(0, 4)) >= 1900 && Number(value.slice(0, 4)) <= 2100,
-      "올바른 날짜를 입력해주세요."),
+  eventDate: z.iso
+    .date("올바른 날짜를 입력해주세요.")
+    .refine(
+      (value) => Number(value.slice(0, 4)) >= 1900 && Number(value.slice(0, 4)) <= 2100,
+      "올바른 날짜를 입력해주세요.",
+    ),
   startTime: z.iso.time({ precision: -1, error: "올바른 시작 시간을 입력해주세요." }), // "HH:MM"
-  endTime: z.iso.time({ precision: -1, error: "올바른 종료 시간을 입력해주세요." }).optional().nullable(),
+  endTime: z.iso
+    .time({ precision: -1, error: "올바른 종료 시간을 입력해주세요." })
+    .optional()
+    .nullable(),
   eventType: z.enum(["CLASS", "EVENT"]),
   title: z.string().trim().min(1, "제목을 입력해주세요.").max(200, "제목은 200자 이하여야 합니다."),
   cohortId: z.string().uuid().optional().nullable(),
   weekNumber: z.number().int().positive().optional().nullable(),
-  description: z.string().trim().optional().nullable(),
+  description: z
+    .string()
+    .trim()
+    .max(
+      scheduleLimits.description,
+      `설명은 ${scheduleLimits.description.toLocaleString("ko-KR")}자 이하여야 합니다.`,
+    )
+    .optional()
+    .nullable(),
   isPublic: z.boolean().default(true),
-  sessions: z.array(sessionSchema).default([]).superRefine((sessions, context) => {
-    const ids = new Set<string>();
-    for (const [index, session] of sessions.entries()) {
-      if (!session.serverId) continue;
-      if (ids.has(session.serverId)) context.addIssue({ code: "custom", path: [index, "serverId"], message: "같은 세션을 중복해서 저장할 수 없습니다." });
-      ids.add(session.serverId);
-    }
-  }),
+  sessions: z
+    .array(sessionSchema)
+    .max(scheduleLimits.sessions, `세션은 ${scheduleLimits.sessions}개 이하여야 합니다.`)
+    .default([])
+    .superRefine((sessions, context) => {
+      const ids = new Set<string>();
+      for (const [index, session] of sessions.entries()) {
+        if (!session.serverId) continue;
+        if (ids.has(session.serverId))
+          context.addIssue({
+            code: "custom",
+            path: [index, "serverId"],
+            message: "같은 세션을 중복해서 저장할 수 없습니다.",
+          });
+        ids.add(session.serverId);
+      }
+    }),
 });
 
 // 액션 반환 타입
@@ -142,7 +187,7 @@ export async function getScheduleEvent(id: string) {
 /** 일정 생성 입력을 검증하고 저장 후 기존 캐시 순서와 이동 경로를 유지합니다. */
 export async function createScheduleEvent(
   _prevState: ScheduleActionState,
-  formData: FormData
+  formData: FormData,
 ): Promise<ScheduleActionState> {
   const session = await requireAdmin();
   const result = parseFormData(formData);
@@ -157,8 +202,10 @@ export async function createScheduleEvent(
 
   const { sessions, startTime, endTime, ...eventData } = result.data;
   const eventDate = buildEventDate(eventData.eventDate, startTime);
-  const failure = await createAdminEvent({ userId: session.user.id, role: session.user.role },
-    { ...eventData, eventDate, endTime, sessions });
+  const failure = await createAdminEvent(
+    { userId: session.user.id, role: session.user.role },
+    { ...eventData, eventDate, endTime, sessions },
+  );
   if (failure) return failure;
 
   revalidatePath("/");
@@ -170,7 +217,7 @@ export async function createScheduleEvent(
 export async function updateScheduleEvent(
   id: string,
   _prevState: ScheduleActionState,
-  formData: FormData
+  formData: FormData,
 ): Promise<ScheduleActionState> {
   const session = await requireAdmin();
   const parsedId = z.uuid().safeParse(id);
@@ -189,13 +236,22 @@ export async function updateScheduleEvent(
   const { sessions, startTime, endTime, ...eventData } = result.data;
   const eventDate = buildEventDate(eventData.eventDate, startTime);
   try {
-    const failure = await updateAdminEvent({ userId: session.user.id, role: session.user.role }, parsedId.data,
-      { ...eventData, eventDate, endTime, sessions });
+    const failure = await updateAdminEvent(
+      { userId: session.user.id, role: session.user.role },
+      parsedId.data,
+      { ...eventData, eventDate, endTime, sessions },
+    );
     if (failure) return failure;
   } catch (error) {
     // SQL 본문과 입력값은 반환하지 않으며, 서버 로그 역시 기존 정제 헬퍼를 사용한다.
-    logServerError("schedule/update", error, { eventId: parsedId.data, sessionCount: sessions.length });
-    return { success: false, message: "일정을 저장하지 못했습니다. 연결된 기록과 입력값을 확인한 뒤 다시 시도해주세요." };
+    logServerError("schedule/update", error, {
+      eventId: parsedId.data,
+      sessionCount: sessions.length,
+    });
+    return {
+      success: false,
+      message: "일정을 저장하지 못했습니다. 연결된 기록과 입력값을 확인한 뒤 다시 시도해주세요.",
+    };
   }
 
   revalidatePath("/");
@@ -213,7 +269,10 @@ export async function deleteScheduleEvent(id: string): Promise<ScheduleActionSta
 
   let result: ScheduleActionState;
   try {
-    result = await deleteAdminEvent({ userId: session.user.id, role: session.user.role }, parsedId.data);
+    result = await deleteAdminEvent(
+      { userId: session.user.id, role: session.user.role },
+      parsedId.data,
+    );
     if (!result.success) return result;
   } catch (error) {
     // 다른 오류를 참조 오류로 오인하지 않으며 SQL·입력값은 정제 로그로만 기록한다.

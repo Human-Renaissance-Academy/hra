@@ -12,6 +12,7 @@ import { requireAdmin } from "@/lib/admin";
 import { createItem, updateItem, deleteItem, reorderItems } from "@/features/press/admin/service";
 import { recordPressView } from "@/features/press/view-service";
 import { logServerError } from "@/lib/errors";
+import { maxReorderIds, maxUrlLength } from "@/lib/server-action-input-limits";
 import { extractClientIp } from "@/lib/rate-limit-core";
 
 const pressArticleFormSchema = z.object({
@@ -21,10 +22,22 @@ const pressArticleFormSchema = z.object({
     .trim()
     .min(1, "언론사명을 입력해주세요.")
     .max(200, "언론사명은 200자 이하여야 합니다."),
-  url: z.httpUrl("올바른 기사 링크를 입력해주세요."),
+  url: z
+    .httpUrl("올바른 기사 링크를 입력해주세요.")
+    .max(maxUrlLength, `기사 링크는 ${maxUrlLength.toLocaleString("ko-KR")}자 이하여야 합니다.`),
   publishedAt: z.iso.date("올바른 게시일을 입력해주세요."),
   description: z.string().trim().max(5000, "요약은 5000자 이하여야 합니다.").optional(),
-  imageUrl: z.union([z.literal(""), z.httpUrl("올바른 썸네일 URL을 입력해주세요.")]).optional(),
+  imageUrl: z
+    .union([
+      z.literal(""),
+      z
+        .httpUrl("올바른 썸네일 URL을 입력해주세요.")
+        .max(
+          maxUrlLength,
+          `썸네일 URL은 ${maxUrlLength.toLocaleString("ko-KR")}자 이하여야 합니다.`,
+        ),
+    ])
+    .optional(),
 });
 
 export type PressArticleActionState = {
@@ -156,7 +169,7 @@ export async function reorderPressArticles(
   // 이 배열은 reorderByCase 헬퍼의 `${a.id}::uuid` raw SQL 캐스트로 흘러가는데
   // UUID 형식이 아닌 값이 도달하면 Postgres cast error 로 raw ID 가 Vercel Logs 에
   // 노출될 수 있으므로 사전 차단한다.
-  const parsedIds = z.array(z.uuid()).min(1).safeParse(orderedIds);
+  const parsedIds = z.array(z.uuid()).min(1).max(maxReorderIds).safeParse(orderedIds);
   if (!parsedIds.success) {
     return { success: false, message: "유효하지 않은 요청입니다." };
   }

@@ -9,6 +9,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod/v4";
 import { requireAdmin } from "@/lib/admin";
 import { logServerError } from "@/lib/errors";
+import { maxMarkdownBodyLength, maxReorderIds } from "@/lib/server-action-input-limits";
 import {
   createItem,
   deleteItem,
@@ -125,7 +126,14 @@ const faqItemSchema = z.object({
     .trim()
     .min(1, "질문을 입력해주세요.")
     .max(500, "질문은 500자 이하여야 합니다."),
-  answer: z.string().trim().min(1, "답변을 입력해주세요."),
+  answer: z
+    .string()
+    .trim()
+    .min(1, "답변을 입력해주세요.")
+    .max(
+      maxMarkdownBodyLength,
+      `답변은 ${maxMarkdownBodyLength.toLocaleString("ko-KR")}자 이하여야 합니다.`,
+    ),
 });
 
 export type FaqItemActionState = {
@@ -243,7 +251,7 @@ export async function reorderFaqItems(
   // 이 배열은 reorderByCase 헬퍼의 `${a.id}::uuid` raw SQL 캐스트로 흘러가는데
   // UUID 형식이 아닌 값이 도달하면 Postgres cast error 로 raw ID 가 Vercel Logs 에
   // 노출될 수 있으므로 사전 차단한다. z.array(z.uuid()).min(1) 은 배열/비어있음/원소 형식을 한번에 검증.
-  const parsedIds = z.array(z.uuid()).min(1).safeParse(orderedIds);
+  const parsedIds = z.array(z.uuid()).min(1).max(maxReorderIds).safeParse(orderedIds);
   if (!parsedIds.success) {
     return { success: false, message: "유효하지 않은 요청입니다." };
   }

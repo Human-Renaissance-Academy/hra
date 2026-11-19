@@ -26,6 +26,7 @@ import { z } from "zod/v4";
 import { db } from "@/lib/db";
 import { classLogImages, classLogs, users } from "@/lib/db/schema";
 import { requireAdmin } from "@/lib/admin";
+import { maxMarkdownBodyLength } from "@/lib/server-action-input-limits";
 import { auth } from "@/lib/auth";
 import { logServerError } from "@/lib/errors";
 import { buildImageAlt } from "@/lib/image-alt";
@@ -46,13 +47,20 @@ const createRequestIdSchema = z.uuid("유효하지 않은 요청 ID입니다.");
  *
  * 각 필드 설명:
  * - title: 수업일지 제목 (최소 1글자, 최대 300글자)
- * - content: 수업일지 내용 (최소 1글자, 제한 없음)
+ * - content: 수업일지 내용 (최소 1글자, 최대 100,000글자 — #539)
  * - classDate: 수업이 있던 날짜 (예: "2025-03-24")
  * - cohortId: 어느 반에 해당하는지 (선택사항, 없어도 됨)
  */
 const classLogFormSchema = z.object({
   title: z.string().trim().min(1, "제목을 입력해주세요.").max(300, "제목은 300자 이하여야 합니다."),
-  content: z.string().trim().min(1, "내용을 입력해주세요."),
+  content: z
+    .string()
+    .trim()
+    .min(1, "내용을 입력해주세요.")
+    .max(
+      maxMarkdownBodyLength,
+      `내용은 ${maxMarkdownBodyLength.toLocaleString("ko-KR")}자 이하여야 합니다.`,
+    ),
   classDate: z.string().trim().min(1, "수업 날짜를 입력해주세요."),
   cohortId: z.union([z.uuid("유효하지 않은 기수 ID입니다."), z.literal("")]).optional(),
 });

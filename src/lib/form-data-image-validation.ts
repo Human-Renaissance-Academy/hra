@@ -2,6 +2,7 @@
  * 수업일지와 주차별 텍스트 액션의 이미지 FormData 입력을 검증합니다.
  * 인증·업로드·DB 저장 없이 파일 순서와 서버가 판정한 MIME을 함께 반환합니다.
  */
+import { serverImageLimits } from "@/lib/server-action-input-limits";
 import { validateImageUpload } from "@/lib/upload-file-validation";
 
 // 기존 폼 업로드의 경계값을 유지하며 정확히 10MiB인 파일은 허용합니다.
@@ -12,6 +13,15 @@ export const getValidatedImageFiles = async (formData: FormData) => {
   const files = formData
     .getAll("images")
     .filter((value): value is File => value instanceof File && value.size > 0);
+
+  // 파일 내용을 읽기 전에 개수·합계 상한(#539)을 먼저 확인해 큰 요청의 검사 비용을 줄입니다.
+  if (files.length > serverImageLimits.count) {
+    return { error: `사진은 한 번에 ${serverImageLimits.count}장까지 올릴 수 있습니다.` } as const;
+  }
+  const totalBytes = files.reduce((sum, file) => sum + file.size, 0);
+  if (totalBytes > serverImageLimits.totalBytes) {
+    return { error: "사진 파일의 전체 크기는 20MB 이하여야 합니다." } as const;
+  }
 
   const contentTypes: string[] = [];
   for (const file of files) {

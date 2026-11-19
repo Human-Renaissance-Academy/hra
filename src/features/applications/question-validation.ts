@@ -4,10 +4,14 @@
  */
 import { z } from "zod/v4";
 import { applicationInputLimits } from "@/features/applications/input-limits";
+import { applicationQuestionLimits } from "@/lib/server-action-input-limits";
 
 const optionSchema = z.object({
   id: z.string().uuid().optional(),
-  value: z.string().trim().min(1, "선택지 내용을 입력해주세요.")
+  value: z
+    .string()
+    .trim()
+    .min(1, "선택지 내용을 입력해주세요.")
     .max(applicationInputLimits.optionValue, "선택지는 1000자 이하여야 합니다."),
   order: z.number().int().default(0),
 });
@@ -17,18 +21,33 @@ const selectionTypes = new Set(["MULTIPLE_CHOICE", "CHECKBOX", "DROPDOWN"]);
 const questionSchema = z
   .object({
     id: z.string().uuid().optional(),
-    title: z.string().trim().min(1, "질문 제목을 입력해주세요."),
-    description: z.string().trim().optional().nullable(),
-    type: z.enum([
-      "SHORT_ANSWER",
-      "LONG_ANSWER",
-      "MULTIPLE_CHOICE",
-      "CHECKBOX",
-      "DROPDOWN",
-    ]),
+    title: z
+      .string()
+      .trim()
+      .min(1, "질문 제목을 입력해주세요.")
+      .max(
+        applicationQuestionLimits.title,
+        `질문 제목은 ${applicationQuestionLimits.title}자 이하여야 합니다.`,
+      ),
+    description: z
+      .string()
+      .trim()
+      .max(
+        applicationQuestionLimits.description,
+        `질문 설명은 ${applicationQuestionLimits.description.toLocaleString("ko-KR")}자 이하여야 합니다.`,
+      )
+      .optional()
+      .nullable(),
+    type: z.enum(["SHORT_ANSWER", "LONG_ANSWER", "MULTIPLE_CHOICE", "CHECKBOX", "DROPDOWN"]),
     isRequired: z.boolean().default(false),
     order: z.number().int().default(0),
-    options: z.array(optionSchema).optional(),
+    options: z
+      .array(optionSchema)
+      .max(
+        applicationQuestionLimits.options,
+        `선택지는 ${applicationQuestionLimits.options}개 이하여야 합니다.`,
+      )
+      .optional(),
   })
   .superRefine((question, context) => {
     if (!selectionTypes.has(question.type)) return;
@@ -56,23 +75,30 @@ const questionSchema = z
     }
   });
 
-export const saveQuestionsSchema = z.object({
-  formId: z.string().uuid(),
-  questions: z.array(questionSchema),
-}).superRefine((input, context) => {
-  // 같은 질문 ID를 두 번 보내면 순차 UPDATE 결과가 요청 순서에 따라 달라지므로 차단한다.
-  const seenIds = new Set<string>();
-  input.questions.forEach((question, index) => {
-    if (!question.id) return;
-    if (seenIds.has(question.id)) {
-      context.addIssue({
-        code: "custom",
-        path: ["questions", index, "id"],
-        message: "같은 질문이 중복되어 있습니다. 새로고침 후 다시 시도해주세요.",
-      });
-    }
-    seenIds.add(question.id);
+export const saveQuestionsSchema = z
+  .object({
+    formId: z.string().uuid(),
+    questions: z
+      .array(questionSchema)
+      .max(
+        applicationQuestionLimits.questions,
+        `질문은 ${applicationQuestionLimits.questions}개 이하여야 합니다.`,
+      ),
+  })
+  .superRefine((input, context) => {
+    // 같은 질문 ID를 두 번 보내면 순차 UPDATE 결과가 요청 순서에 따라 달라지므로 차단한다.
+    const seenIds = new Set<string>();
+    input.questions.forEach((question, index) => {
+      if (!question.id) return;
+      if (seenIds.has(question.id)) {
+        context.addIssue({
+          code: "custom",
+          path: ["questions", index, "id"],
+          message: "같은 질문이 중복되어 있습니다. 새로고침 후 다시 시도해주세요.",
+        });
+      }
+      seenIds.add(question.id);
+    });
   });
-});
 
 export type QuestionInput = z.infer<typeof questionSchema>;

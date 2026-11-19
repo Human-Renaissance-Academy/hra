@@ -33,19 +33,19 @@
 | 모집 설정 (`recruitment-settings/actions/index.ts`) | 포스터 모드·URL, 기수, 상태, 구글폼 URL, 날짜, detailsMarkdown, posterFile | 직접 업로드 우선. 서버 경유 폴백 3MiB 초과 거부(`:108`) | detailsMarkdown 20,000(`:43,383`), 포스터 URL 2,000(`:122`). posterImageUrl·googleFormUrl 길이 상한은 이 분석에서 확인 못함 | 정상 최대 약 3MiB. 없음 |
 | 수료생 이야기 (`alumni/actions/index.ts`) | name, title, quote, content, imageUrl, images | 직접 업로드 우선. 서버 경유 폴백은 합계 3MiB 초과 거부(`:93`) | 이름 100, 직함 100, 문구 500, 내용 5,000(`:19-22`), 업로드 URL JSON 100,000자·최대 100개(`:104,111`) | 정상 최대 약 3MiB. 없음 |
 | 갤러리 (`gallery/actions/index.ts`) | title, description, alt, uploadedImageUrls | 직접 업로드만. 파일 본문 없음 | 제목 300(`:27`), 설명 5,000(`:28`), alt 255(`:32`), URL 배열 1~100개(`:158`) | 없음. 단 URL 각 문자열 길이 상한은 없음 |
-| 주차별 텍스트 (`weekly-texts/actions/index.ts`) | title, cohortId, textType, classDate, body, file, 업로드 URL·파일명, uploadedImageUrls, requestId | 직접 업로드 우선. 서버 경유 `file`은 30MiB 검증(`:68,103`)이지만 본문 5MiB에서 먼저 거부 | 제목 300(`:47`), URL 배열 1~100개(`:201`). **body 길이 없음**(`:52-65`) | 정상 사용은 없음. 격차 1 |
-| 수업일지 (`class-logs/actions/index.ts`) | title, content, classDate, cohortId, requestId, images | 관리자 폼에 이미지 입력 없음. 서버 경유 이미지는 파일당 10MiB(`lib/form-data-image-validation.ts:8`), 개수·합계 상한 없음 | 제목 300(`:54`). **content 길이 없음**(`:55`) | 정상 사용은 없음. 격차 1·2 |
+| 주차별 텍스트 (`weekly-texts/actions/index.ts`) | title, cohortId, textType, classDate, body, file, 업로드 URL·파일명, uploadedImageUrls, requestId | 직접 업로드 우선. 서버 경유 `file`은 30MiB 검증(`:68,103`)이지만 본문 5MiB에서 먼저 거부 | 제목 300(`:47`), URL 배열 1~100개(`:201`). 본문 100,000자(공백 제외 길이, `:61`) | 없음. 격차 1 해결(#539) |
+| 수업일지 (`class-logs/actions/index.ts`) | title, content, classDate, cohortId, requestId, images | 관리자 폼에 이미지 입력 없음. 서버 경유 이미지는 파일당 10MiB(`lib/form-data-image-validation.ts:8`), 개수 20장·합계 20MiB(`lib/form-data-image-validation.ts:18,22`) | 제목 300(`:54`), 내용 100,000자(`:61`) | 없음. 격차 1·2 해결(#539) |
 | 강의자료 (`class-materials/actions/index.ts`) | title, weekNumber, lectureTitle, audience, classDate, 업로드 URL·파일명 | 직접 업로드만. 서버 경유 `file`이 오면 거부(`:174-176`) | 제목 300(`:23`), 강의명 200(`:28`) | 없음. 업로드 URL·파일명은 `validateResourceUploadReference`가 검증하며 이 분석에서 길이는 확인 못함 |
 | 가이드북 (`guidebooks/actions/index.ts`) | title, 업로드 URL·파일명 | 직접 업로드만 | 제목 300(`:39`) | 없음 |
-| 공지사항 (`notices/actions/index.ts`) | title, content(마크다운), status, pinned | 파일 없음. 본문 이미지는 에디터가 직접 업로드 | 제목 300(`:14`). **content 길이 없음**(`:15`) | 정상 사용은 없음. 격차 1 |
-| 언론보도 (`press/actions/index.ts`) | title, source, url, publishedAt, description, imageUrl | 파일 없음 | 제목 300, 언론사 200, 요약 5,000(`:18-26`). url·imageUrl은 `httpUrl` 형식만 | 없음. 격차 3 |
+| 공지사항 (`notices/actions/index.ts`) | title, content(마크다운), status, pinned | 파일 없음. 본문 이미지는 에디터가 직접 업로드 | 제목 300(`:14`). 내용 100,000자(`:21`) | 없음. 격차 1 해결(#539) |
+| 언론보도 (`press/actions/index.ts`) | title, source, url, publishedAt, description, imageUrl | 파일 없음 | 제목 300, 언론사 200, 요약 5,000(`:18-26`). url·imageUrl은 `httpUrl` 형식과 각 2,000자(`:27,36`) | 없음. 격차 3 해결(#539) |
 | FAQ 연락처 (`faq/actions/index.ts`) | contactName, contactPhone, contactRole | 파일 없음 | 100·20·100(`:24-26`) | 없음 |
-| FAQ 항목 (같은 파일) | question, answer | 파일 없음 | 질문 500(`:109`). **answer 길이 없음**(`:110`) | 정상 사용은 없음. 격차 1 |
-| 보고서 양식·가이드 (`report-templates/actions/index.ts`) | slug, title, category, reportCategory, description, version, body, published, order | 파일 없음 | slug 200, 제목 300, 설명 500, 버전 20, order 0~9999(`:36-61`). **body 길이 없음**(`:63`) | 정상 사용은 없음. 격차 1 |
-| 지원서 양식 (`applications/actions/forms.ts`) | title, description, cohortId, isPublished | 파일 없음 | 제목 255(`:17`). **description 길이 없음**(`:18`) | 정상 사용은 없음. 격차 1 |
-| 지원서 질문 저장 (`applications/actions/questions.ts`) | formId, questions[], expectedRevision | 파일 없음 | 선택지 값 1,000(`question-validation.ts:11`). **질문 제목·설명 길이, 질문 수, 선택지 수 없음** | 정상 양식은 해당 없음. 격차 4 |
+| FAQ 항목 (같은 파일) | question, answer | 파일 없음 | 질문 500(`:109`). 답변 100,000자(`:134`) | 없음. 격차 1 해결(#539) |
+| 보고서 양식·가이드 (`report-templates/actions/index.ts`) | slug, title, category, reportCategory, description, version, body, published, order | 파일 없음 | slug 200, 제목 300, 설명 500, 버전 20, order 0~9999(`:36-61`). 본문 100,000자(`:68`) | 없음. 격차 1 해결(#539) |
+| 지원서 양식 (`applications/actions/forms.ts`) | title, description, cohortId, isPublished | 파일 없음 | 제목 255(`:17`). 설명 5,000자(`:23`) | 없음. 격차 1 해결(#539) |
+| 지원서 질문 저장 (`applications/actions/questions.ts`) | formId, questions[], expectedRevision | 파일 없음 | 선택지 값 1,000(`question-validation.ts:11`). 질문 100개(`:84`), 제목 500자(`:29`), 설명 2,000자(`:36`), 질문당 선택지 100개(`:47`) | 없음. 격차 4 해결(#539) |
 | 지원서 제출 (`applications/actions/submissions.ts`) | formId, 이름·이메일·연락처, 질문별 답변 | 파일 없음 | 이름 100, 이메일 255, 연락처 20, 단문 1,000, 장문 10,000, 선택지 1,000, 체크박스 10,000(`input-limits.ts:7-13`). 질문 수는 DB의 양식 정의가 결정 | 장문 질문 수십 개 수준에서는 해당 없음. 질문 수에 비례 |
-| 일정 (`schedule/actions/index.ts`) | eventDate, startTime, endTime, eventType, title, cohortId, weekNumber, description, isPublic, sessionsJson | 파일 없음 | 제목 200(`:39`), 세션 content 500, 분야 50, 부제 300(`:23-25`). **description·subDescription 길이, 세션 수 없음** | 정상 사용은 없음. 격차 5 |
+| 일정 (`schedule/actions/index.ts`) | eventDate, startTime, endTime, eventType, title, cohortId, weekNumber, description, isPublic, sessionsJson | 파일 없음 | 제목 200(`:39`), 세션 content 500, 분야 50, 부제 300(`:23-25`). description 10,000자(`:74`), subDescription 5,000자(`:44`), 세션 50개(`:82`) | 없음. 격차 5 해결(#539) |
 | 학사 명단 (`academics/roster/actions/index.ts`) | requestId, cohortId, studentId, displayName, verificationMethod, evidenceReference | 파일 없음 | displayName 100(`input.ts:13`), 나머지는 UUID·열거값 | 없음 |
 | 학사 과제 (`academics/assignments/actions.ts`) | 입력 객체 | 파일 없음 | 제목 200(`validation.ts:23`), 안내 50,000(`:24`), 목록 limit 100·offset 10,000(`:42`) | 없음 |
 | 학사 제출 확정 (`academics/submissions/actions.ts`) | assignmentId, uploadIntentId, submissionKey, 파일 메타 | 직접 업로드만. 본문은 식별자와 메타 | 파일명 255, 크기 값 1~52,428,800(`validation.ts:13-14`) | 없음 |
@@ -53,7 +53,7 @@
 | 회원 그룹 변경·삭제 (`users/actions/index.ts`) | userId, groupValue | 파일 없음 | UUID·그룹 값 검증 | 없음 |
 | 관리자 교수진 삭제 폼 (`app/(admin)/admin/faculty/page.tsx:100-106`) | id | 파일 없음 | `typeof` 확인 후 `deleteFaculty`에 전달 | 없음 |
 
-정렬·삭제·토글 계열 액션은 식별자만 받습니다. 정렬 액션(`faq`, `gallery`, `alumni`, `press`의 `reorder*`)은 `z.array(z.uuid()).min(1)`만 검증하고 배열 개수 상한은 없습니다. 정상 사용에서는 목록 크기 이내입니다.
+정렬·삭제·토글 계열 액션은 식별자만 받습니다. 정렬 액션(`faq`, `gallery`, `alumni`, `press`의 `reorder*`)은 `z.array(z.uuid()).min(1).max(1000)`으로 검증합니다(#539, `faq/actions/index.ts:254`, `gallery/actions/index.ts:247`, `alumni/actions/index.ts:339`, `press/actions/index.ts:172`). 정상 사용에서는 목록 크기 이내입니다.
 
 ## 5MiB를 넘을 수 있는 정상 요청
 
@@ -61,15 +61,16 @@
 
 ## 입력 상한 격차
 
-전역 본문 5MiB가 방어선이므로 즉각적인 문제는 아닙니다. 이 브랜치에서는 로직을 바꾸지 않고 기록만 합니다. 대부분 관리자·승인 회원이 호출하는 액션이며, 각 액션의 인증 순서는 이 분석에서 다시 확인하지 않았습니다.
+아래 1~6은 #539에서 서버 검증(zod/v4)으로 해결했습니다. 상수는 `src/lib/server-action-input-limits.ts`에 있고 DB 제약은 바꾸지 않았습니다. 운영 데이터의 실제 최대 길이는 확인하지 못해 정상 사용 범위보다 넉넉하게 정했습니다. 오류 안내는 모두 한국어입니다.
 
-1. 긴 본문 필드에 문자 수 상한이 없습니다. 공지 `content`, 수업일지 `content`, 주차별 텍스트 `body`, FAQ `answer`, 보고서 양식 `body`, 지원서 양식 `description`입니다. 같은 코드의 제목(300)·갤러리 설명(5,000)·학사 과제 안내(50,000)와 일관되지 않습니다. 이 경우 하나의 필드가 본문 5MiB까지 채울 수 있습니다.
-2. 수업일지의 서버 경유 `images`는 파일당 10MiB 상한만 있고 개수·합계 상한이 없습니다(`lib/form-data-image-validation.ts:8-18`). 현재는 본문 5MiB가 실제 상한이지만 `bodySizeLimit`을 올리면 바로 노출됩니다. 주차별 텍스트도 같은 검증 함수를 씁니다.
-3. 언론보도 `url`·`imageUrl`은 형식만 검증하고 길이 상한이 없습니다(`press/actions/index.ts:24,27`).
-4. 지원서 질문 저장은 질문 수·질문 제목·설명·선택지 수에 상한이 없습니다(`question-validation.ts`).
-5. 일정의 `description`, 세션 `subDescription`, 세션 배열 개수에 상한이 없습니다(`schedule/actions/index.ts:23-25,40,44`).
+1. 긴 본문 필드: 공지 `content`, 수업일지 `content`, 주차별 텍스트 `body`, FAQ `answer`, 보고서 양식 `body`는 100,000자(앞뒤 공백 제외)로 제한합니다. 본문 이미지는 URL만 본문에 들어가므로 일반 글보다 수십 배 여유가 있고, 기존 최대 사례(학사 과제 안내 50,000자, 내장 가이드 약 2,800자)보다 큽니다. 지원서 양식 `description`은 기수 설명·갤러리 설명과 같은 5,000자입니다.
+2. 수업일지·주차별 텍스트의 서버 경유 `images`는 파일당 10MiB에 더해 20장, 합계 20MiB로 제한합니다(`lib/form-data-image-validation.ts:18,22`). 개수·합계는 파일 내용을 읽기 전에 검사합니다. 합계 값은 `bodySizeLimit`을 올릴 때를 대비한 것입니다.
+3. 언론보도 `url`·`imageUrl`은 각 2,000자입니다(`press/actions/index.ts:27,36`). 교수진·모집 포스터 URL 상한과 같습니다.
+4. 지원서 질문 저장은 질문 100개, 제목 500자, 설명 2,000자, 질문당 선택지 100개로 제한합니다(`question-validation.ts:29,36,47,84`).
+5. 일정은 `description` 10,000자, 세션 `subDescription` 5,000자, 세션 50개로 제한합니다(`schedule/actions/index.ts:74,44,82`).
+6. 정렬 액션(`faq`, `gallery`, `alumni`, `press`의 `reorder*`)의 UUID 배열은 1,000개 이하입니다. 가장 큰 목록인 앨범 이미지도 수십~수백 장입니다.
 
-필드별 상한은 사용자 입력 계약을 바꾸므로 운영 데이터의 실제 최대 길이를 조사한 뒤 별도 이슈·테스트로 진행하는 것이 안전합니다. 이 문서는 해당 조사를 하지 않았습니다.
+기존 저장 데이터를 편집할 때 상한에 걸릴 가능성은 위 값이 기존 최대 사례보다 크므로 낮다고 보지만, 운영 데이터 최대 길이는 조사하지 못했습니다. 경계(최대 허용·1 초과)와 오류 안내는 `tests/unit/server-action-input-caps.test.ts`가 검증합니다.
 
 ## 플랫폼 413
 
@@ -88,4 +89,4 @@
 
 - `bodySizeLimit`을 바꾸기 전에 서버 경유 파일 경로(기수 이미지, 교수진·포스터·수료생 폴백)와 직접 업로드 경로를 구분해 확인합니다.
 - 큰 파일은 Action 본문에 넣지 않고 직접 Blob 업로드를 사용합니다.
-- 새 Action을 추가하면 모든 문자열·배열 입력에 상한을 두고 이 표에 한 줄을 추가합니다.
+- 새 Action을 추가하면 모든 문자열·배열 입력에 상한을 두고 이 표에 한 줄을 추가합니다. 상한 값은 `src/lib/server-action-input-limits.ts`에 두고 경계 테스트를 함께 추가합니다.

@@ -16,6 +16,7 @@ import { requireAdmin } from "@/lib/admin";
 import * as galleryService from "@/features/gallery/admin/service";
 import type { GalleryActor } from "@/features/gallery/admin/service";
 import { logServerError } from "@/lib/errors";
+import { maxReorderIds } from "@/lib/server-action-input-limits";
 import { validateGalleryUploadReference } from "@/lib/gallery-upload-server";
 
 export type GalleryActionState = {
@@ -243,7 +244,7 @@ export async function reorderGalleryImages(
   // 캐스트 에러로 raw ID 가 Vercel Logs 에 노출된다, (2) reorderByCase 헬퍼의
   // `${a.id}::uuid` raw SQL 캐스트도 동일한 leak 벡터를 가진다. 두 경로 진입 전에
   // 사전 차단한다.
-  const parsedIds = z.array(z.uuid()).min(1).safeParse(orderedIds);
+  const parsedIds = z.array(z.uuid()).min(1).max(maxReorderIds).safeParse(orderedIds);
   if (!parsedIds.success) {
     return initialError("유효하지 않은 요청입니다.");
   }

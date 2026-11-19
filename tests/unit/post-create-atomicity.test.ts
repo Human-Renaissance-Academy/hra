@@ -207,12 +207,22 @@ describe("게시글과 첨부 메타 생성", () => {
       expect(mocks.batch).not.toHaveBeenCalled();
     });
 
-    it("FormData 이미지에는 직접 URL 목록의 100개 제한을 적용하지 않는다", async () => {
-      expect(await create(withImages(...Array.from({ length: 101 }, () => image())))).toEqual({
+    // 서버 경유 이미지는 직접 URL 목록(100개)과 별도로 20장 상한(#539)을 적용한다.
+    it("FormData 이미지는 20장까지 저장하고 21장부터는 업로드 전에 거부한다", async () => {
+      expect(await create(withImages(...Array.from({ length: 20 }, () => image())))).toEqual({
         success: true,
       });
-      expect(mocks.put).toHaveBeenCalledTimes(101);
-      expect(mocks.batch.mock.calls[0]?.[0][1].values).toHaveLength(101);
+      expect(mocks.put).toHaveBeenCalledTimes(20);
+      expect(mocks.batch.mock.calls[0]?.[0][1].values).toHaveLength(20);
+
+      mocks.put.mockClear();
+      mocks.batch.mockClear();
+      expect(await create(withImages(...Array.from({ length: 21 }, () => image())))).toEqual({
+        success: false,
+        error: "사진은 한 번에 20장까지 올릴 수 있습니다.",
+      });
+      expect(mocks.put).not.toHaveBeenCalled();
+      expect(mocks.batch).not.toHaveBeenCalled();
     });
 
     it.each([

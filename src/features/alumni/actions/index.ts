@@ -13,6 +13,7 @@ import {
   deleteStory,
 } from "@/features/alumni/admin/service";
 import { logServerError } from "@/lib/errors";
+import { maxReorderIds } from "@/lib/server-action-input-limits";
 import { uploadBlobsForCreate } from "@/lib/create-with-blobs";
 import { uploadWithOwnedIntent } from "@/lib/server-upload-intent";
 import { validateAdminImage, type ValidatedAdminImage } from "@/lib/admin-image-validation";
@@ -335,7 +336,7 @@ export async function reorderAlumniStories(
   // 이 배열은 reorderByCase 헬퍼의 `${a.id}::uuid` raw SQL 캐스트로 흘러가는데
   // UUID 형식이 아닌 값이 도달하면 Postgres cast error 로 raw ID 가 Vercel Logs 에
   // 노출될 수 있으므로 사전 차단한다.
-  const parsedIds = z.array(z.uuid()).min(1).safeParse(orderedIds);
+  const parsedIds = z.array(z.uuid()).min(1).max(maxReorderIds).safeParse(orderedIds);
   if (!parsedIds.success) {
     return { success: false, message: "유효하지 않은 요청입니다." };
   }
