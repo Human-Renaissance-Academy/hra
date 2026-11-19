@@ -38,6 +38,10 @@ const eventConstraint = "assignments_schedule_event_id_schedule_events_id_fk";
 const sessionConstraint = "assignments_schedule_session_id_schedule_sessions_id_fk";
 const referenceMessage =
   "과제에 연결된 일정이나 세션은 삭제할 수 없습니다. 연결된 과제를 확인해주세요.";
+const reviewerMessage = "검토자 지정이 있는 수업은 삭제할 수 없습니다.";
+const reviewerFaculty = "80000000-0000-4000-8000-000000000001";
+const designationEventConstraint = "academic_class_reviewer_designations_event_fk";
+const designationSessionConstraint = "academic_class_reviewer_designations_session_fk";
 const failureMessage = "일정을 삭제하지 못했습니다. 잠시 후 다시 시도해주세요.";
 
 beforeEach(() => {
@@ -67,6 +71,25 @@ describe("일정 삭제 오류의 제한적인 분류", () => {
     const result = await deleteScheduleEvent(event);
     expect(result).toEqual({ success: false, message: referenceMessage });
     expectSafeFailure(result);
+    expect(mocks.log).not.toHaveBeenCalled();
+  });
+
+  it.each(
+    ["23503", "23001"].flatMap((code) =>
+      [designationEventConstraint, designationSessionConstraint].map((constraint) => ({
+        code,
+        constraint,
+      })),
+    ),
+  )("$code와 #161 $constraint가 함께 일치하면 검토자 지정 안내를 반환한다", async (error) => {
+    mocks.query.mockRejectedValueOnce({
+      ...error,
+      message: "원본 DB 오류 private@example.test DELETE FROM schedule_events",
+    });
+    const result = await deleteScheduleEvent(event);
+    expect(result).toEqual({ success: false, message: reviewerMessage });
+    expect(JSON.stringify(result)).not.toMatch(/academic_|23503|23001|private@example\.test/);
+    expect(mocks.revalidatePath).not.toHaveBeenCalled();
     expect(mocks.log).not.toHaveBeenCalled();
   });
 
@@ -163,7 +186,7 @@ describe.skipIf(!bin)("격리 PostgreSQL에서 일정 삭제", () => {
       "VERBOSITY=verbose",
       "-Atq",
     ];
-    run(`CREATE TABLE cohorts (id uuid PRIMARY KEY); CREATE TABLE users (id uuid PRIMARY KEY);
+    run(`CREATE TABLE cohorts (id uuid PRIMARY KEY); CREATE TABLE users (id uuid PRIMARY KEY, role text NOT NULL DEFAULT 'ADMIN');
       CREATE TABLE faculty (id uuid PRIMARY KEY);
       CREATE TYPE schedule_event_type AS ENUM ('CLASS','EVENT');
       CREATE TYPE session_category AS ENUM ('CLASSICS','ENGLISH','SPEECH','SPECIAL_LECTURE','CASE_STUDY');
@@ -176,6 +199,10 @@ describe.skipIf(!bin)("격리 PostgreSQL에서 일정 삭제", () => {
     // 과제의 실제 마이그레이션으로 RESTRICT FK와 쓰기 계약을 그대로 설치한다.
     run(readFileSync("scripts/migrate-academic-students.sql", "utf8"));
     run(readFileSync("scripts/migrate-academic-assignments.sql", "utf8"));
+    // #161 검토자 지정의 실제 RESTRICT FK를 설치합니다(선행: #165 학사 운영 관리자 SQL).
+    run(readFileSync("scripts/migrate-academic-staff-assignments.sql", "utf8"));
+    run(readFileSync("scripts/migrate-academic-faculty-reviewers.sql", "utf8"));
+    run(`INSERT INTO faculty VALUES ('${reviewerFaculty}');`);
   }, 30000);
 
   beforeEach(() => {
@@ -201,7 +228,10 @@ describe.skipIf(!bin)("격리 PostgreSQL에서 일정 삭제", () => {
         throw { ...violation, cause: error };
       }
     });
-    run(`TRUNCATE assignment_targets, assignments, cohort_enrollments, academic_students, schedule_sessions, schedule_events;
+    // 검토자 지정·감사 표는 보호 트리거가 비우기를 막으므로 이 격리 DB에서만 트리거를 끄고 비웁니다.
+    run(`SET session_replication_role = replica;
+      TRUNCATE academic_faculty_review_events, academic_class_reviewer_designations, assignment_targets, assignments, cohort_enrollments, academic_students, schedule_sessions, schedule_events;
+      SET session_replication_role = origin;
       INSERT INTO schedule_events VALUES ('${event}', '2026-10-14', 'CLASS', '보존할 일정', '${cohort}');
       INSERT INTO schedule_sessions VALUES ('${session}', '${event}', 'CLASSICS');`);
   });
@@ -273,6 +303,24 @@ describe.skipIf(!bin)("격리 PostgreSQL에서 일정 삭제", () => {
         FOREIGN KEY (schedule_event_id) REFERENCES schedule_events(id) ON DELETE RESTRICT;`);
     }
   });
+
+  it.each([false, true])(
+    "#161 검토자 지정(세션 지정 %s)이 있으면 삭제를 거부하고 일정·세션·지정을 보존한다",
+    async (withSession) => {
+      // 지정 함수 대신 소유 역할의 직접 INSERT로 실제 FK가 있는 지정 행만 만듭니다.
+      run(`INSERT INTO academic_class_reviewer_designations (faculty_id, schedule_event_id, schedule_session_id, valid_from, designated_by_user_id)
+      VALUES ('${reviewerFaculty}', '${event}', ${withSession ? `'${session}'` : "NULL"}, now(), '${actor}');`);
+      const result = await deleteScheduleEvent(event);
+      expect(result).toEqual({ success: false, message: reviewerMessage });
+      expectSafeFailure(result);
+      expectPreserved(false);
+      expect(run("SELECT count(*) FROM academic_class_reviewer_designations;")).toBe("1");
+      expect(observedErrors).toEqual([
+        { code: expect.stringMatching(/^(23503|23001)$/), constraint: designationEventConstraint },
+      ]);
+      expect(mocks.log).not.toHaveBeenCalled();
+    },
+  );
 
   it("참조가 없으면 일정과 세션을 삭제하고 성공용 캐시를 갱신한다", async () => {
     expect(await deleteScheduleEvent(event)).toEqual({

@@ -83,6 +83,7 @@
 | `docs/developer/github-actions-security.md` | 후속 `main`에서 도입된 별도 CI 보안 안내. 원래 66개 집계에 넣지 않았고 원문 정책을 유지한다. | 현재 CI 규칙 |
 | `docs/developer/academic-submission-artifacts-migration.md` | #516 PR-C의 추가형 DB 변경 안내. 적용 전 구조 판정·기존 행 보존·V2 함수와 오류 코드를 설명하며 기능은 비활성, 운영 적용은 미확인이다. | 로컬 코드·운영 미적용 |
 | `docs/developer/rate-limit-reservation-index.md` | #320의 로컬 통합 안내. 범위 SQL과 인덱스 카탈로그·합성 성능 증거를 설명하며 운영 적용은 미확인이다. | 로컬 코드·운영 미적용 |
+| `docs/developer/academic-faculty-reviewers.md` | #161 추가. G2 교수 계정 연결·수업별 과제 검토자 지정 SQL과 과제 검토 권한 판정 서비스를 설명하며 기능은 비활성, 운영 적용은 미확인이다. | 로컬 코드·운영 미적용 |
 | `docs/developer/academic-staff-assignments.md` | #165 추가. G2 운영 인력 배정·학사 운영 관리자 지정 SQL과 출결 권한 판정 서비스를 설명하며 기능은 비활성, 운영 적용은 미확인이다. | 로컬 코드·운영 미적용 |
 | `docs/developer/academic-attendance.md` | #159 추가. G2 학생별 출결·정정 승인 SQL과 Application Service를 설명하며 기능은 비활성, 운영 적용은 미확인이다. | 로컬 코드·운영 미적용 |
 

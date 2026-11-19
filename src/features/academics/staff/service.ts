@@ -22,7 +22,10 @@ import {
   endStaffSchema,
   isAcademicStaffPrincipal,
   replaceStaffSchema,
+  myStaffCohortsSchema,
   replacementResultSchema,
+  staffAuditSchema,
+  staffOverviewSchema,
   toAcademicStaffError,
   type AcademicStaffPrincipal,
 } from "./contracts";
@@ -32,6 +35,9 @@ import {
   hasActiveStaffAssignment,
   insertManagerDesignation,
   insertStaffAssignment,
+  selectMyStaffCohorts,
+  selectStaffAudit,
+  selectStaffOverview,
   swapStaffAssignment,
 } from "./repository";
 
@@ -188,4 +194,28 @@ export async function endOperationsManagerDesignation(principal: unknown, input:
       reason: data.reason,
     }),
   );
+}
+
+// ── #160 화면용 읽기 ─────────────────────────────────────────────────────────
+
+/** 학사 운영 관리자 화면의 기수·현재/예정 배정. 관리자 지정이 없으면(홈페이지 ADMIN 포함) FORBIDDEN입니다. */
+export async function getStaffManagementOverview(principal: unknown) {
+  const actor = requireActor(principal);
+  const overview = await run(staffOverviewSchema, () => selectStaffOverview(actor.userId));
+  if (!overview) throw new AcademicStaffError("FORBIDDEN");
+  return overview;
+}
+
+/** 학사 운영 관리자 화면의 최근 배정 변경 감사 목록. 관리자 지정이 없으면 FORBIDDEN입니다. */
+export async function listStaffAuditEvents(principal: unknown) {
+  const actor = requireActor(principal);
+  const events = await run(staffAuditSchema, () => selectStaffAudit(actor.userId));
+  if (!events) throw new AcademicStaffError("FORBIDDEN");
+  return events;
+}
+
+/** 운영 인력 본인의 현재 유효 배정 기수. 배정이 없으면 빈 목록입니다. */
+export async function listMyStaffCohorts(principal: unknown) {
+  const actor = requireActor(principal);
+  return run(myStaffCohortsSchema, () => selectMyStaffCohorts(actor.userId));
 }

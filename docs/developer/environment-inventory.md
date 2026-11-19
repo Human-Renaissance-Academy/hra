@@ -27,6 +27,7 @@ Production·Preview·Development는 DB·공개/비공개 Blob·OAuth·세션 비
 | `ACADEMIC_ATTENDANCE_ENABLED` | 학생별 출결 기록·정정 승인(#159) | Development / Preview / Production; 환경별 독립 설정; Preview에 Production 자격정보·연결 상속 금지 | 아니요 | 학사 운영 정책 초안(#143) 운영 승인과 SQL 적용 후 ACADEMIC_ENABLED·ACADEMIC_STAFF_ENABLED와 함께 true | 정확한 true가 아니면 출결 입력·정정·조회 모두 DISABLED; DB 조회 없음 | 앱 예시 |
 | `ACADEMIC_ENABLED` | 학사 사용자 기능 공개 | Development / Preview / Production; 환경별 독립 설정; Preview에 Production 자격정보·연결 상속 금지 | 아니요 | 학사 정책·테이블·함수 준비 후 true | 정확한 true가 아니면 사용자 학사 기능 차단/준비 안내; cleanup은 독립 | 앱 예시 |
 | `ACADEMIC_ENROLLMENT_WRITES_ENABLED` | 학적 개인정보 쓰기 별도 승인 | Development / Preview / Production; 환경별 독립 설정; Preview에 Production 자격정보·연결 상속 금지 | 아니요 | #142 보존·파기 정책과 운영 승인 후 true | 정확한 true가 아니면 쓰기 차단; 화면 공개와 별도 조건 | 앱 예시 |
+| `ACADEMIC_FACULTY_REVIEW_ENABLED` | 교수 계정 연결·수업별 과제 검토 권한 판정(#161) | Development / Preview / Production; 환경별 독립 설정; Preview에 Production 자격정보·연결 상속 금지 | 아니요 | 학사 운영 정책 초안 P11(#143) 운영 승인과 SQL 적용 후 ACADEMIC_ENABLED와 함께 true | 정확한 true가 아니면 연결·지정 변경과 목록 DISABLED, 과제 검토 권한 판정 항상 false; DB 조회 없음 | 앱 예시 |
 | `ACADEMIC_STAFF_ENABLED` | 기수별 운영 인력 배정·출결 권한 판정(#165) | Development / Preview / Production; 환경별 독립 설정; Preview에 Production 자격정보·연결 상속 금지 | 아니요 | 학사 운영 정책 초안(#143) 운영 승인과 SQL 적용 후 ACADEMIC_ENABLED와 함께 true | 정확한 true가 아니면 배정·지정 변경 DISABLED, 출결 권한 판정 항상 false; DB 조회 없음 | 앱 예시 |
 | `ACADEMIC_SUBMISSION_BLOB_HOST` | 학사 제출 전용 Private Blob 호스트 | Development / Preview / Production; 환경별 독립 설정; Preview에 Production 자격정보·연결 상속 금지 | 아니요 | 학사 파일 업로드·다운로드·cleanup | 누락·잘못된 private 호스트면 UNAVAILABLE; public 대체 없음 | 앱 예시 |
 | `ACADEMIC_SUBMISSION_READ_WRITE_TOKEN` | 학사 제출 전용 서버 token | Development / Preview / Production; 환경별 독립 설정; Preview에 Production 자격정보·연결 상속 금지 | 예 | 학사 파일 업로드·다운로드·cleanup | 미설정이면 저장소 작업 불가; 공개/보호 자료 token 재사용 금지 | 앱 예시 |
@@ -86,6 +87,7 @@ Production·Preview·Development는 DB·공개/비공개 Blob·OAuth·세션 비
 
 | 이름 | 목적 | 적용 환경·격리 | 비밀값 | 필수 조건 | 기본·누락 동작 | 예시 |
 | --- | --- | --- | --- | --- | --- | --- |
+| `HRA_ACADEMIC_ATTENDANCE_QA` | 출결 화면 격리 QA 시나리오 | Development 합성 검증 / CI 격리 실행; 합성 계정·격리 DB; 공급자 QA는 승인한 전용 namespace·원장만 | 아니요 | 전용 출결 UI 실행기가 true로 전달 | true가 아니면 출결 UI QA skip; 통과 증거 아님 | 앱 예시에 넣지 않음 |
 | `HRA_ACADEMIC_QA_CALLBACK_URL` | 격리 앱에 연결되는 QA callback 터널 | Development 합성 검증 / CI 격리 실행; 합성 계정·격리 DB; 공급자 QA는 승인한 전용 namespace·원장만 | 아니요 | 실제 공급자 callback 전달을 검증할 때 | 없으면 .invalid 주소로 callback 유실 후 verify 복구만 검사 | 앱 예시에 넣지 않음 |
 | `HRA_ACADEMIC_QA_COHORT_ID` | 합성 QA 기수 ID | Development 합성 검증 / CI 격리 실행; 합성 계정·격리 DB; 공급자 QA는 승인한 전용 namespace·원장만 | 아니요 | 전용 admin/roster 검사 | 없으면 해당 시나리오 준비 불가; 운영 기수 사용 금지 | 앱 예시에 넣지 않음 |
 | `HRA_ACADEMIC_QA_EVENT_ID` | 합성 QA 학사 이벤트 ID | Development 합성 검증 / CI 격리 실행; 합성 계정·격리 DB; 공급자 QA는 승인한 전용 namespace·원장만 | 아니요 | 전용 과제 관리자 검사 | 없으면 해당 QA 시나리오 준비 불가 | 앱 예시에 넣지 않음 |
@@ -100,6 +102,14 @@ Production·Preview·Development는 DB·공개/비공개 Blob·OAuth·세션 비
 | `HRA_ACADEMIC_UI_QA` | 학생 화면 격리 QA 시나리오 | Development 합성 검증 / CI 격리 실행; 합성 계정·격리 DB; 공급자 QA는 승인한 전용 namespace·원장만 | 아니요 | 전용 학생 UI 실행기가 true로 전달 | true가 아니면 학생 UI QA skip; 통과 증거 아님 | 앱 예시에 넣지 않음 |
 | `HRA_ACADEMIC_UI_REPLACEMENT_ID` | 합성 교체 제출 과제 ID | Development 합성 검증 / CI 격리 실행; 합성 계정·격리 DB; 공급자 QA는 승인한 전용 namespace·원장만 | 아니요 | 공급자 교체 제출 QA | 없으면 교체 검사 불가 | 앱 예시에 넣지 않음 |
 | `HRA_ACADEMIC_UI_UPLOAD_ID` | 합성 공급자 업로드 과제 ID | Development 합성 검증 / CI 격리 실행; 합성 계정·격리 DB; 공급자 QA는 승인한 전용 namespace·원장만 | 아니요 | 공급자 학생 UI QA | 없으면 공급자 업로드 검사 불가 | 앱 예시에 넣지 않음 |
+| `HRA_ATTENDANCE_ADMIN_EMAIL` | 이번 실행의 합성 관리자 이메일 | Development 합성 검증 / CI 격리 실행; 합성 계정·격리 DB; 공급자 QA는 승인한 전용 namespace·원장만 | 아니요 | 전용 출결 UI 로그인 | 없으면 합성 계정 로그인 불가; 실제 계정 사용 금지 | 앱 예시에 넣지 않음 |
+| `HRA_ATTENDANCE_ADMIN_PASSWORD` | 이번 실행의 합성 관리자 비밀번호 | Development 합성 검증 / CI 격리 실행; 합성 계정·격리 DB; 공급자 QA는 승인한 전용 namespace·원장만 | 예 | 전용 출결 UI 로그인 | 없으면 합성 계정 로그인 불가; 운영 비밀번호 재사용 금지 | 앱 예시에 넣지 않음 |
+| `HRA_ATTENDANCE_FACULTY_EMAIL` | 이번 실행의 합성 교수 이메일 | Development 합성 검증 / CI 격리 실행; 합성 계정·격리 DB; 공급자 QA는 승인한 전용 namespace·원장만 | 아니요 | 전용 출결 UI 로그인 | 없으면 합성 계정 로그인 불가; 실제 계정 사용 금지 | 앱 예시에 넣지 않음 |
+| `HRA_ATTENDANCE_FACULTY_PASSWORD` | 이번 실행의 합성 교수 비밀번호 | Development 합성 검증 / CI 격리 실행; 합성 계정·격리 DB; 공급자 QA는 승인한 전용 namespace·원장만 | 예 | 전용 출결 UI 로그인 | 없으면 합성 계정 로그인 불가; 운영 비밀번호 재사용 금지 | 앱 예시에 넣지 않음 |
+| `HRA_ATTENDANCE_STAFF_EMAIL` | 이번 실행의 합성 운영 인력 이메일 | Development 합성 검증 / CI 격리 실행; 합성 계정·격리 DB; 공급자 QA는 승인한 전용 namespace·원장만 | 아니요 | 전용 출결 UI 로그인 | 없으면 합성 계정 로그인 불가; 실제 계정 사용 금지 | 앱 예시에 넣지 않음 |
+| `HRA_ATTENDANCE_STAFF_PASSWORD` | 이번 실행의 합성 운영 인력 비밀번호 | Development 합성 검증 / CI 격리 실행; 합성 계정·격리 DB; 공급자 QA는 승인한 전용 namespace·원장만 | 예 | 전용 출결 UI 로그인 | 없으면 합성 계정 로그인 불가; 운영 비밀번호 재사용 금지 | 앱 예시에 넣지 않음 |
+| `HRA_ATTENDANCE_STUDENT_EMAIL` | 이번 실행의 합성 학생 이메일 | Development 합성 검증 / CI 격리 실행; 합성 계정·격리 DB; 공급자 QA는 승인한 전용 namespace·원장만 | 아니요 | 전용 출결 UI 로그인 | 없으면 합성 계정 로그인 불가; 실제 계정 사용 금지 | 앱 예시에 넣지 않음 |
+| `HRA_ATTENDANCE_STUDENT_PASSWORD` | 이번 실행의 합성 학생 비밀번호 | Development 합성 검증 / CI 격리 실행; 합성 계정·격리 DB; 공급자 QA는 승인한 전용 namespace·원장만 | 예 | 전용 출결 UI 로그인 | 없으면 합성 계정 로그인 불가; 운영 비밀번호 재사용 금지 | 앱 예시에 넣지 않음 |
 | `HRA_G1_APP_ORIGIN` | G1 격리 앱 origin | Development 합성 검증 / CI 격리 실행; 합성 계정·격리 DB; 공급자 QA는 승인한 전용 namespace·원장만 | 아니요 | G1 실행기가 생성 | 없거나 준비되지 않으면 G1 네트워크 검증 불가 | 앱 예시에 넣지 않음 |
 | `HRA_G1_STORE_ORIGIN` | G1 로컬 private 저장소 origin | Development 합성 검증 / CI 격리 실행; 합성 계정·격리 DB; 공급자 QA는 승인한 전용 namespace·원장만 | 아니요 | G1 실행기가 생성 | 없거나 준비되지 않으면 로컬 저장소 검증 불가; 운영 저장소 사용 금지 | 앱 예시에 넣지 않음 |
 | `HRA_PUBLIC_E2E_LIST` | 확장 공개 reporter의 수집 전용 구분 | Development 합성 검증 / CI 격리 실행; 합성 계정·격리 DB; 공급자 QA는 승인한 전용 namespace·원장만 | 아니요 | 격리 실행기의 --list 단계에서만 true | true가 아니면 필수 24개 사례의 실제 완료까지 검증 | 앱 예시에 넣지 않음 |
