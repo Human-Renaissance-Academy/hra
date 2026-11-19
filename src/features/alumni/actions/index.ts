@@ -5,7 +5,13 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod/v4";
 import { requireAdmin } from "@/lib/admin";
-import { createStory, updateStory, togglePin, reorderStories, deleteStory } from "@/features/alumni/admin/service";
+import {
+  createStory,
+  updateStory,
+  togglePin,
+  reorderStories,
+  deleteStory,
+} from "@/features/alumni/admin/service";
 import { logServerError } from "@/lib/errors";
 import { uploadBlobsForCreate } from "@/lib/create-with-blobs";
 import { uploadWithOwnedIntent } from "@/lib/server-upload-intent";
@@ -18,8 +24,16 @@ const maxImageSize = 5 * 1024 * 1024;
 const alumniStoryFormSchema = z.object({
   name: z.string().trim().min(1, "이름을 입력해주세요.").max(100, "이름은 100자 이하여야 합니다."),
   title: z.string().trim().max(100, "소속/직함은 100자 이하여야 합니다.").optional(),
-  quote: z.string().trim().min(1, "대표 문구를 입력해주세요.").max(500, "대표 문구는 500자 이하여야 합니다."),
-  content: z.string().trim().min(1, "내용을 입력해주세요.").max(5000, "내용은 5000자 이하여야 합니다."),
+  quote: z
+    .string()
+    .trim()
+    .min(1, "대표 문구를 입력해주세요.")
+    .max(500, "대표 문구는 500자 이하여야 합니다."),
+  content: z
+    .string()
+    .trim()
+    .min(1, "내용을 입력해주세요.")
+    .max(5000, "내용은 5000자 이하여야 합니다."),
   imageUrl: z.string().optional(), // 대표 이미지 URL
   isFeatured: z
     .union([z.literal("true"), z.literal("on"), z.null(), z.undefined()])
@@ -91,17 +105,26 @@ async function validateImageFiles(formData: FormData) {
 
   // 구형 서버 경유 요청은 플랫폼 본문 한도 아래에서만 허용합니다.
   if (totalBytes > 3 * 1024 * 1024) {
-    return { success: false as const, message: "사진을 다시 선택해 업로드해주세요.", fieldErrors: { images: "사진을 다시 선택해 업로드해주세요." } };
+    return {
+      success: false as const,
+      message: "사진을 다시 선택해 업로드해주세요.",
+      fieldErrors: { images: "사진을 다시 선택해 업로드해주세요." },
+    };
   }
 
   return { success: true as const, files: validFiles };
 }
 
 /** 브라우저 완료 URL은 전달 문자열을 신뢰하지 않고 업로드 실물과 소유자를 재확인합니다. */
-async function getUploadedImageUrls(formData: FormData, storyId: string, userId: string): Promise<{ urls: string[] } | { error: string }> {
+async function getUploadedImageUrls(
+  formData: FormData,
+  storyId: string,
+  userId: string,
+): Promise<{ urls: string[] } | { error: string }> {
   const raw = formData.get("uploadedImageUrls");
   if (raw === null) return { urls: [] };
-  if (typeof raw !== "string" || raw.length > 100_000) return { error: "업로드한 사진 정보를 확인해주세요." };
+  if (typeof raw !== "string" || raw.length > 100_000)
+    return { error: "업로드한 사진 정보를 확인해주세요." };
   let parsed: unknown;
   try {
     parsed = JSON.parse(raw);
@@ -109,9 +132,11 @@ async function getUploadedImageUrls(formData: FormData, storyId: string, userId:
     return { error: "업로드한 사진 정보를 확인해주세요." };
   }
   const urls = z.array(z.url()).max(100).safeParse(parsed);
-  if (!urls.success || new Set(urls.data).size !== urls.data.length) return { error: "업로드한 사진 정보를 확인해주세요." };
+  if (!urls.success || new Set(urls.data).size !== urls.data.length)
+    return { error: "업로드한 사진 정보를 확인해주세요." };
   for (const url of urls.data) {
-    if (!await validateAlumniImageReference(storyId, userId, url)) return { error: "업로드한 사진을 확인할 수 없습니다. 다시 업로드해주세요." };
+    if (!(await validateAlumniImageReference(storyId, userId, url)))
+      return { error: "업로드한 사진을 확인할 수 없습니다. 다시 업로드해주세요." };
   }
   return { urls: urls.data };
 }
@@ -161,22 +186,31 @@ export async function createAlumniStory(formData: FormData): Promise<AlumniStory
   }
 
   const directImages = await getUploadedImageUrls(formData, requestId.data, session.user.id);
-  if ("error" in directImages) return { success: false, message: directImages.error, fieldErrors: { images: directImages.error } };
+  if ("error" in directImages)
+    return {
+      success: false,
+      message: directImages.error,
+      fieldErrors: { images: directImages.error },
+    };
 
   try {
-    await createStory({ userId: session.user.id, role: session.user.role }, {
-      id: requestId.data,
-      story: parsed.data,
-      directUrls: directImages.urls,
-      upload: () => uploadBlobsForCreate(
-        validatedImages.files.map((image) => ({
-          pathname: `alumni/${crypto.randomUUID()}.${image.extension}`,
-          file: image.file,
-          contentType: image.contentType,
-        })),
-        session.user.id,
-      ),
-    });
+    await createStory(
+      { userId: session.user.id, role: session.user.role },
+      {
+        id: requestId.data,
+        story: parsed.data,
+        directUrls: directImages.urls,
+        upload: () =>
+          uploadBlobsForCreate(
+            validatedImages.files.map((image) => ({
+              pathname: `alumni/${crypto.randomUUID()}.${image.extension}`,
+              file: image.file,
+              contentType: image.contentType,
+            })),
+            session.user.id,
+          ),
+      },
+    );
   } catch (error) {
     logServerError("alumni/create", error);
     return {
@@ -189,7 +223,10 @@ export async function createAlumniStory(formData: FormData): Promise<AlumniStory
   redirect("/admin/alumni");
 }
 
-export async function updateAlumniStory(id: string, formData: FormData): Promise<AlumniStoryActionState> {
+export async function updateAlumniStory(
+  id: string,
+  formData: FormData,
+): Promise<AlumniStoryActionState> {
   const session = await requireAdmin();
 
   const parsedId = z.uuid().safeParse(id);
@@ -220,22 +257,30 @@ export async function updateAlumniStory(id: string, formData: FormData): Promise
   }
 
   const directImages = await getUploadedImageUrls(formData, parsedId.data, session.user.id);
-  if ("error" in directImages) return { success: false, message: directImages.error, fieldErrors: { images: directImages.error } };
+  if ("error" in directImages)
+    return {
+      success: false,
+      message: directImages.error,
+      fieldErrors: { images: directImages.error },
+    };
 
   try {
-    const result = await updateStory({ userId: session.user.id, role: session.user.role }, {
-      id: parsedId.data,
-      story: parsed.data,
-      directUrls: directImages.urls,
-      upload: async () => {
-        const uploadedUrls: string[] = [];
-        for (const file of validatedImages.files) {
-          const url = await uploadAlumniImage(file, session.user.id);
-          uploadedUrls.push(url);
-        }
-        return uploadedUrls;
+    const result = await updateStory(
+      { userId: session.user.id, role: session.user.role },
+      {
+        id: parsedId.data,
+        story: parsed.data,
+        directUrls: directImages.urls,
+        upload: async () => {
+          const uploadedUrls: string[] = [];
+          for (const file of validatedImages.files) {
+            const url = await uploadAlumniImage(file, session.user.id);
+            uploadedUrls.push(url);
+          }
+          return uploadedUrls;
+        },
       },
-    });
+    );
     if (!result.success) return result;
   } catch (error) {
     logServerError("alumni/update", error, { id: parsedId.data });
@@ -261,14 +306,20 @@ export async function toggleAlumniPin(id: string): Promise<{ success: boolean; m
     return { success: false, message: "잘못된 ID입니다." };
   }
 
-  const updated = await togglePin({ userId: session.user.id, role: session.user.role }, parsedId.data);
+  const updated = await togglePin(
+    { userId: session.user.id, role: session.user.role },
+    parsedId.data,
+  );
 
   if (!updated) {
     return { success: false, message: "수료생 이야기를 찾을 수 없습니다." };
   }
 
   revalidateAlumniPaths();
-  return { success: true, message: updated.pinned ? "상단에 고정했습니다." : "고정을 해제했습니다." };
+  return {
+    success: true,
+    message: updated.pinned ? "상단에 고정했습니다." : "고정을 해제했습니다.",
+  };
 }
 
 // 수료생 이야기 순서 일괄 변경 — 드래그앤드롭 결과를 DB에 저장
@@ -276,11 +327,11 @@ export async function toggleAlumniPin(id: string): Promise<{ success: boolean; m
 // 단일 UPDATE ... CASE 문(reorderByCase 헬퍼)으로 원자적으로 갱신 —
 // 개별 UPDATE 루프에서 중간 실패 시 정렬 상태가 뒤엉키던 문제를 근본 차단한다.
 export async function reorderAlumniStories(
-  orderedIds: string[]
+  orderedIds: string[],
 ): Promise<{ success: boolean; message: string }> {
   const session = await requireAdmin();
 
-  // Oracle Phase D 5라운드 BLOCK 수정 — orderedIds 각 원소를 UUID 로 사전 검증한다.
+  // orderedIds 각 원소를 UUID 로 사전 검증한다.
   // 이 배열은 reorderByCase 헬퍼의 `${a.id}::uuid` raw SQL 캐스트로 흘러가는데
   // UUID 형식이 아닌 값이 도달하면 Postgres cast error 로 raw ID 가 Vercel Logs 에
   // 노출될 수 있으므로 사전 차단한다.
@@ -291,7 +342,10 @@ export async function reorderAlumniStories(
   const validIds = parsedIds.data;
 
   try {
-    const { affected, matched } = await reorderStories({ userId: session.user.id, role: session.user.role }, validIds);
+    const { affected, matched } = await reorderStories(
+      { userId: session.user.id, role: session.user.role },
+      validIds,
+    );
 
     // 존재하지 않는 ID 또는 중복 ID 로 인해 일부만 갱신된 경우 방어
     if (!matched) {
@@ -327,6 +381,6 @@ export async function deleteAlumniStory(id: string): Promise<void> {
     // 서버 액션 void 반환형이라 에러 발생 시 redirect 등으로 처리하거나 에러를 던질 수 있음
     throw new Error("삭제 중 오류가 발생했습니다.");
   }
-  
+
   revalidateAlumniPaths();
 }

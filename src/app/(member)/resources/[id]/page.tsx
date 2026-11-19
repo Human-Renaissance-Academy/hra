@@ -27,9 +27,8 @@ type ResourceDetailPageProps = {
 export async function generateMetadata({ params }: ResourceDetailPageProps): Promise<Metadata> {
   const { id } = await params;
 
-  // Oracle Phase D BLOCK 수정 — 검증되지 않은 UUID를 DB 쿼리에 넘기면
-  // Postgres cast 에러가 원본 그대로 Vercel Logs에 노출되어 개인정보(라우트 파라미터)가
-  // 서버 로그에 남을 위험이 있음. z.uuid() 로 사전 차단하고 안전한 fallback 을 반환.
+  // 검증되지 않은 UUID 를 DB 쿼리에 넘기면 Postgres cast 오류 메시지에 라우트 파라미터
+  // 원문이 담겨 서버 로그에 남을 수 있다. z.uuid() 로 사전 차단하고 안전한 fallback 을 반환한다.
   const parsedId = z.uuid().safeParse(id);
   if (!parsedId.success) {
     return { title: "자료실" };
@@ -44,8 +43,8 @@ export default async function ResourceDetailPage({ params }: ResourceDetailPageP
   const session = await requireSharedResourceReader();
   const { id } = await params;
 
-  // Oracle Phase D BLOCK 수정 — 라우트 파라미터의 UUID 형식을 먼저 검증하여
-  // Postgres cast 에러로 인한 raw error 로깅(개인정보 leak)을 예방한다.
+  // 라우트 파라미터의 UUID 형식을 DB 조회 전에 먼저 검증해, Postgres cast 오류로
+  // 원문 입력이 로그에 남지 않게 한다.
   const parsedId = z.uuid().safeParse(id);
   if (!parsedId.success) {
     notFound();

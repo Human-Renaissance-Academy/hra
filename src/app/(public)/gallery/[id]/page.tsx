@@ -13,8 +13,12 @@ import { ArrowLeft, ExternalLink, ImageIcon } from "lucide-react";
 import { notFound } from "next/navigation";
 import { after } from "next/server";
 import { Card, CardContent } from "@/components/ui/card";
-import { getPublicGalleryDetail, incrementPublicGalleryViewCount } from "@/features/gallery/detail/service";
+import {
+  getPublicGalleryDetail,
+  incrementPublicGalleryViewCount,
+} from "@/features/gallery/detail/service";
 import { logServerError } from "@/lib/errors";
+import { defaultOpenGraphImages, defaultTwitterImages } from "@/lib/seo/share-image";
 
 export const dynamic = "force-dynamic";
 
@@ -44,12 +48,13 @@ export async function generateMetadata({ params }: GalleryDetailPageProps): Prom
       description,
       type: "article",
       url: `/gallery/${gallery.id}`,
-      images: firstImage ? [{ url: firstImage, alt: gallery.title }] : undefined,
+      // 사진이 없는 앨범은 기본 공유 이미지로 대체합니다(#414).
+      images: firstImage ? [{ url: firstImage, alt: gallery.title }] : defaultOpenGraphImages,
     },
     twitter: {
       title: gallery.title,
       description,
-      images: firstImage ? [firstImage] : undefined,
+      images: firstImage ? [firstImage] : defaultTwitterImages,
     },
   };
 }
@@ -82,7 +87,7 @@ export default async function GalleryDetailPage({ params }: GalleryDetailPagePro
           <ArrowLeft className="size-4" />
           갤러리 목록으로
         </Link>
-<h1 className="text-2xl font-semibold tracking-tight text-[#1a1a1a] sm:text-3xl md:text-4xl">
+        <h1 className="text-2xl font-semibold tracking-tight text-[#1a1a1a] sm:text-3xl md:text-4xl">
           {gallery.title}
         </h1>
         <p className="text-xs text-[#666666]">조회수 {gallery.viewCount}</p>
@@ -111,16 +116,16 @@ export default async function GalleryDetailPage({ params }: GalleryDetailPagePro
               rel="noreferrer"
               className="group block overflow-hidden rounded-2xl border border-[#D9D9D9] bg-white shadow-[var(--shadow-soft)]"
             >
-                <div className="relative h-72 w-full bg-gray-100">
-                  {image.url ? (
-                    <Image
-                      src={image.url}
-                      alt={image.alt ?? `${gallery.title} 이미지 ${index + 1}`}
-                      width={1200}
-                      height={800}
-                      className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
-                    />
-                  ) : (
+              <div className="relative h-72 w-full bg-gray-100">
+                {image.url ? (
+                  <Image
+                    src={image.url}
+                    alt={image.alt ?? `${gallery.title} 이미지 ${index + 1}`}
+                    width={1200}
+                    height={800}
+                    className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
+                  />
+                ) : (
                   <div className="flex h-full w-full items-center justify-center text-[#666666]">
                     <ImageIcon className="size-10" />
                   </div>

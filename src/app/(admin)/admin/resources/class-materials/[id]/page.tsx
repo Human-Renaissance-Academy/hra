@@ -27,7 +27,7 @@ export default async function EditClassMaterialPage({ params }: Props) {
 
   const { id } = await params;
 
-  // Oracle Phase D BLOCK 수정 — z.uuid() 사전 검증으로 라우트 파라미터 leak 방지.
+  // z.uuid() 로 라우트 파라미터 형식을 DB 조회 전에 검증한다.
   // UUID 형식이 아닌 값이 DB 쿼리에 도달하면 Postgres cast error 로 raw ID 가
   // Vercel Logs 에 노출될 수 있으므로 사전 차단한다.
   const parsedId = z.uuid().safeParse(id);
@@ -35,7 +35,10 @@ export default async function EditClassMaterialPage({ params }: Props) {
     notFound();
   }
 
-  const material = await getAdminMaterial({ userId: session.user.id, role: session.user.role }, parsedId.data);
+  const material = await getAdminMaterial(
+    { userId: session.user.id, role: session.user.role },
+    parsedId.data,
+  );
 
   if (!material) {
     notFound();
