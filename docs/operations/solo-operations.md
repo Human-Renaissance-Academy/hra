@@ -19,6 +19,7 @@
 
 - 일반 코드 변경: PR → 최신 CI·필수 리뷰 → main 병합 → Vercel Production 배포 → 배포 SHA/공개 smoke 확인.
 - 운영 DB가 바뀌지 않는 변경에는 마이그레이션 승인 작업을 매번 추가하지 않는다.
+- 운영 DB가 바뀌는 배포만 [DB 변경 배포 게이트](../developer/database-change-procedure.md#db-change-gate)를 따른다: 플래그 꺼진 채 병합 → 백업 확인 → SQL 적용 → 읽기 전용 보고서의 catalog `missing` 0 → 플래그 켜기. 실패하면 플래그를 끈 채 forward-fix하고 자동 `DROP`하지 않는다. 플래그가 없으면 SQL을 먼저 적용·확인한 뒤 병합한다.
 - Preview가 필요한 날에만 비운영 Test DB·합성 자료로 검증하고, 평소에는 CI를 사용한다.
 - 실제 사용자가 없는 기능·모바일 확장·불필요한 타사 서비스는 추가하지 않는다(#491 [동결 결정](../decisions/2026-11-19-mobile-api-freeze.md)).
 
@@ -34,7 +35,7 @@
 ## 분명히 남겨 둘 미완료 항목
 
 - Production DB 및 Blob의 **실제** 백업·복구 가능성은 점검 증거가 있어야 완료다(#280/#142).
-- Preview 데이터 격리와 2026-11-14 홈 HTTP 500은 해결됐다고 가정하지 않는다(#279).
+- Preview 홈의 2026-11-14 HTTP 500은 #522 이후 코드 계약상 Preview 거부 응답(HTTP 503·`no-store`·`noindex`, `src/lib/preview-boundary.ts`)으로 바뀌었다. 다만 실제 Preview 배포의 응답·자격증명 분리 측정([운영 확인 절차 §2](production-verification-runbook.md#preview-separation))이 남아 있으므로 Preview 데이터 격리가 해결됐다고 가정하지 않는다(#279).
 - 실제 수신 가능한 알림·비용 한도·권한 복구 연락 경로는 설정값을 확인해야 한다(#333/#284).
 - CI 간소화는 필수 보안·배포 후 알림 유지 여부를 검증한 다음 진행한다(#492).
 

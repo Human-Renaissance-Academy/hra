@@ -149,6 +149,40 @@ npm run build
 
 자동 테스트의 성공·실패·건너뜀을 구분합니다. 필요한 PostgreSQL 테스트가 건너뛰어졌다면 DB 변경 검증이 완료된 것으로 기록하지 않습니다.
 
+### DB 변경 배포 게이트 (#280) {#db-change-gate}
+
+2026-11-20 소유자 결정으로 아래 순서를 1인 운영의 **공식 DB 변경 배포 게이트**로 채택합니다. 자동 적용기·배포 차단 장치가 아니라 운영자가 지키는 수동 순서이며, Vercel build·Preview에서 DB 변경을 실행하지 않는다는 원칙은 그대로입니다.
+
+**A. 기능 플래그가 있는 변경 (기본 경로)**
+
+1. **추가형이거나 기존 경로와 호환되도록 설계·검증된 SQL**과 **기본값이 꺼진 기능 플래그**를 같은 PR로 병합합니다. 플래그가 정확히 `true`가 아니면 새 코드는 새 표·함수·컬럼을 조회하지 않으므로 SQL 적용 전 배포와 호환됩니다. 기존 제약·함수를 교체하는 SQL은 플래그가 꺼진 기존 경로도 바뀌므로, 적용 후 기존 경로의 호환을 격리 회귀로 검증한 경우에만 이 경로를 씁니다.
+2. 운영자가 [운영 확인 절차 §1](../operations/production-verification-runbook.md#db-catalog-backup)로 복원 가능 기간과 백업 상태를 확인합니다.
+3. 이 문서의 1~4단계(대상 확인·격리 DB 선행·호환성 검토·승인된 대상 적용)에 따라 SQL을 운영 DB에 적용합니다. 선행 SQL 순서를 지키고, **기능별 전용 절차 문서의 선행 승인·조건을 따릅니다**(예: 분리 제출은 SQL 적용 전 #142 승인).
+4. [읽기 전용 DB 보고서](../operations/production-verification-runbook.md#db-report)(`scripts/ops/prod-db-readonly-report.mjs`)를 다시 실행해 `sections.catalog.data.objects[]` 중 **해당 기능과 선행 묶음(G1 등)의 객체 `missing`이 모두 0개**인지 확인합니다.
+5. 그다음에만 플래그를 켭니다. 플래그별 정책·운영 승인 조건([환경변수 계약](environment-inventory.md)의 활성 조건)도 별도로 충족해야 합니다.
+6. 적용이나 확인이 실패하면 **플래그를 끈 채로 두고 forward-fix**합니다. 데이터가 생길 수 있는 표·함수를 자동 `DROP`하지 않으며, 실패한 SQL을 자동 반복하지 않습니다.
+
+**B. 플래그 없이 DB에 의존하는 변경:** 현재 운영 코드와 호환되는(추가형) SQL을 **먼저 적용**하고 4번과 같이 catalog를 확인한 뒤 PR을 병합합니다. 앱이 새 객체를 바로 사용하므로 순서를 바꾸지 않습니다.
+
+**C. DB 변경이 없는 일반 배포:** 기존처럼 CI → main → Production → 배포 SHA·[공개 smoke](../operations/production-smoke.md) 확인만 합니다. 이 게이트를 매 배포에 추가하지 않습니다.
+
+#### 병합됐지만 운영 적용 여부가 확인되지 않은 SQL
+
+아래 SQL은 코드와 함께 병합돼 있습니다. **운영 DB 적용 여부는 저장소로 알 수 없으며** 읽기 전용 보고서의 catalog 결과로만 판단합니다. 선행 SQL은 `scripts/db/source-inventory.json`의 `predecessors`, catalog 묶음은 `scripts/db/installation-contract.json`의 객체 ID입니다.
+
+| 순서 | SQL | 선행 SQL | 켜는 플래그 (함께 켜야 하는 플래그) | 확인할 catalog 묶음 |
+| --- | --- | --- | --- | --- |
+| 0 (선행) | G1 범위 SQL 9개(`source-inventory.json`의 `g1Order` 앞 9개, [학생 명부 스키마 적용](academic-students-migration.md)) | 웹 기본 표 | `ACADEMIC_ENABLED` (학사 기능 전체의 전제) | `academic-students`·`academic-assignments`·`academic-submissions` 등 G1 표·`academic-*-function(s)`·`academic-*-trigger(s)` — 아래 모든 학사 행의 선행 조건으로 `missing` 0 |
+| 독립 | `scripts/migrate-academic-submission-artifacts.sql` — **SQL 적용 전 #142 승인 필요**, [전용 절차](academic-submission-artifacts-migration.md). 추가형이 아니라 **기존 제약·함수 교체**(v1 CHECK·단일 파일 UNIQUE·활성 의도 인덱스, 플래그와 무관하게 쓰이는 v1 함수 `CREATE OR REPLACE`). v1 호환은 전용 문서와 `tests/unit/academic-submission-artifacts-postgres.test.ts`로 검증하며, 적용 후 앞선 G1 SQL을 재실행하지 않음([재실행 주의](academic-submission-artifacts-migration.md#apply-order)) | 0의 G1 9개(마지막 `migrate-academic-submission-file-reads.sql`). 이 SQL은 `g1Order`의 10번째 | `ACADEMIC_SUBMISSION_ARTIFACTS_ENABLED` (`ACADEMIC_ENABLED`·`ACADEMIC_UPLOADS_ENABLED`) | `academic-artifact-*` |
+| 1 | `scripts/migrate-academic-staff-assignments.sql` | SQL 선행은 웹 기본 표뿐. 단 함께 켜는 `ACADEMIC_ENABLED`가 G1을 전제하므로 플래그를 켜기 전 0의 G1 `missing` 0 | `ACADEMIC_STAFF_ENABLED` (`ACADEMIC_ENABLED`) | `academic-staff-*` |
+| 2 | `scripts/migrate-academic-attendance.sql` | G1 학생, 1 | `ACADEMIC_ATTENDANCE_ENABLED` (`ACADEMIC_ENABLED`·`ACADEMIC_STAFF_ENABLED`) | `academic-attendance-*` |
+| 3 | `scripts/migrate-academic-faculty-reviewers.sql` | G1 과제, 1 | `ACADEMIC_FACULTY_REVIEW_ENABLED` (`ACADEMIC_ENABLED`) | `academic-faculty-review-*` |
+| 4 | `scripts/migrate-academic-assignment-reviews.sql` | G1 제출, 3 | `ACADEMIC_ASSIGNMENT_REVIEW_ENABLED` (`ACADEMIC_ENABLED`·`ACADEMIC_FACULTY_REVIEW_ENABLED`) | `academic-assignment-review-*` |
+| 5 | `scripts/migrate-academic-completion.sql` | G1 학생·과제·제출, 1, 2 | `ACADEMIC_COMPLETION_ENABLED` (`ACADEMIC_ENABLED`·`ACADEMIC_STAFF_ENABLED`) | `academic-completion-*` |
+| 독립 | `scripts/migrate-507-email-identity-unique.sql` | 없음(웹 기본 표) | 없음 — B 경로. 정규화 코드는 이미 병합돼 인덱스 유무와 호환 | `email-identity-unique`, `sections.emailIdentityIndex` |
+
+#507 인덱스는 보고서의 `emailIdentity` 충돌 계수가 0일 때만 적용하며, 롤백 방법은 [DB 입문 안내의 #507 절](../DATABASE.md#email-identity-507)에 있습니다.
+
 ## 4. 실패했을 때
 
 | 상황 | 다음 행동 |

@@ -4,7 +4,7 @@
 
 > **기능 비활성.** PR-C는 저장소에 SQL·신규 설치 후보·목록·시험만 추가했다. PR-D가 서비스·리포지토리를 V2 함수에 연결했지만 `ACADEMIC_SUBMISSION_ARTIFACTS_ENABLED`(기본 `false`)가 켜지기 전에는 앱이 기존 PDF 단일 제출(v1) 함수만 호출한다. 화면·API v1 연결은 후속 PR(E~H)에서 한다. 운영 DB 적용은 [#280](https://github.com/Human-Renaissance-Academy/hra-website/issues/280) migration gate와 #142 보존 정책 승인 뒤 별도로 승인한다.
 
-## 적용 순서와 전제
+## 적용 순서와 전제 {#apply-order}
 
 `scripts/migrate-academic-submission-artifacts.sql`은 G1 범위 SQL 9개(`academicG1Migrations`의 앞 9개)를 모두 적용한 뒤 마지막으로 실행한다. 공통 절차는 [DB 변경 절차](database-change-procedure.md)를 따른다.
 

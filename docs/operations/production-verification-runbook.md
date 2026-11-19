@@ -57,7 +57,7 @@ npm ci
 node --test scripts/tests/ops-readonly-report.test.mjs   # 도구 자체의 안전 성질(합성 mock) 확인
 ```
 
-### DB 보고서 한 번 실행 (여러 이슈 공통)
+### DB 보고서 한 번 실행 (여러 이슈 공통) {#db-report}
 
 ```bash
 ! out="$(mktemp)"; DATABASE_URL="$(cat ~/.config/hra/prod-ro.url)" node scripts/ops/prod-db-readonly-report.mjs > "$out"; echo "exit=$?"; cat "$out"; rm -f "$out"
@@ -101,7 +101,7 @@ node --test scripts/tests/ops-readonly-report.test.mjs   # 도구 자체의 안�
 
 ---
 
-## 1. #280 운영 DB catalog·백업·복구 증거
+## 1. #280 운영 DB catalog·백업·복구 증거 {#db-catalog-backup}
 
 **목적:** 운영 DB에 저장소가 기대하는 객체(테이블·제약·함수·인덱스·트리거·enum)가 실제로 있는지, 적용 이력(ledger)이 있는지 관측해 기존 DB baseline의 출발점을 만듭니다. 또한 백업에서 복원한 DB가 운영과 같은 구조인지 비교해 "복구 검증"의 최소 증거를 남깁니다.
 
@@ -131,7 +131,7 @@ node --test scripts/tests/ops-readonly-report.test.mjs   # 도구 자체의 안�
 
 **해제하는 결정:** 기존 DB baseline의 기준 지문 확정, versioned manifest의 첫 항목 설계, "복구 검증 완료" 표시 여부(#280 완료 조건), #287·#507 인덱스 적용 일정.
 
-## 2. #279 Preview와 Production 데이터 분리
+## 2. #279 Preview와 Production 데이터 분리 {#preview-separation}
 
 **목적:** Production 비밀값(DB·Auth·Kakao·Blob·Cron)이 Preview/Development와 **같은 값으로 공유되지 않음**을 설정 이름·적용 대상만으로 확인하고, 실제 Preview 응답이 거부 계약을 지키는지 확인합니다.
 
@@ -207,9 +207,13 @@ node --test scripts/tests/ops-readonly-report.test.mjs   # 도구 자체의 안�
 
 **붙여 넣을 것:** 세 출력의 숫자·코드, 수동 확인 체크 결과. 자료 ID·파일명·URL·계정 이메일은 붙이지 않습니다.
 
+**쓰기 단계(이 절의 범위 밖):** 잔존이 있으면 [자료실 파일 접근 정책의 이전·배포 순서](../resource-file-access-policy.md#protected-migration-rollout)와 [운영 전환 완료 체크리스트](../resource-file-access-policy.md#migration-completion-checklist)의 순서대로 `--apply` → 앱 읽기·잔존 0 재확인 → 신규 보호 자료의 비공개 업로드 확인(체크리스트 4번) → `--delete-public`을 진행합니다. **`--apply`·확인·`--delete-public` 단계는 각각 따로 승인받아 실행**하며, 한 번의 승인으로 다음 단계까지 진행하지 않습니다.
+
+**이전 공개 URL 재확인 시점:** `--delete-public` 직후 한 번, 그리고 **대기 기간(예: 24시간 이상) 뒤 다시 한 번** 비로그인 창에서 이전 공개 URL 접근이 실패하는지 확인합니다. 삭제 후에도 CDN·브라우저 캐시가 잠시 응답할 수 있다는 **보수적 가정**이며, 실제 캐시 유지 시간은 검증하지 않았습니다. 두 번째 확인이 실패(여전히 열림)이면 0절의 비공개 공유 규칙을 따릅니다.
+
 **해제하는 결정:** 공개 원본 잔존 0 확정 또는 이전 실행 승인, "익명/권한 없음 거부" 완료 조건 체크.
 
-## 4. #267 · #507 · #178 OAuth 로그인·계정 연결·이메일 정규화
+## 4. #267 · #507 · #178 OAuth 로그인·계정 연결·이메일 정규화 {#oauth-login-checks}
 
 **목적:** 실제 제공자(Google·Kakao)와 Credentials의 정상 로그인, 기존 바인딩 보존, 이메일 대소문자 충돌 여부를 운영에서 확인합니다.
 
