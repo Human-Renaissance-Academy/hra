@@ -1,6 +1,8 @@
-# HRA 웹사이트 개발 가이드
+# HRA 개발 가이드
 
 이 문서는 HRA에서 **무엇을 어디서 바꾸고, 어떻게 확인한 뒤 제출하는지** 찾는 안내서입니다. 프로그래밍 전공 지식 없이도 작은 작업부터 따라갈 수 있도록 현재 코드 구조와 운영 작업을 구분했습니다.
+
+이 가이드는 현재 운영 대상인 Web(루트 Next.js 앱)을 중심으로 합니다. 모바일(`apps/mobile`)과 API v1은 [동결](decisions/2026-11-19-mobile-api-freeze.md) 상태입니다.
 
 처음 실행한다면 [사전 준비](getting-started/prerequisites.md) → [프로젝트 설정](getting-started/clone-and-setup.md) → [첫 실행](getting-started/first-run.md) 순서로 읽습니다. 용어가 낯설면 [기초 용어집](getting-started/glossary.md)을 참고합니다.
 
@@ -8,7 +10,7 @@
 
 | 하려는 일 | 먼저 볼 곳 | 완료 확인 |
 | --- | --- | --- |
-| 내 컴퓨터에서 사이트 실행 | [시작하기](getting-started/clone-and-setup.md) | 개발 서버와 필요한 DB·로그인 연결을 확인합니다. |
+| 내 컴퓨터에서 Web 실행 | [시작하기](getting-started/clone-and-setup.md) | 개발 서버와 필요한 DB·로그인 연결을 확인합니다. |
 | 문구·화면·기능 코드 수정 | [협업 절차](contributing/workflow.md), [코드 규칙](contributing/conventions.md) | 변경 화면, 검사 결과, PR 리뷰를 확인합니다. |
 | 공지·교수진·갤러리 등 운영 콘텐츠 수정 | [관리자 안내](ADMIN-GUIDE.md)와 홈페이지의 관리자 화면 | 올바른 환경에서 저장했는지, 공개 화면에 의도대로 보이는지 확인합니다. |
 | DB 구조 변경 | [데이터베이스 변경 절차](developer/database-change-procedure.md) | 적용 대상·백업·추가 SQL·복구와 사후 조회를 확인합니다. |
