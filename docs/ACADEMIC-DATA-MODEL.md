@@ -134,6 +134,7 @@
 - 업로드 중단·만료·DB 실패 시 고아 객체 정리와 재시도 정책을 명시한다. **다른 제출물이 참조 중인 객체는 삭제하지 않는다.**
 - Vercel Function의 4.5MB 본문 제한은 `serverActions.bodySizeLimit` 확대만으로 해제되지 않는다. G1 코드에는 [인증된 브라우저→비공개 스토리지 직접 업로드와 원본 검증](developer/academic-assignment-uploads.md)이 구현됐으며, 운영 업로드는 비활성이다.
 - 파일 포맷은 확장자+매직 바이트 검증, 크기·개수·요청 제한, 바이러스/악성코드 정책은 데이터 민감도에 맞춰 단계화한다.
+- #516 분리 제출(텍스트·발표자료)의 권장 정책과 모델 영향은 [과제 제출 범위 #516 절](ASSIGNMENT-SUBMISSION-SCOPE.md)에 있다. **초안(2026-11-19) — 운영 승인 전 기능 비활성.**
 - G1 파일 정책은 **비어 있지 않은 PDF 1개, 50MiB(52,428,800바이트) 이하**다. `.pdf` 확장자(대소문자 무관), `application/pdf` MIME, PDF 시그니처를 모두 검증하고 다른 형식·추가 파일은 거부한다. 개인 제출 파일은 인증된 첨부 다운로드만 허용한다.
 
 공식 자료: [Vercel Functions 한도](https://vercel.com/docs/functions/limitations), [Vercel Private Blob](https://vercel.com/docs/vercel-blob/private-storage), [Client Upload](https://vercel.com/docs/vercel-blob/client-upload).
@@ -178,6 +179,15 @@
 - `canManageAttendance(session, scheduleEventId)`: 해당 CLASS 수업일의 기수와 **현재 유효한 어드바이저·조교 배정**을 함께 검증한다. 배정되지 않은 사용자, 다른 기수 배정자, `FACULTY`/`ADMIN` 역할만 가진 사용자, PENDING·비로그인은 거부한다. 정정·최종 승인과 별도 학사 운영 관리자 권한은 #143 정책으로 결정한다.
 - 어드바이저·조교의 명부 접근은 **해당 기수의 출결 대상 학생 최소 정보**로 제한한다. 과제 평가·개인 제출 파일·다른 기수 학적은 기본 열람 대상으로 삼지 않는다.
 - 교수/교수 프로필(`faculty`)과 운영 인력 배정은 별도 정본이다. 양자를 동일한 ID나 로그인 역할로 통합하지 않는다.
+
+**정책 초안(2026-11-19) — 운영 승인 전 기능 비활성:** [학사 운영 정책 초안](ACADEMIC-OPERATIONS-POLICY.md)은 위 미정 사항의 권장안을 정한다. 모델에 미치는 영향은 다음과 같다.
+
+- 배정: 같은 기수에서 `ADVISOR` 동시 유효 1명, `ASSISTANT` 동시 유효 최대 2명. 교체는 기존 행의 `ends_at` 기록 후 새 행 추가이며 보존기간 내 과거 행을 수정·삭제하지 않는다.
+- 학사 운영 관리자: 전역 역할이 아니라 검증된 계정 ID 지정. 배정의 `assigned_by_user_id`는 이 권한 보유자여야 한다.
+- 출결 상태: `PRESENT`·`LATE`·`ABSENT`·`EXCUSED`. 행 부재는 미입력. 7일 입력 창(수업일 KST 00:00부터 수업일+7일 KST 24:00 미만)이 지나면 직접 수정 대신 정정 요청 기록(요청자·사유·승인자, 요청자≠승인자)을 쓴다. `EXCUSED`는 학사 운영 관리자 승인 필요.
+- 교수 검토: 수업(세션) 단위 검토자 지정 기록을 별도로 두고, 출결 인가에 사용하지 않는다.
+- 수료: `completion_criteria_versions`(기수·버전·공개 시각, 공개 후 불변)와 `completion_decisions`(적용 버전·확정자·사유·확정/취소 시각)로 분리한다.
+- 보존: 개별 출결·피드백은 수료 판정 확정일 후 1년, 수료 기록은 5년 권장([보존·파기 정책 초안](ACADEMIC-PRIVACY-RETENTION-POLICY.md) 2-1절). 출결 파기가 수료 결과를 지우지 않도록 참조를 분리한다.
 
 관련 작업: [#165 수업 Advisor 배정 및 권한](https://github.com/Human-Renaissance-Academy/hra-website/issues/165), [#159 출결 모델](https://github.com/Human-Renaissance-Academy/hra-website/issues/159), [#160 출결 UI](https://github.com/Human-Renaissance-Academy/hra-website/issues/160).
 
