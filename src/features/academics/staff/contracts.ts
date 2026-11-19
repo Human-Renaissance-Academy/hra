@@ -194,3 +194,61 @@ export const designationResultSchema = z.object({
 
 export type StaffAssignment = z.infer<typeof assignmentRow>;
 export type ManagerDesignation = z.infer<typeof designationRow>;
+
+// ── #160 화면용 읽기 DTO ──────────────────────────────────────────────────────
+// 확인 근거 참조·종료 사유 원문·이메일은 화면 DTO에도 포함하지 않습니다.
+
+// 학사 운영 관리자 화면: 기수 목록과 현재·예정 배정. 관리자가 아니면 저장소가 null을 돌려줍니다.
+export const staffOverviewSchema = z
+  .object({
+    cohorts: z.array(z.object({ id: z.uuid(), name: z.string() })),
+    assignments: z.array(
+      z.object({
+        id: z.uuid(),
+        cohortId: z.uuid(),
+        userId: z.uuid(),
+        userName: z.string(),
+        staffRole: z.enum(STAFF_ROLES),
+        validFrom: timestamp,
+        validTo: timestamp.nullable(),
+        // 시작 전(예정) 배정 여부. DB 현재 시각 기준입니다.
+        upcoming: z.boolean(),
+      }),
+    ),
+  })
+  .nullable();
+
+// 배정 변경 감사 목록(최근 50건). 행위 종류·행위자 이름·대상 기수/이름·시각만 담습니다.
+export const STAFF_AUDIT_ACTIONS = [
+  "MANAGER_DESIGNATE",
+  "MANAGER_END",
+  "STAFF_ASSIGN",
+  "STAFF_END",
+  "STAFF_REPLACE",
+] as const;
+export const staffAuditSchema = z
+  .array(
+    z.object({
+      id: z.uuid(),
+      action: z.enum(STAFF_AUDIT_ACTIONS),
+      actorName: z.string(),
+      cohortName: z.string().nullable(),
+      targetName: z.string().nullable(),
+      createdAt: timestamp,
+    }),
+  )
+  .nullable();
+
+// 운영 인력 본인의 현재 유효 배정 기수. 다른 운영 인력 정보는 포함하지 않습니다.
+export const myStaffCohortsSchema = z.array(
+  z.object({
+    cohortId: z.uuid(),
+    cohortName: z.string(),
+    staffRole: z.enum(STAFF_ROLES),
+    validTo: timestamp.nullable(),
+  }),
+);
+
+export type StaffOverview = NonNullable<z.infer<typeof staffOverviewSchema>>;
+export type StaffAuditEvent = NonNullable<z.infer<typeof staffAuditSchema>>[number];
+export type MyStaffCohort = z.infer<typeof myStaffCohortsSchema>[number];
