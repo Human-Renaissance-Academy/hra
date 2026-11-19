@@ -152,7 +152,7 @@ export async function getAllFaqItems() {
 export async function getFaqItem(id: string) {
   const actor = await requireFaqActor();
 
-  // Oracle Phase D BLOCK 수정 — z.uuid() 사전 검증으로 라우트 파라미터 leak 방지.
+  // z.uuid() 로 라우트 파라미터 형식을 DB 조회 전에 검증한다.
   // UUID 형식이 아닌 값이 DB 쿼리에 도달하면 Postgres cast error 로 raw ID 가
   // Vercel Logs 에 노출될 수 있으므로 사전 차단한다.
   const parsedId = z.uuid().safeParse(id);
@@ -193,7 +193,7 @@ export async function createFaqItem(formData: FormData): Promise<FaqItemActionSt
 export async function updateFaqItem(id: string, formData: FormData): Promise<FaqItemActionState> {
   const actor = await requireFaqActor();
 
-  // Oracle Phase D BLOCK 수정 — z.uuid() 사전 검증으로 라우트 파라미터 leak 방지.
+  // UUID 형식이 아니면 DB 조회 전에 차단한다. Postgres uuid cast 오류 메시지로 원본 ID 가 로그에 남지 않게 한다.
   const parsedId = z.uuid().safeParse(id);
   if (!parsedId.success) {
     return { success: false, message: "유효하지 않은 ID입니다." };
@@ -229,7 +229,7 @@ export async function updateFaqItem(id: string, formData: FormData): Promise<Faq
 export async function deleteFaqItem(id: string): Promise<void> {
   const actor = await requireFaqActor();
 
-  // Oracle Phase D BLOCK 수정 — z.uuid() 사전 검증으로 라우트 파라미터 leak 방지.
+  // UUID 형식이 아니면 DB 조회 전에 차단한다. Postgres uuid cast 오류 메시지로 원본 ID 가 로그에 남지 않게 한다.
   const parsedId = z.uuid().safeParse(id);
   if (!parsedId.success) return;
 
@@ -247,7 +247,7 @@ export async function reorderFaqItems(
 ): Promise<{ success: boolean; message: string }> {
   const actor = await requireFaqActor();
 
-  // Oracle Phase D 5라운드 BLOCK 수정 — orderedIds 각 원소를 UUID 로 사전 검증한다.
+  // orderedIds 각 원소를 UUID 로 사전 검증한다.
   // 이 배열은 reorderByCase 헬퍼의 `${a.id}::uuid` raw SQL 캐스트로 흘러가는데
   // UUID 형식이 아닌 값이 도달하면 Postgres cast error 로 raw ID 가 Vercel Logs 에
   // 노출될 수 있으므로 사전 차단한다. z.array(z.uuid()).min(1) 은 배열/비어있음/원소 형식을 한번에 검증.

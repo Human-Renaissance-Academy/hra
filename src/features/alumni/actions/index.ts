@@ -332,7 +332,7 @@ export async function reorderAlumniStories(
 ): Promise<{ success: boolean; message: string }> {
   const session = await requireAdmin();
 
-  // Oracle Phase D 5라운드 BLOCK 수정 — orderedIds 각 원소를 UUID 로 사전 검증한다.
+  // orderedIds 각 원소를 UUID 로 사전 검증한다.
   // 이 배열은 reorderByCase 헬퍼의 `${a.id}::uuid` raw SQL 캐스트로 흘러가는데
   // UUID 형식이 아닌 값이 도달하면 Postgres cast error 로 raw ID 가 Vercel Logs 에
   // 노출될 수 있으므로 사전 차단한다.

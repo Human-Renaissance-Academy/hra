@@ -238,7 +238,7 @@ export async function reorderGalleryImages(
     return initialError(parsedGalleryId.error.issues[0]?.message ?? "잘못된 앨범 ID입니다.");
   }
 
-  // Oracle Phase D 5라운드 BLOCK 수정 — orderedIds 각 원소를 UUID 로 사전 검증한다.
+  // orderedIds 각 원소를 UUID 로 사전 검증한다.
   // 이 배열은 두 경로에서 SQL 로 흘러간다: (1) inArray(galleryImages.id, orderedIds)
   // 는 파라미터 바인딩이라 injection 은 없지만 UUID 형식이 아닌 값이 들어가면 Postgres
   // 캐스트 에러로 raw ID 가 Vercel Logs 에 노출된다, (2) reorderByCase 헬퍼의
