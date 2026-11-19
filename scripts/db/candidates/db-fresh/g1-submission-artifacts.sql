@@ -1,8 +1,8 @@
 -- #280 소유 로컬 fresh 후보: 운영 적용·실제 과거 적용 이력이 아닙니다.
 -- 원본 참조: scripts/migrate-academic-submission-artifacts.sql
--- 검토 원본 SHA256: be7cc23f91867b1039d7d6fe5c2a71948028ac18ae61f7b5e67d314df610c24f
--- reviewedDelta: 3행 BEGIN; → 제외; 6행 SET LOCAL statement_timeout = '60s'; → 제외; 940행 COMMIT; → 제외
--- 원본→후보 보존 행: 1-2→11-12; 4-5→13-14; 7-939→15-947
+-- 검토 원본 SHA256: 169ccf70869a31ae2b2f66b7e63b4deab123f6fc007c0cbdcf3a4c79afed4e5f
+-- reviewedDelta: 3행 BEGIN; → 제외; 6행 SET LOCAL statement_timeout = '60s'; → 제외; 1086행 COMMIT; → 제외
+-- 원본→후보 보존 행: 1-2→11-12; 4-5→13-14; 7-1085→15-1093
 -- 사유: 파일 transaction은 S2가 소유하며 설치 statement timeout은 더 강한 engine 한도를 적용합니다.
 -- 보존: 내부 BEGIN/END·search_path·advisory lock·함수 본문/proconfig·ACL·FK/trigger·임시 expected 객체.
 -- namespaceDelta: 없음. app DDL은 기존 public 명시, TEMP/INDEX는 PostgreSQL의 원래 namespace 규칙을 보존합니다.
@@ -929,7 +929,153 @@ REVOKE ALL ON FUNCTION public.verify_authorized_academic_upload(uuid,uuid,text,t
 REVOKE ALL ON FUNCTION public.finalize_academic_assignment_submission(uuid,uuid,uuid,uuid) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.complete_academic_assignment_submission(uuid,uuid,uuid,uuid,boolean) FROM PUBLIC;
 
--- 6) 기존 행은 재분류 없이 LEGACY 값으로만 보여야 한다. 형식이 섞인 기록이 있으면 별도 복구 전까지 거부한다.
+-- 6) 과제 생성·초안 수정 함수(#149 mutate_academic_assignment)를 확장한다. 형식 키 세 개(submissionFormat·textRequirement·
+-- slidesRequirement)를 함께 보낸 CREATE/UPDATE_DRAFT만 제출 형식을 지정하고, 키가 없으면 기존 payload·감사 요약·동작과 같다.
+-- 공개 뒤 변경은 기존 HRA04와 과제 guard 트리거가 거부하므로 형식 전환은 DRAFT에서만 가능하다(정책 4·5).
+-- migrate-academic-assignment-actions.sql을 이 뒤에 다시 실행하면 v1 정의로 돌아가 형식 키를 HRA07로 거부한다(실패 폐쇄).
+DO $mutate_precondition$
+BEGIN
+  IF to_regprocedure('public.mutate_academic_assignment(text,uuid,uuid,uuid,uuid,jsonb)') IS NULL
+    OR to_regclass('public.academic_assignment_events') IS NULL THEN
+    RAISE EXCEPTION '과제 변경 함수(migrate-academic-assignment-actions.sql)를 먼저 적용해야 합니다.';
+  END IF;
+END;
+$mutate_precondition$;
+CREATE OR REPLACE FUNCTION public.mutate_academic_assignment(
+  p_action text, p_actor_id uuid, p_configured_approver_id uuid,
+  p_request_id uuid, p_correlation_id uuid, p_payload jsonb
+) RETURNS jsonb LANGUAGE plpgsql SET search_path = pg_catalog,public AS $mutate$
+DECLARE
+  definition public.assignments;
+  prior public.academic_assignment_events;
+  payload_digest text;
+  previous_status text;
+  expected_keys text[];
+  target_fingerprint text;
+  -- #516: 제출 형식·항목 요구 키 세 개는 함께 보낼 때만 받습니다. 보내지 않으면 기존 v1 payload와 같은 동작입니다.
+  policy_keys constant text[] := ARRAY['submissionFormat','textRequirement','slidesRequirement'];
+  has_policy boolean := false;
+BEGIN
+  IF p_action IS NULL OR p_action NOT IN ('CREATE','UPDATE_DRAFT','PUBLISH','CLOSE')
+    OR p_actor_id IS NULL OR p_configured_approver_id IS NULL OR p_actor_id<>p_configured_approver_id
+    OR p_request_id IS NULL OR p_correlation_id IS NULL OR jsonb_typeof(p_payload) IS DISTINCT FROM 'object' THEN
+    RAISE SQLSTATE 'HRA07' USING MESSAGE='과제 변경 요청이 올바르지 않습니다.';
+  END IF;
+  expected_keys := CASE p_action
+    WHEN 'CREATE' THEN ARRAY['cohortId','scheduleEventId','scheduleSessionId','title','instructions','dueAt']
+    WHEN 'UPDATE_DRAFT' THEN ARRAY['cohortId','scheduleEventId','scheduleSessionId','title','instructions','dueAt','assignmentId','expectedUpdatedAt']
+    WHEN 'PUBLISH' THEN ARRAY['assignmentId','expectedUpdatedAt','expectedTargetFingerprint']
+    ELSE ARRAY['assignmentId'] END;
+  IF p_action IN ('CREATE','UPDATE_DRAFT') AND p_payload ?| policy_keys THEN
+    has_policy := true;
+    expected_keys := expected_keys || policy_keys;
+  END IF;
+  IF NOT (p_payload ?& expected_keys) OR (SELECT count(*) FROM jsonb_object_keys(p_payload))<>cardinality(expected_keys) THEN
+    RAISE SQLSTATE 'HRA07' USING MESSAGE='과제 입력 필드가 올바르지 않습니다.';
+  END IF;
+  IF p_action IN ('CREATE','UPDATE_DRAFT') AND (
+    jsonb_typeof(p_payload->'title') IS DISTINCT FROM 'string'
+    OR length(btrim(p_payload->>'title')) NOT BETWEEN 1 AND 200
+    OR jsonb_typeof(p_payload->'instructions') IS DISTINCT FROM 'string'
+    OR length(p_payload->>'instructions')>50000 OR p_payload->>'cohortId' IS NULL) THEN
+    RAISE SQLSTATE 'HRA07' USING MESSAGE='과제 제목·본문·기수를 확인해 주세요.';
+  END IF;
+  -- LEGACY는 두 요구가 JSON null, V2는 두 요구를 모두 지정하고 둘 다 미사용일 수 없습니다(DB CHECK와 같은 규칙).
+  IF has_policy AND NOT (
+    jsonb_typeof(p_payload->'submissionFormat')='string' AND (
+      (p_payload->>'submissionFormat'='LEGACY_SINGLE_PDF'
+        AND jsonb_typeof(p_payload->'textRequirement')='null' AND jsonb_typeof(p_payload->'slidesRequirement')='null')
+      OR (p_payload->>'submissionFormat'='ARTIFACTS_V2'
+        AND jsonb_typeof(p_payload->'textRequirement')='string' AND jsonb_typeof(p_payload->'slidesRequirement')='string'
+        AND p_payload->>'textRequirement' IN ('REQUIRED','OPTIONAL','DISABLED')
+        AND p_payload->>'slidesRequirement' IN ('REQUIRED','OPTIONAL','DISABLED')
+        AND NOT (p_payload->>'textRequirement'='DISABLED' AND p_payload->>'slidesRequirement'='DISABLED')))) THEN
+    RAISE SQLSTATE 'HRA07' USING MESSAGE='과제 제출 형식과 텍스트·발표자료 요구를 확인해 주세요.';
+  END IF;
+  IF p_action<>'CREATE' AND p_payload->>'assignmentId' IS NULL THEN
+    RAISE SQLSTATE 'HRA07' USING MESSAGE='과제 ID가 필요합니다.';
+  END IF;
+  -- 저장 본문 대신 SHA-256 요약만 기록합니다. 확장 설치 없이 PostgreSQL 기본 함수를 사용합니다.
+  payload_digest := encode(sha256(convert_to(p_action || ':' || p_payload::text,'UTF8')),'hex');
+  PERFORM pg_advisory_xact_lock(hashtextextended('academic-assignment-request:' || p_request_id::text,0));
+  PERFORM id FROM public.users WHERE id=p_actor_id AND role IN ('ADMIN','FACULTY','MEMBER') FOR UPDATE;
+  IF NOT FOUND THEN RAISE SQLSTATE 'HRA01' USING MESSAGE='학사 운영 책임자 계정을 사용할 수 없습니다.'; END IF;
+  SELECT * INTO prior FROM public.academic_assignment_events WHERE request_id=p_request_id;
+  IF FOUND THEN
+    IF prior.actor_user_id<>p_actor_id OR prior.action<>p_action OR prior.payload_digest<>payload_digest THEN
+      RAISE SQLSTATE 'HRA02' USING MESSAGE='같은 요청 ID를 다른 변경에 사용할 수 없습니다.';
+    END IF;
+    SELECT * INTO definition FROM public.assignments WHERE id=prior.assignment_id;
+    RETURN jsonb_build_object('assignment',to_jsonb(definition),'targetCount',
+      (SELECT count(*) FROM public.assignment_targets WHERE assignment_id=definition.id),'replayed',true);
+  END IF;
+
+  IF p_action='CREATE' THEN
+    INSERT INTO public.assignments (cohort_id,schedule_event_id,schedule_session_id,title,instructions,due_at,created_by_user_id,
+        submission_format,text_requirement,slides_requirement)
+      VALUES ((p_payload->>'cohortId')::uuid,(p_payload->>'scheduleEventId')::uuid,
+        (p_payload->>'scheduleSessionId')::uuid,btrim(p_payload->>'title'),p_payload->>'instructions',
+        (p_payload->>'dueAt')::timestamptz,p_actor_id,
+        CASE WHEN has_policy THEN (p_payload->>'submissionFormat')::public.assignment_submission_format
+          ELSE 'LEGACY_SINGLE_PDF'::public.assignment_submission_format END,
+        CASE WHEN has_policy THEN (p_payload->>'textRequirement')::public.assignment_artifact_requirement END,
+        CASE WHEN has_policy THEN (p_payload->>'slidesRequirement')::public.assignment_artifact_requirement END)
+      RETURNING * INTO definition;
+  ELSE
+    SELECT * INTO definition FROM public.assignments WHERE id=(p_payload->>'assignmentId')::uuid FOR UPDATE;
+    IF NOT FOUND THEN RAISE SQLSTATE 'HRA03' USING MESSAGE='과제를 찾을 수 없습니다.'; END IF;
+    previous_status := definition.status::text;
+    IF p_action='UPDATE_DRAFT' THEN
+      IF definition.status<>'DRAFT' THEN RAISE SQLSTATE 'HRA04' USING MESSAGE='공개 후에는 과제 내용을 수정할 수 없습니다.'; END IF;
+      IF p_payload->>'expectedUpdatedAt' IS NULL OR definition.updated_at IS DISTINCT FROM (p_payload->>'expectedUpdatedAt')::timestamptz THEN
+        RAISE SQLSTATE 'HRA05' USING MESSAGE='과제가 다른 요청으로 수정되었습니다. 다시 조회해 주세요.';
+      END IF;
+      UPDATE public.assignments SET cohort_id=(p_payload->>'cohortId')::uuid,
+        schedule_event_id=(p_payload->>'scheduleEventId')::uuid,schedule_session_id=(p_payload->>'scheduleSessionId')::uuid,
+        title=btrim(p_payload->>'title'),instructions=p_payload->>'instructions',due_at=(p_payload->>'dueAt')::timestamptz,
+        -- 형식 키가 없는 기존 화면의 초안 수정은 이미 지정한 제출 형식을 바꾸지 않습니다.
+        submission_format=CASE WHEN has_policy THEN (p_payload->>'submissionFormat')::public.assignment_submission_format ELSE submission_format END,
+        text_requirement=CASE WHEN has_policy THEN (p_payload->>'textRequirement')::public.assignment_artifact_requirement ELSE text_requirement END,
+        slides_requirement=CASE WHEN has_policy THEN (p_payload->>'slidesRequirement')::public.assignment_artifact_requirement ELSE slides_requirement END
+        WHERE id=definition.id RETURNING * INTO definition;
+    ELSIF p_action='PUBLISH' THEN
+      IF p_payload->>'expectedUpdatedAt' IS NULL OR p_payload->>'expectedTargetFingerprint' IS NULL
+        OR p_payload->>'expectedTargetFingerprint' !~ '^[0-9a-f]{64}$' THEN
+        RAISE SQLSTATE 'HRA07' USING MESSAGE='공개 확인 버전과 대상 명부 확인값이 필요합니다.';
+      END IF;
+      IF definition.status='DRAFT' AND definition.updated_at IS DISTINCT FROM (p_payload->>'expectedUpdatedAt')::timestamptz THEN
+        RAISE SQLSTATE 'HRA05' USING MESSAGE='과제가 다른 요청으로 수정되었습니다. 다시 조회해 주세요.';
+      END IF;
+      IF definition.status='DRAFT' AND (definition.due_at IS NULL OR definition.due_at<=clock_timestamp()) THEN
+        RAISE SQLSTATE 'HRA08' USING MESSAGE='과제 공개에는 미래 마감 시각이 필요합니다.';
+      END IF;
+      -- 최초 공개의 명부 잠금·시각·대상 스냅샷과 멱등성은 #147 함수에 맡깁니다.
+      SELECT * INTO definition FROM public.publish_academic_assignment(definition.id,p_actor_id);
+      IF previous_status='DRAFT' THEN
+        SELECT encode(sha256(convert_to(COALESCE(string_agg(enrollment_id::text,',' ORDER BY enrollment_id),''),'UTF8')),'hex')
+          INTO target_fingerprint FROM public.assignment_targets WHERE assignment_id=definition.id;
+        IF target_fingerprint IS DISTINCT FROM p_payload->>'expectedTargetFingerprint' THEN
+          RAISE SQLSTATE 'HRA09' USING MESSAGE='공개 확인 이후 대상 명부가 변경되었습니다.';
+        END IF;
+      END IF;
+    ELSE
+      IF definition.status='DRAFT' THEN RAISE SQLSTATE 'HRA06' USING MESSAGE='초안은 바로 종료할 수 없습니다.'; END IF;
+      IF definition.status='PUBLISHED' THEN
+        UPDATE public.assignments SET status='CLOSED' WHERE id=definition.id RETURNING * INTO definition;
+      END IF;
+    END IF;
+  END IF;
+
+  -- 감사 실패나 공개 대상 생성 실패도 이번 변경을 전부 롤백합니다.
+  INSERT INTO public.academic_assignment_events
+    (request_id,assignment_id,actor_user_id,action,previous_status,next_status,correlation_id,payload_digest)
+    VALUES (p_request_id,definition.id,p_actor_id,p_action,previous_status,definition.status::text,p_correlation_id,payload_digest);
+  RETURN jsonb_build_object('assignment',to_jsonb(definition),'targetCount',
+    (SELECT count(*) FROM public.assignment_targets WHERE assignment_id=definition.id),'replayed',false);
+END;
+$mutate$;
+
+-- 7) 기존 행은 재분류 없이 LEGACY 값으로만 보여야 한다. 형식이 섞인 기록이 있으면 별도 복구 전까지 거부한다.
 DO $data$
 BEGIN
   IF EXISTS (SELECT 1 FROM public.assignment_submissions s JOIN public.assignment_targets t ON t.id=s.assignment_target_id

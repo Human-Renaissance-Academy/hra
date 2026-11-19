@@ -141,6 +141,22 @@ OpenAPI의 `Origin` 헤더는 쿠키 요청에서만 필수이며(`required: fal
 | `POST /api/v1/uploads` | Vercel SDK 토큰·서명된 완료 영수증 교환 |
 | `GET /api/v1/submissions/{id}/files/{fileId}` | 현재 인가·감사를 통과한 개인 파일 첨부 스트림 |
 
+#### 텍스트·발표자료 분리 제출(#516, 추가 operation)
+
+아래 operation은 `ACADEMIC_ENABLED`·`ACADEMIC_UPLOADS_ENABLED`·`ACADEMIC_SUBMISSION_ARTIFACTS_ENABLED`가 모두 정확히 `true`일 때만 열리며, 하나라도 꺼져 있으면 입력 검사 전에 404입니다. 기존 PDF 단일 제출 operation·DTO는 OpenAPI 추가 전용 규칙에 따라 바꾸지 않았습니다. 인증(Web 세션 쿠키 또는 모바일 Bearer)·Origin·16KiB 본문 상한·오류 형식은 위 경로와 같습니다.
+
+| 메서드·경로 | 제공하는 결과 |
+| --- | --- |
+| `GET /api/v1/assignments/{id}/artifacts` | 제출 형식(`LEGACY_SINGLE_PDF`/`ARTIFACTS_V2`)·항목별 필수/선택/미사용·최종 제출 `files[]`(유형·형식·원본명·MIME·크기·보호 `downloadPath`). 기존 PDF 과제는 `file`을 유지하고 같은 파일을 `LEGACY_PDF` 항목으로도 제공 |
+| `POST /api/v1/uploads/artifact-intents` | 항목(`TEXT`/`SLIDES`)·선언 형식별 발급 ID·`academic-uploads/v2/{id}/original` 경로·정규 `contentType`·만료 시각 |
+| `DELETE /api/v1/uploads/artifact-intents/{id}` | 본인 분리 제출 업로드 원장 취소 |
+| `POST /api/v1/uploads/artifact-intents/{id}/verify` | 비공개 원본의 크기·SHA-256·실제 문서 형식 검증 |
+| `POST /api/v1/submissions/artifacts` | 검증된 업로드 1~2개를 같은 `submissionKey`로 원자 확정 또는 성공 복구(`replayed`) |
+
+직접 업로드는 기존 `POST /api/v1/uploads`(SDK 토큰 교환)를 그대로 사용합니다. 새 실패 코드는 공개 코드를 늘리지 않고 대응합니다: 파일 검증 거부·필수 누락·미사용 항목 첨부·항목 중복·합계 초과는 400 `INVALID_INPUT`, 형식이 다른 과제·이미 제출함·다른 묶음에 쓴 키는 409 `CONFLICT`입니다.
+
+**클라이언트 주의:** 분리 제출 과제는 기존 `GET /api/v1/assignments/{id}`·`/submission`에서 `submission != null && file == null`로 보입니다. 이 조합을 PDF 미제출·재제출 대상으로 취급하지 말고 `/artifacts`의 `files`로 제출물을 확인해야 합니다. 현재 모바일 앱(#491 동결)은 이를 지원하지 않으므로 활성화 조건은 [분리 제출 마이그레이션 문서](academic-submission-artifacts-migration.md)의 활성화 체크리스트를 따릅니다.
+
 과제 목록은 `page`(기본 1, 최대 10,000)·`pageSize`(기본 20, 최대 50)만 받습니다. 중복·미등록 query는 400이고 범위를 넘으면 요청 번호와 빈 배열을 반환합니다. 응답은 `{ assignments, page: { page, pageSize, hasNextPage } }`입니다. 기존 학생 서비스는 다음 페이지 존재만 조회하므로 공지의 `PageMeta`와 달리 추정 `totalCount`·`totalPages`를 추가하지 않습니다. 상세·파일 및 모든 변경 경로는 query를 받지 않습니다. 시각은 UTC 밀리초 ISO 문자열이며 KST 표시 변환은 클라이언트 책임입니다.
 
 과제 DTO에는 과제/대상 식별자·제목·게시 상태·마감/게시 시각과 본인 최종 제출 식별자/시각만 포함합니다. 상세에만 지침과 PDF 파일 식별자·원본명·MIME·크기를 추가합니다. 다른 학생·계정·학적 식별자·Blob URL·저장 토큰은 반환하지 않습니다. 제출 전에는 `submission`과 `file`이 `null`이며 업로드 원장의 중간 상태는 최종 제출로 표시하지 않습니다.

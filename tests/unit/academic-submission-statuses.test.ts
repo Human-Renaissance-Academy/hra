@@ -147,6 +147,117 @@ it("CSV 파일명은 코드포인트 경계로 잘라 이모지 제목도 인코
   expect(submissionCsvDisposition(title)).toContain(encodeURIComponent(`${title}-제출현황.csv`));
 });
 
+// #516 PR-G: 분리 제출(V2) 과제의 항목별 열과 gate 꺼짐·기존 PDF 과제의 기존 열 유지를 검증한다.
+const v2Assignment = {
+  ...snapshot.assignment,
+  status: "PUBLISHED" as const,
+  submissionFormat: "ARTIFACTS_V2" as const,
+  textRequirement: "REQUIRED" as const,
+  slidesRequirement: "OPTIONAL" as const,
+};
+const textHwpx = { artifactType: "TEXT" as const, fileFormat: "HWPX" as const, sizeBytes: 3000 };
+const slidesPptx = {
+  artifactType: "SLIDES" as const,
+  fileFormat: "PPTX" as const,
+  sizeBytes: 4000,
+};
+const v2Rows = [
+  { ...snapshot.rows[0], artifacts: [textHwpx, slidesPptx] },
+  {
+    ...snapshot.rows[0],
+    targetId: other,
+    displayName: "+텍스트만",
+    artifacts: [{ artifactType: "TEXT" as const, fileFormat: "PDF" as const, sizeBytes: 10 }],
+  },
+  {
+    ...snapshot.rows[0],
+    targetId: approver,
+    displayName: "미제출 학생",
+    submittedAt: null,
+    artifacts: null,
+  },
+];
+it("분리 제출 과제 CSV는 항목별 제출·형식·크기(바이트) 열을 덧붙이고 파일명·ID를 넣지 않는다", () => {
+  const csv = renderSubmissionStatusesCsv(v2Rows, v2Assignment);
+  const lines = csv.slice(1).split("\r\n");
+  expect(lines[0]).toBe(
+    '"이름","제출 상태","제출 시각(한국시간)","텍스트 제출","텍스트 형식","텍스트 크기(바이트)","발표자료 제출","발표자료 형식","발표자료 크기(바이트)"',
+  );
+  expect(lines[1]).toBe(
+    '"\'=수식,""이름""","제출","2026-10-01 09:01:02","제출","HWPX","3000","제출","PPTX","4000"',
+  );
+  expect(lines[2]).toBe(
+    '"\'+텍스트만","제출","2026-10-01 09:01:02","제출","PDF","10","미제출","",""',
+  );
+  expect(lines[3]).toBe('"미제출 학생","미제출","","미제출","","","미제출","",""');
+  expect(
+    renderSubmissionStatusesCsv(v2Rows.slice(1, 2), {
+      ...v2Assignment,
+      slidesRequirement: "DISABLED",
+    }),
+  ).toContain('"미사용","",""');
+  for (const value of [target, other, "originalName", "storageKey", ".hwpx"])
+    expect(csv).not.toContain(value);
+});
+it("기존 PDF 과제와 gate 꺼짐(형식 키 없음)은 기존 세 열 그대로다", () => {
+  for (const assignment of [
+    undefined,
+    { ...snapshot.assignment, status: "PUBLISHED" as const },
+    {
+      ...snapshot.assignment,
+      status: "PUBLISHED" as const,
+      submissionFormat: "LEGACY_SINGLE_PDF" as const,
+      textRequirement: null,
+      slidesRequirement: null,
+    },
+  ]) {
+    expect(renderSubmissionStatusesCsv(snapshot.rows, assignment).slice(1).split("\r\n")[0]).toBe(
+      '"이름","제출 상태","제출 시각(한국시간)"',
+    );
+  }
+});
+it("gate가 켜졌을 때만 SQL이 분리 제출 컬럼을 읽고, 요구와 어긋난 V2 현황은 정상 결과로 표시하지 않는다", async () => {
+  await listAssignmentSubmissionStatuses({ assignmentId: id });
+  expect(JSON.stringify(mocks.execute.mock.calls[0][0])).not.toMatch(
+    /submission_format|artifact_type/,
+  );
+  vi.stubEnv("ACADEMIC_UPLOADS_ENABLED", "true");
+  vi.stubEnv("ACADEMIC_SUBMISSION_ARTIFACTS_ENABLED", "true");
+  mocks.execute.mockResolvedValue({
+    rows: [{ ...snapshot, assignment: v2Assignment, rows: v2Rows.slice(0, 1) }],
+  });
+  expect(
+    (await listAssignmentSubmissionStatuses({ assignmentId: id })).rows[0].artifacts,
+  ).toHaveLength(2);
+  expect(JSON.stringify(mocks.execute.mock.calls[1][0])).toMatch(/submission_format/);
+  // 제출했는데 파일 없음·항목 중복·필수 누락, PDF 과제에 항목 존재는 모두 UNAVAILABLE이다.
+  for (const [assignment, artifacts] of [
+    [v2Assignment, []],
+    [v2Assignment, [textHwpx, textHwpx]],
+    [v2Assignment, [slidesPptx]],
+    [snapshot.assignment, [textHwpx]],
+  ] as const) {
+    mocks.execute.mockResolvedValue({
+      rows: [{ ...snapshot, assignment, rows: [{ ...snapshot.rows[0], artifacts }] }],
+    });
+    await expect(listAssignmentSubmissionStatuses({ assignmentId: id })).rejects.toMatchObject({
+      code: "UNAVAILABLE",
+    });
+  }
+});
+it("분리 제출 CSV 내려받기는 과제 형식에 맞는 열을 사용한다", async () => {
+  vi.stubEnv("ACADEMIC_UPLOADS_ENABLED", "true");
+  vi.stubEnv("ACADEMIC_SUBMISSION_ARTIFACTS_ENABLED", "true");
+  mocks.execute.mockResolvedValue({
+    rows: [{ ...snapshot, assignment: v2Assignment, rows: v2Rows.slice(0, 1) }],
+  });
+  const response = await GET(
+    new Request(`http://localhost/api/academic/assignments/${id}/submissions/export`),
+    { params: Promise.resolve({ id }) },
+  );
+  expect(response.status).toBe(200);
+  expect(await response.text()).toContain('"발표자료 크기(바이트)"');
+});
 // CSV 사본 생성 관측: 서버 요청 참조 전파와 이벤트 형태·개인정보 비노출을 함께 확인한다.
 function exportRequest() {
   return GET(new Request(`http://localhost/api/academic/assignments/${id}/submissions/export`), {

@@ -85,6 +85,7 @@ G1은 첫 학사 기능 묶음으로, 학생·수강 이력, 과제 대상, 개�
 | G2 학생별 출결(기능 비활성) | [출결 기록과 정정 승인](developer/academic-attendance.md) |
 | G2 교수 과제 검토 권한(기능 비활성) | [교수 계정 연결과 수업별 과제 검토 권한](developer/academic-faculty-reviewers.md) |
 | G3 과제 검토·피드백(기능 비활성) | [과제 검토·피드백 이력과 담당 검토자 평가 화면](developer/academic-assignment-reviews.md) |
+| G3 수료 기준·확정 이력(기능 비활성) | [수료 기준 버전과 수료 확정 이력](developer/academic-completion.md) |
 
 정책 초안에 적힌 보존 기간이나 기능 문서의 체크리스트를 승인 완료로 해석하지 않는다. 실제 결과를 기록할 때는 날짜, 코드 버전, 환경, 실행한 명령, 통과·실패·미실행 범위를 함께 남긴다.
 
@@ -95,7 +96,8 @@ G1은 첫 학사 기능 묶음으로, 학생·수강 이력, 과제 대상, 개�
 | 문서 | 목적 |
 | --- | --- |
 | [플랫폼 아키텍처](developer/platform-architecture.md) | 웹·모바일이 같은 기능과 권한 정책을 사용하는 구조 |
-| [플랫폼 전환 로드맵](PLATFORM-ROADMAP.md) | 현재 안전장치를 유지하며 구조를 바꾸는 순서 |
+| [모바일·API v1 동결 결정](decisions/2026-11-19-mobile-api-freeze.md) | #491. 보존·보안 패치만 하는 현재 정책 |
+| [플랫폼 전환 로드맵](PLATFORM-ROADMAP.md) | (동결, 재개 시 참고) 구조를 바꾸는 순서의 과거 계획 |
 | [공용 API v1 계약과 범위](developer/api-v1.md) | OpenAPI 계약 기반 공용 HTTP 엔드포인트와 제공 범위 |
 | [모바일 앱 개발 안내](developer/mobile-app.md) | React Native, Expo 모바일 앱 구조, 인증, 파일 전송, 빌드 및 검증 |
 | [모바일 인증 HTTP 경계](developer/mobile-auth-routes.md) | 모바일 로그인, 갱신, 로그아웃 엔드포인트 및 요청 제한 정책 |

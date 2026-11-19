@@ -1,8 +1,8 @@
 # HRA 개발 문서
 
-이 문서는 HRA 웹사이트를 **실행하고, 수정하고, 확인한 뒤 반영하는 방법**을 안내합니다. 개발을 전공하지 않았더라도 필요한 일을 순서대로 찾을 수 있도록 구성했습니다.
+이 문서는 HRA(통합 서비스)의 운영 대상인 Web을 **실행하고, 수정하고, 확인한 뒤 반영하는 방법**을 안내합니다. 개발을 전공하지 않았더라도 필요한 일을 순서대로 찾을 수 있도록 구성했습니다.
 
-[웹사이트](https://hra-website-theta.vercel.app) · [코드 저장소](https://github.com/Human-Renaissance-Academy/hra-platform) · [전체 문서 지도](documentation-map.md) · [작업 우선순위](https://github.com/Human-Renaissance-Academy/hra-website/issues/300)
+[운영 Web](https://hra-website-theta.vercel.app) · [코드 저장소](https://github.com/Human-Renaissance-Academy/hra-platform) · [전체 문서 지도](documentation-map.md) · [작업 우선순위](https://github.com/Human-Renaissance-Academy/hra-website/issues/300)
 
 ## 처음 참여한다면
 
@@ -25,7 +25,7 @@
 | DB나 파일 저장을 바꾸기 | [DB 안내](DATABASE.md), [DB 변경 절차](developer/database-change-procedure.md), [자료 파일 정책](resource-file-access-policy.md) |
 | 로그인·배포 환경을 설정하기 | [환경 분리](developer/environment-strategy.md), [배포](DEPLOYMENT.md), [카카오 설정](KAKAO-LOGIN-SETUP.md) |
 | 학사 기능을 개발하기 | [학사 로드맵](ACADEMIC-MANAGEMENT-ROADMAP.md), [과제 제출 범위](ASSIGNMENT-SUBMISSION-SCOPE.md), [학사 상세 문서 목록](documentation-map.md) |
-| 앞으로의 모바일 구조를 이해하기 | [목표 아키텍처](developer/platform-architecture.md), [Web → Android → iOS 계획](PLATFORM-ROADMAP.md) |
+| 동결된 모바일·API v1과 장기 구조 보기 | [동결 결정(#491)](decisions/2026-11-19-mobile-api-freeze.md), [모바일 앱 안내](developer/mobile-app.md), [조건부 목표 아키텍처](developer/platform-architecture.md), [과거 확장 로드맵](PLATFORM-ROADMAP.md) |
 | AI 도구와 함께 작업하기 | [AI 도구 사용 안내](contributing/ai-tools.md) |
 
 ## 현재 상태를 읽는 방법
@@ -38,7 +38,7 @@
 | 정책 미정 | 업무 규칙이 결정되지 않음 | 담당 정책 이슈의 결정 |
 | 특정 날짜의 검증 기록 | 당시 버전과 환경에서 확인한 결과 | 현재 변경에 필요한 재검증 |
 
-학사 G1의 학생 명부·개인 과제·비공개 파일·화면은 코드에 있습니다. 출결·교수 피드백·수료 등 G2/G3와 Android/iOS 앱은 후속 계획입니다. **기능 코드의 존재, 기능 설정의 활성화, 실제 운영 검증을 구분해서 읽어 주세요.**
+학사 G1(학생 명부·개인 과제·비공개 파일·화면)과 G2/G3(출결·운영 인력·교수 과제 피드백)는 코드에 있으나 기본 비활성이며 운영 활성화는 #280·#142·#143 승인을 기다립니다. 모바일 앱과 API v1은 #491로 동결(보안 패치·의존성 갱신만)되었고 Android/iOS 출시는 계획이 아닙니다. **기능 코드의 존재, 기능 설정의 활성화, 실제 운영 검증을 구분해서 읽어 주세요.**
 
 ## 필요한 문서만 먼저 읽기
 

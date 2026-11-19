@@ -38,7 +38,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
       submissionStatusRequestInput(id, new URL(request.url).searchParams),
       observation,
     );
-    const body = renderSubmissionStatusesCsv(result.rows);
+    const body = renderSubmissionStatusesCsv(result.rows, result.assignment);
     observation.emit("COMPLETED");
     return new Response(body, {
       headers: {

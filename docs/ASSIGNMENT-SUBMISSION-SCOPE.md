@@ -233,4 +233,4 @@ HRA 수업 과제는 **텍스트**(주로 한글 HWP·HWPX)와 **발표자료**(
 
 ### 구현 영향 — 승인 전 기능 비활성
 
-#516 설계 댓글의 PR 분할(A 정책 문서 → B 형식 탐지 → C DB migration → D 서비스 V2 → E 관리자 폼 → F 학생 UI → G API v1·OpenAPI → H 실 저장소 검증)을 따른다. 이 절이 PR A다. 위 결정은 C의 DB 제약(합계 상한, 최소 1개, `(submission_id, artifact_type)` 고유, `DRAFT`만 형식 전환), D의 원자적 최종화로 구현한다. V2 업로드는 기존 `ACADEMIC_UPLOADS_ENABLED`와 별도 설정으로 기본 비활성이며, 운영 적용은 #280 백업 복구 증거와 #142 보존 정책 승인 이후 별도로 승인한다. 대상당 외부 작업 한도(4회/60초)가 두 파일 흐름에 충분한지는 D에서 다시 계산한다.
+#516 설계 댓글의 PR 분할(A 정책 문서 → B 형식 탐지 → C DB migration → D 서비스 V2 → E 관리자 폼 → F 학생 UI → G API v1·OpenAPI → H 실 저장소 검증)을 따른다. 이 절이 PR A다. 위 결정은 C의 DB 제약(합계 상한, 최소 1개, `(submission_id, artifact_type)` 고유, `DRAFT`만 형식 전환), D의 원자적 최종화로 구현한다. V2 업로드는 기존 `ACADEMIC_UPLOADS_ENABLED`와 별도 설정 `ACADEMIC_SUBMISSION_ARTIFACTS_ENABLED`로 기본 비활성이며, 운영 적용은 #280 백업 복구 증거와 #142 보존 정책 승인 이후 별도로 승인한다. 대상당 외부 작업 한도는 D에서 (대상, 산출물 유형)별 4회/60초로 나누었고 사용자 상한은 그대로다([DB 변경 절차의 PR-D 절](developer/academic-submission-artifacts-migration.md)).

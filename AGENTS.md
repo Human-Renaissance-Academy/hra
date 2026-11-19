@@ -4,7 +4,9 @@
 This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` before writing any code. Heed deprecation notices.
 <!-- END:nextjs-agent-rules -->
 
-# HRA Platform — Agent Rules
+# HRA — Agent Rules
+
+> **HRA**는 공개 Web·회원/관리자·학사 기능·API v1·모바일 코드를 포함하는 하나의 제품이다. 현재 운영은 **Web Production 우선**이며 모바일 앱과 API v1은 [2026-11-19 동결 결정](docs/decisions/2026-11-19-mobile-api-freeze.md)(#491)으로 보존·보안 패치·의존성 갱신만 한다. 루트 패키지·저장소 이름 `hra-website`는 웹 앱 식별자이며 프로젝트 전체 이름이 아니다.
 
 > **운영 우선 원칙 (2026-11-16):** HRA는 거의 1명이 개발·유지보수하고 항상 관여하기 어렵다. **Production 웹 1개만 상시 운영**하고, 개발은 로컬, 품질 검증은 필수 GitHub CI, Vercel Preview는 필요할 때만 사용한다. 별도 상시 Dev/QA/Staging과 PR별 Neon/Blob 생성은 기본 요구가 아니다. 운영 DB·PII·Private Blob·인증 보안과 복구 가능성은 축소하지 않는다. [환경 전략](docs/developer/environment-strategy.md), [1인 운영 체크리스트](docs/operations/solo-operations.md) 참조.
 >
@@ -61,6 +63,8 @@ src/
 ```
 
 ### 목표 아키텍처 전환 규칙
+
+> **동결 주의(#491):** 아래 monorepo·모바일·Android/iOS 항목은 조건부 장기 목표이며 현재 작업 계획이 아니다. 신규 모바일 기능·API v1 엔드포인트·`apps/web` 이동은 동결 결정 갱신 전에 시작하지 않는다.
 
 > 아래 규칙은 이미 시작된 공용 Web/API 모듈과 **추가 구축을 승인한 경우**의 목표 구조다. 기존 웹 전체를 의무적으로 재배치하거나 mobile/iOS CI를 무조건 확대하지 않는다(#491 동결 결정/#492). 신규 기능에서 권한·저장·검증 경계를 명확히 하는 원칙은 계속 유효하다.
 

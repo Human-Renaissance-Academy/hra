@@ -9,7 +9,10 @@ import {
   toApiV1ErrorResponse,
   type ApiV1ErrorCode,
 } from "@hra/contracts/api-v1";
-import { AcademicUploadError } from "@/features/academics/assignment-uploads/contract";
+import {
+  AcademicUploadError,
+  isAcademicSubmissionArtifactsEnabled,
+} from "@/features/academics/assignment-uploads/contract";
 import { SubmissionFileAccessError } from "@/features/academics/submission-files/access";
 import { SubmissionFinalizationError } from "@/features/academics/submissions/validation";
 import { AcademicAccessError } from "@/lib/academic-permissions";
@@ -18,7 +21,10 @@ import { isSameRequestOrigin } from "@/lib/request-origin";
 import { revalidateMobilePrincipalOverride } from "@/lib/api-v1-principal";
 
 /** 개인 결과와 오류가 공유 캐시나 다른 쿠키의 응답으로 재사용되지 않도록 합니다. */
-export const academicApiHeaders = { "Cache-Control": "private, no-store", Vary: "Cookie, Authorization" };
+export const academicApiHeaders = {
+  "Cache-Control": "private, no-store",
+  Vary: "Cookie, Authorization",
+};
 
 /** HTTP 입력 단계에서만 발생하는 공통 오류이며 내부 오류 원문은 보관하지 않습니다. */
 export class AcademicApiHttpError extends Error {
@@ -33,11 +39,22 @@ export function assertNoAcademicApiQuery(request: Request): void {
   if (new URL(request.url).searchParams.size > 0) throw new AcademicApiHttpError("INVALID_INPUT");
 }
 
+/**
+ * #516 분리 제출(V2) operation 전용 기능 gate입니다. 세 gate 중 하나라도 꺼져 있으면
+ * 기능 존재를 드러내지 않도록 입력·서비스 호출 전에 없는 경로와 같은 404 응답을 돌려줍니다.
+ * 꺼진 기능 요청은 인가 거부가 아니므로 업로드·제출 관측 이벤트를 남기지 않습니다. 켜져 있으면 null입니다.
+ */
+export function academicApiArtifactsDisabledResponse(): Response | null {
+  if (isAcademicSubmissionArtifactsEnabled()) return null;
+  return academicApiErrorResponse(new AcademicApiHttpError("NOT_FOUND"), crypto.randomUUID());
+}
+
 /** 실제 스트림 크기를 제한하여 누락·위조된 Content-Length로도 한도를 넘길 수 없게 합니다. */
 async function readBoundedJson(request: Request): Promise<unknown> {
   assertNoAcademicApiQuery(request);
   const mediaType = request.headers.get("Content-Type")?.split(";", 1)[0].trim().toLowerCase();
-  if (mediaType !== "application/json" || !request.body) throw new AcademicApiHttpError("INVALID_INPUT");
+  if (mediaType !== "application/json" || !request.body)
+    throw new AcademicApiHttpError("INVALID_INPUT");
 
   const reader = request.body.getReader();
   const chunks: Uint8Array[] = [];
@@ -71,12 +88,17 @@ async function readBoundedJson(request: Request): Promise<unknown> {
 export async function readAcademicApiJson(request: Request): Promise<unknown> {
   const principal = await revalidateMobilePrincipalOverride();
   switch (principal.kind) {
-    case "REVOKED": throw new AcademicApiHttpError("UNAUTHENTICATED");
+    case "REVOKED":
+      throw new AcademicApiHttpError("UNAUTHENTICATED");
     case "NO_OVERRIDE":
       if (!isSameRequestOrigin(request)) throw new AcademicApiHttpError("FORBIDDEN");
       break;
-    case "VALID": break;
-    default: { const exhaustive: never = principal; throw exhaustive; }
+    case "VALID":
+      break;
+    default: {
+      const exhaustive: never = principal;
+      throw exhaustive;
+    }
   }
   return readBoundedJson(request);
 }
@@ -91,25 +113,42 @@ export async function readAcademicApiProtocolJson(request: Request): Promise<unk
 
 /** 기존 오류의 HTTP 상태나 문구를 복사하지 않고, 검증된 코드만 v1 계약으로 대응합니다. */
 function publicErrorCode(error: unknown): ApiV1ErrorCode {
-  if (error instanceof AcademicApiHttpError || error instanceof AcademicAccessError ||
-      error instanceof SubmissionFileAccessError) return error.code;
+  if (
+    error instanceof AcademicApiHttpError ||
+    error instanceof AcademicAccessError ||
+    error instanceof SubmissionFileAccessError
+  )
+    return error.code;
   if (error instanceof AcademicUploadError) {
     switch (error.code) {
-      case "INVALID_FILE": return "INVALID_INPUT";
+      case "INVALID_FILE":
+        return "INVALID_INPUT";
       case "EXPIRED":
-      case "NOT_READY": return "CONFLICT";
-      case "UNAVAILABLE": return "STORAGE_UNAVAILABLE";
-      default: return error.code;
+      case "NOT_READY":
+        return "CONFLICT";
+      case "UNAVAILABLE":
+        return "STORAGE_UNAVAILABLE";
+      default:
+        return error.code;
     }
   }
   if (error instanceof SubmissionFinalizationError) {
     switch (error.code) {
       // 기존 서비스가 감추는 소유권 거부는 v1에서도 없는 제출과 구분하지 않습니다.
-      case "FORBIDDEN": return "NOT_FOUND";
+      case "FORBIDDEN":
+        return "NOT_FOUND";
       case "EXPIRED":
       case "NOT_READY":
-      case "DEADLINE": return "CONFLICT";
-      default: return error.code;
+      case "DEADLINE":
+      // #516: v1 최종화가 V2 과제에 닿으면 기존과 같은 충돌로 응답합니다(공개 계약 코드 추가 없음).
+      case "WRONG_FORMAT":
+        return "CONFLICT";
+      // V2 전용 구성(필수 누락·미사용 첨부·중복)·합계 오류는 공개 코드를 늘리지 않고 기존 입력 오류로 응답합니다.
+      case "INCOMPLETE":
+      case "TOO_LARGE":
+        return "INVALID_INPUT";
+      default:
+        return error.code;
     }
   }
   return "UNAVAILABLE";
@@ -118,8 +157,10 @@ function publicErrorCode(error: unknown): ApiV1ErrorCode {
 /** 모든 실패는 고정 한국어 문구·추적 ID만 반환하고 요청 예산의 재시도 시간을 보존합니다. */
 export function academicApiErrorResponse(error: unknown, requestId: string): Response {
   const code = publicErrorCode(error);
-  const retryAfterSeconds = error instanceof AcademicUploadError && error.code === "RATE_LIMITED"
-    ? error.retryAfterSeconds : undefined;
+  const retryAfterSeconds =
+    error instanceof AcademicUploadError && error.code === "RATE_LIMITED"
+      ? error.retryAfterSeconds
+      : undefined;
   if (code === "UNAVAILABLE" || code === "STORAGE_UNAVAILABLE") {
     // 원래 오류에는 SQL·파일명·Blob URL이 있을 수 있어 고정 오류와 요청 ID만 기록합니다.
     logServerError("api-v1/academic", new Error("ACADEMIC_API_UNAVAILABLE"), { requestId });

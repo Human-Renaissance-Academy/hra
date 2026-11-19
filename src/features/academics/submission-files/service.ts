@@ -13,6 +13,7 @@ import {
   type AcademicOutcome,
 } from "@/lib/academic-observability";
 import { attachmentDisposition } from "@/lib/resource-download";
+import { DOCUMENT_MIME_TYPES } from "@/features/academics/assignment-uploads/formats/types";
 import { buildAuthorizedSubmissionFileRead } from "./data";
 import {
   requireSubmissionFileReader,
@@ -22,17 +23,26 @@ import {
 
 export type SubmissionFileParams = { id: string; fileId: string };
 const identifiers = z.object({ id: z.uuid(), fileId: z.uuid() });
-// 저장 경로는 #151의 업로드 계약과 동일하며 URL·다른 접두어·경로 조작을 모두 거부합니다.
-const storageKey =
-  /^academic-uploads\/v1\/[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\/document\.pdf$/;
-const authorizedFile = z.object({
-  storage_key: z.string().regex(storageKey),
-  original_name: z.string().min(1).max(255),
-  mime_type: z.literal("application/pdf"),
-  size_bytes: z.number().int().min(1).max(52_428_800),
-  checksum: z.string().regex(/^[0-9a-f]{64}$/),
-  access_id: z.uuid(),
-});
+// 저장 경로는 #151(v1 PDF)·#516(v2 텍스트·발표자료)의 업로드 계약과 동일하며 URL·다른 접두어·경로 조작을 모두 거부합니다.
+const uuidPattern = "[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}";
+const legacyStorageKey = new RegExp(`^academic-uploads/v1/${uuidPattern}/document\\.pdf$`);
+const artifactStorageKey = new RegExp(`^academic-uploads/v2/${uuidPattern}/original$`);
+// DB CHECK와 같이 형식별 정규 MIME만 허용합니다. v1 키는 PDF만 가능합니다.
+const canonicalMimeTypes = Object.values(DOCUMENT_MIME_TYPES);
+const authorizedFile = z
+  .object({
+    storage_key: z.string(),
+    original_name: z.string().min(1).max(255),
+    mime_type: z.string().refine((value) => canonicalMimeTypes.includes(value)),
+    size_bytes: z.number().int().min(1).max(52_428_800),
+    checksum: z.string().regex(/^[0-9a-f]{64}$/),
+    access_id: z.uuid(),
+  })
+  .refine(
+    (file) =>
+      (legacyStorageKey.test(file.storage_key) && file.mime_type === "application/pdf") ||
+      artifactStorageKey.test(file.storage_key),
+  );
 const privateHeaders = {
   "Cache-Control": "private, no-store",
   "X-Content-Type-Options": "nosniff",
@@ -222,7 +232,7 @@ export async function deliverSubmissionFile(
     if (
       !matchesSubmissionBlob(blob.blob, host, file.storage_key) ||
       blob.blob.size !== file.size_bytes ||
-      blob.blob.contentType.split(";", 1)[0].trim().toLowerCase() !== "application/pdf"
+      blob.blob.contentType.split(";", 1)[0].trim().toLowerCase() !== file.mime_type
     ) {
       await blob.stream.cancel();
       throw new SubmissionFileAccessError("UNAVAILABLE");
