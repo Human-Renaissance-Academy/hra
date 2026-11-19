@@ -109,7 +109,33 @@ export function reserveLoginAttempt(ip: string, rawEmail: unknown): Promise<Rate
       { scope: "login-email", key: email, ...LOGIN_EMAIL_RATE_LIMIT },
     );
   }
-  return reserve(axes, "rate-limit/reserve-login");
+  return reserve(axes, "rate-limit/reserve-login").then((reservation) => {
+    // 저장소 장애(unavailable)는 reserve()가 이미 오류 로그로 남기므로 정책 차단만 관측합니다.
+    if (reservation.blocked && !reservation.unavailable) logLoginBlocked(axes);
+    return reservation;
+  });
+}
+
+/**
+ * 로그인 예약이 정책으로 차단됐음을 운영자가 볼 수 있게 서버 로그에 남깁니다 (#508).
+ * 기록 필드는 이벤트명·시각·설정된 축 이름·축별 SHA-256 키의 앞 8자리뿐이며 원본 IP·이메일은 남기지 않습니다.
+ * DB 예약 함수는 어느 축이 차단했는지 돌려주지 않으므로 차단 축은 기록할 수 없습니다.
+ * 앞 8자리는 운영 절차(docs/operations/rate-limits.md)에서 전체 해시와 대조하는 용도입니다.
+ */
+function logLoginBlocked(axes: LimitAxis[]): void {
+  try {
+    console.warn("[rate-limit/login-blocked]", {
+      event: "LOGIN_RESERVATION_BLOCKED",
+      timestamp: new Date().toISOString(),
+      axes: axes.map((axis) => axis.scope),
+      keyPrefixes: Object.fromEntries(
+        axes.map((axis) => [axis.scope, hashLimitKey(axis.scope, axis.key).slice(0, 8)]),
+      ),
+    });
+  } catch {
+    // 로그 전송 실패가 로그인 거부 경로를 바꾸지 않게 합니다.
+    return;
+  }
 }
 
 /** 로그인에 성공한 요청의 임시 예약을 삭제해 실패 시도만 상한에 남깁니다. */
