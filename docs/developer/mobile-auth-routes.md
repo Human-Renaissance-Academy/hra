@@ -63,7 +63,7 @@ REVOKED·REUSE_DETECTED 모니터링은 고정 scope, DENIED와 비밀이 아닌
 `GET /api/cron/cleanup-mobile-sessions`는 기존 `CRON_SECRET`의 Bearer를 길이 확인과
 `timingSafeEqual`로 검증한다. 호출당 최대 1,000세션을 정리하고 `{ deletedCount }`를 반환한다.
 종속 갱신 이력은 DB의 cascade 정책으로 함께 삭제한다. 인증 실패 401, 설정·저장소 장애 503이다.
-**vercel.json에 일정은 등록하지 않았다.** 운영 승인 후 매시간 실행을 권장하며 한 배치가 계속
+**vercel.json에 일정은 등록하지 않았다([정리 Cron 운영 정책](../operations/cron-jobs.md)).** 운영 승인 후 매시간 실행을 권장하며 한 배치가 계속
 1,000행이면 적체를 모니터링하고 호출 빈도를 조정한다. 실제 DB 적용·운영 등록은 별도 승인 사항이다.
 
 현재/과거 해시 식별은 세션 서비스와 같은 두 테이블을 전제로 하므로 세션·이력 migration을

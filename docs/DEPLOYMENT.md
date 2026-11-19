@@ -83,7 +83,7 @@ Blob은 사진·PDF 같은 파일의 실제 내용을 보관하는 저장소입�
 | `ACADEMIC_UPLOAD_CLEANUP_DELETE_ENABLED` | 위 정리에서 실제 파일 삭제 허용 | 없으면 dry-run, 즉 삭제 없이 확인 |
 | `CRON_SECRET` | 예약 작업 호출 인증 | 예약 작업을 운영할 환경에 설정 |
 
-현재 `vercel.json`에 등록된 일정은 `/api/cron/cleanup-rate-limits` 한 개이며 매일 **03:00 UTC, 한국 시간 12:00**입니다. 학사 업로드 정리 일정은 자동 등록하지 않는다는 별도 결정이 있습니다. [학사 업로드 운영 조건](developer/academic-assignment-uploads.md)을 확인한 뒤 통합 담당자가 일정을 정합니다.
+현재 `vercel.json`에 등록된 일정은 `/api/cron/cleanup-rate-limits` 한 개이며 매일 **03:00 UTC, 한국 시간 12:00**입니다. 학사 업로드 정리 일정은 자동 등록하지 않는다는 별도 결정이 있습니다. [학사 업로드 운영 조건](developer/academic-assignment-uploads.md)을 확인한 뒤 통합 담당자가 일정을 정합니다. 전체 정리 Cron의 등록 상태는 [정리 Cron 운영 정책](operations/cron-jobs.md)을 봅니다.
 
 ## 4. 코드와 DB를 준비하기
 

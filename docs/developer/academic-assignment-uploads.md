@@ -100,7 +100,7 @@ SDK 토큰 발급에는 기존 IP 업로드 제한도 그대로 적용한다. �
 - `ACADEMIC_SUBMISSION_READ_WRITE_TOKEN`: 위 private 저장소의 서버 전용 토큰. 공개 저장소 fallback은 없다.
 - `ACADEMIC_UPLOAD_CLEANUP_ENABLED=true`: 정리 작업의 별도 활성화. **기본 비활성**.
 - `ACADEMIC_UPLOAD_CLEANUP_DELETE_ENABLED=true`: 실제 삭제의 추가 활성화. 없으면 **dry-run**.
-- `CRON_SECRET`: 정리 API의 Bearer 인증. 현재 `vercel.json`에는 `/api/cron/cleanup-academic-uploads`의 예약이 등록되어 있지 않다. API 구현과 주기 실행은 별개이므로, 예약이 필요하면 승인된 운영 일정과 플랫폼 설정을 확인한 뒤 등록한다.
+- `CRON_SECRET`: 정리 API의 Bearer 인증. 현재 `vercel.json`에는 `/api/cron/cleanup-academic-uploads`의 예약이 등록되어 있지 않다. API 구현과 주기 실행은 별개이므로, 예약이 필요하면 승인된 운영 일정과 플랫폼 설정을 확인한 뒤 등록한다. 등록 조건과 수동 호출 절차는 [정리 Cron 운영 정책](../operations/cron-jobs.md)을 따른다.
 
 기능 롤백은 신규 업로드 공개부터 끈다. 학적·원장·최종 제출물은 삭제하지 않는다.
 정리는 사용자 기능과 독립적으로 승인된 설정에서 동작할 수 있으나 운영 DB/저장소 적용·검증 전에는 켜지 않는다.
