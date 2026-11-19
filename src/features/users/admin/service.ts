@@ -23,24 +23,41 @@ function assertAdmin(actor: UserAdminActor): void {
 export async function listAdminUsers(actor: UserAdminActor) {
   assertAdmin(actor);
   const rows = await repository.listUsers();
-  return rows.map(row => ({ id: row.id, name: row.name, email: row.email, role: row.role,
-    cohortId: row.cohortId, image: row.image, createdAt: row.createdAt }));
+  return rows.map((row) => ({
+    id: row.id,
+    name: row.name,
+    email: row.email,
+    role: row.role,
+    cohortId: row.cohortId,
+    image: row.image,
+    createdAt: row.createdAt,
+  }));
 }
 
 /** 기수 DTO도 드롭다운의 ID·이름으로 제한합니다. */
 export async function listAdminCohorts(actor: UserAdminActor) {
   assertAdmin(actor);
   const rows = await repository.listCohorts();
-  return rows.map(row => ({ id: row.id, name: row.name }));
+  return rows.map((row) => ({ id: row.id, name: row.name }));
 }
 
 /** 상세 DTO에는 비밀번호 원문 없이 기존 존재 여부와 표시 열만 포함합니다. */
 export async function getAdminUser(actor: UserAdminActor, userId: string) {
   assertAdmin(actor);
   const row = await repository.getUser(userId);
-  return row ? { id: row.id, name: row.name, email: row.email, role: row.role,
-    cohortId: row.cohortId, image: row.image, createdAt: row.createdAt,
-    updatedAt: row.updatedAt, hasPassword: row.hasPassword } : undefined;
+  return row
+    ? {
+        id: row.id,
+        name: row.name,
+        email: row.email,
+        role: row.role,
+        cohortId: row.cohortId,
+        image: row.image,
+        createdAt: row.createdAt,
+        updatedAt: row.updatedAt,
+        hasPassword: row.hasPassword,
+      }
+    : undefined;
 }
 
 /** 검증된 입력으로 본인 보호→사용자→기수→원자 저장→0행 분류 순서를 유지합니다. */
@@ -54,7 +71,10 @@ export async function changeAdminUserGroup(
   }
   const existing = await repository.findUserId(input.userId);
   if (!existing) return { success: false, message: "해당 사용자를 찾을 수 없습니다." };
-  const isFixedRole = input.groupValue === "ADMIN" || input.groupValue === "FACULTY" || input.groupValue === "PENDING";
+  const isFixedRole =
+    input.groupValue === "ADMIN" ||
+    input.groupValue === "FACULTY" ||
+    input.groupValue === "PENDING";
   if (!isFixedRole) {
     const cohort = await repository.findCohortIds(input.groupValue);
     if (cohort.length === 0) return { success: false, message: "해당 기수를 찾을 수 없습니다." };
@@ -65,19 +85,32 @@ export async function changeAdminUserGroup(
   if (affected === 0) {
     const stillExists = await repository.findUserId(input.userId);
     if (!stillExists) return { success: false, message: "해당 사용자를 찾을 수 없습니다." };
-    return { success: false, message: "마지막 관리자입니다. 다른 관리자를 먼저 지정한 뒤 역할을 변경하세요." };
+    return {
+      success: false,
+      message: "마지막 관리자입니다. 다른 관리자를 먼저 지정한 뒤 역할을 변경하세요.",
+    };
   }
   return { success: true, message: "그룹이 변경되었습니다." };
 }
 
 /** 삭제 문장만 오류를 분류하고 최초·0행 존재 조회 오류는 원본처럼 전파합니다. */
-export async function deleteAdminUser(actor: UserAdminActor, userId: string): Promise<DeleteOutcome> {
+export async function deleteAdminUser(
+  actor: UserAdminActor,
+  userId: string,
+): Promise<DeleteOutcome> {
   assertAdmin(actor);
   if (actor.userId === userId) {
-    return { kind: "result", result: { success: false, message: "자기 자신은 삭제할 수 없습니다." } };
+    return {
+      kind: "result",
+      result: { success: false, message: "자기 자신은 삭제할 수 없습니다." },
+    };
   }
   const existing = await repository.findUserId(userId);
-  if (!existing) return { kind: "result", result: { success: false, message: "해당 사용자를 찾을 수 없습니다." } };
+  if (!existing)
+    return {
+      kind: "result",
+      result: { success: false, message: "해당 사용자를 찾을 수 없습니다." },
+    };
   let affected = 0;
   try {
     affected = await repository.deleteUser(userId);
@@ -88,16 +121,63 @@ export async function deleteAdminUser(actor: UserAdminActor, userId: string): Pr
       "cohort_enrollments_created_by_user_id_users_id_fk",
       "academic_enrollment_link_batches_actor_user_id_users_id_fk",
     ];
-    if (protectedReferences.some(constraint =>
-      ["23001", "23503"].some(code => isConstraintViolation(error, code, constraint)))) {
-      return { kind: "result", result: { success: false, message: "학적 정보나 학사 운영 이력이 연결된 회원은 삭제할 수 없습니다." } };
+    if (
+      protectedReferences.some((constraint) =>
+        ["23001", "23503"].some((code) => isConstraintViolation(error, code, constraint)),
+      )
+    ) {
+      return {
+        kind: "result",
+        result: {
+          success: false,
+          message: "학적 정보나 학사 운영 이력이 연결된 회원은 삭제할 수 없습니다.",
+        },
+      };
+    }
+    // #165 운영 인력·#159 출결·#163 수료 이력의 행위자·대상 계정 외래키입니다. 보존기간 동안 이력을 지우지 않습니다.
+    const academicHistoryReferences = [
+      "academic_operations_managers_user_fk",
+      "academic_operations_managers_designated_by_fk",
+      "academic_operations_managers_ended_by_fk",
+      "academic_cohort_staff_assignments_user_fk",
+      "academic_cohort_staff_assignments_assigned_by_fk",
+      "academic_cohort_staff_assignments_ended_by_fk",
+      "academic_staff_events_actor_fk",
+      "academic_attendance_corrections_requested_by_fk",
+      "academic_attendance_corrections_decided_by_fk",
+      "academic_attendance_records_recorded_by_fk",
+      "academic_attendance_events_actor_fk",
+      "completion_criteria_versions_created_by_fk",
+      "completion_criteria_versions_published_by_fk",
+      "completion_decisions_decided_by_fk",
+      "completion_events_actor_fk",
+    ];
+    if (
+      academicHistoryReferences.some((constraint) =>
+        ["23001", "23503"].some((code) => isConstraintViolation(error, code, constraint)),
+      )
+    ) {
+      return {
+        kind: "result",
+        result: { success: false, message: "학사 운영 이력이 연결된 회원은 삭제할 수 없습니다." },
+      };
     }
     return { kind: "delete-error" };
   }
   if (affected === 0) {
     const stillExists = await repository.findUserId(userId);
-    if (!stillExists) return { kind: "result", result: { success: false, message: "해당 사용자를 찾을 수 없습니다." } };
-    return { kind: "result", result: { success: false, message: "마지막 관리자는 삭제할 수 없습니다. 다른 관리자를 먼저 지정하세요." } };
+    if (!stillExists)
+      return {
+        kind: "result",
+        result: { success: false, message: "해당 사용자를 찾을 수 없습니다." },
+      };
+    return {
+      kind: "result",
+      result: {
+        success: false,
+        message: "마지막 관리자는 삭제할 수 없습니다. 다른 관리자를 먼저 지정하세요.",
+      },
+    };
   }
   return { kind: "result", result: { success: true, message: "회원이 삭제되었습니다." } };
 }

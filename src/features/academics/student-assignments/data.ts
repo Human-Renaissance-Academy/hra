@@ -33,46 +33,182 @@ function visibleTargetCondition(userId: string) {
 }
 
 // 타인의 대상 UUID와 본인 과제 UUID를 같은 조회 조건으로 판단한다.
-export function buildAssignmentTargetLookup(database: StudentQueryDatabase, userId: string, selector: AssignmentTargetSelector) {
-  const selected = "assignmentId" in selector ? eq(assignments.id, selector.assignmentId) : eq(assignmentTargets.id, selector.targetId);
-  return database.select({
-    assignmentId: assignments.id, targetId: assignmentTargets.id, status: assignments.status,
-    dueAt: assignments.dueAt, publishedAt: assignments.publishedAt,
-  }).from(assignmentTargets)
+export function buildAssignmentTargetLookup(
+  database: StudentQueryDatabase,
+  userId: string,
+  selector: AssignmentTargetSelector,
+) {
+  const selected =
+    "assignmentId" in selector
+      ? eq(assignments.id, selector.assignmentId)
+      : eq(assignmentTargets.id, selector.targetId);
+  return database
+    .select({
+      assignmentId: assignments.id,
+      targetId: assignmentTargets.id,
+      status: assignments.status,
+      dueAt: assignments.dueAt,
+      publishedAt: assignments.publishedAt,
+    })
+    .from(assignmentTargets)
     .innerJoin(assignments, eq(assignments.id, assignmentTargets.assignmentId))
     .innerJoin(cohortEnrollments, eq(cohortEnrollments.id, assignmentTargets.enrollmentId))
     .innerJoin(academicStudents, eq(academicStudents.id, cohortEnrollments.studentId))
-    .where(and(visibleTargetCondition(userId), selected)).limit(1);
+    .where(and(visibleTargetCondition(userId), selected))
+    .limit(1);
 }
 
 // 제출 LEFT JOIN에도 현재 계정을 명시하여 본인 대상의 본인 최종 제출만 선택한다.
-export function buildStudentAssignmentListQuery(database: StudentQueryDatabase, userId: string, page: number, pageSize: number) {
-  return database.select({
-    assignmentId: assignments.id, targetId: assignmentTargets.id, title: assignments.title,
-    status: assignments.status, dueAt: assignments.dueAt, publishedAt: assignments.publishedAt,
-    submissionId: assignmentSubmissions.id, submittedAt: assignmentSubmissions.submittedAt,
-  }).from(assignmentTargets)
+export function buildStudentAssignmentListQuery(
+  database: StudentQueryDatabase,
+  userId: string,
+  page: number,
+  pageSize: number,
+) {
+  return database
+    .select({
+      assignmentId: assignments.id,
+      targetId: assignmentTargets.id,
+      title: assignments.title,
+      status: assignments.status,
+      dueAt: assignments.dueAt,
+      publishedAt: assignments.publishedAt,
+      submissionId: assignmentSubmissions.id,
+      submittedAt: assignmentSubmissions.submittedAt,
+    })
+    .from(assignmentTargets)
     .innerJoin(assignments, eq(assignments.id, assignmentTargets.assignmentId))
     .innerJoin(cohortEnrollments, eq(cohortEnrollments.id, assignmentTargets.enrollmentId))
     .innerJoin(academicStudents, eq(academicStudents.id, cohortEnrollments.studentId))
-    .leftJoin(assignmentSubmissions, and(eq(assignmentSubmissions.assignmentTargetId, assignmentTargets.id), eq(assignmentSubmissions.submittedByUserId, userId)))
-    .where(visibleTargetCondition(userId)).orderBy(asc(assignments.dueAt), asc(assignments.id))
-    .limit(pageSize + 1).offset((page - 1) * pageSize);
+    .leftJoin(
+      assignmentSubmissions,
+      and(
+        eq(assignmentSubmissions.assignmentTargetId, assignmentTargets.id),
+        eq(assignmentSubmissions.submittedByUserId, userId),
+      ),
+    )
+    .where(visibleTargetCondition(userId))
+    .orderBy(asc(assignments.dueAt), asc(assignments.id))
+    .limit(pageSize + 1)
+    .offset((page - 1) * pageSize);
 }
 
 // 공통 권한 검사가 끝난 뒤에도 소유권 조건을 반복하여 두 조회 사이의 학적 변경을 반영한다.
-export function buildStudentAssignmentDetailQuery(database: StudentQueryDatabase, userId: string, targetId: string) {
-  return database.select({
-    assignmentId: assignments.id, targetId: assignmentTargets.id, title: assignments.title,
-    status: assignments.status, dueAt: assignments.dueAt, publishedAt: assignments.publishedAt,
-    instructions: assignments.instructions, submissionId: assignmentSubmissions.id, submittedAt: assignmentSubmissions.submittedAt,
-    fileId: assignmentSubmissionFiles.id, originalName: assignmentSubmissionFiles.originalName,
-    mimeType: assignmentSubmissionFiles.mimeType, sizeBytes: assignmentSubmissionFiles.sizeBytes,
-  }).from(assignmentTargets)
+export function buildStudentAssignmentDetailQuery(
+  database: StudentQueryDatabase,
+  userId: string,
+  targetId: string,
+) {
+  return database
+    .select({
+      assignmentId: assignments.id,
+      targetId: assignmentTargets.id,
+      title: assignments.title,
+      status: assignments.status,
+      dueAt: assignments.dueAt,
+      publishedAt: assignments.publishedAt,
+      instructions: assignments.instructions,
+      submissionId: assignmentSubmissions.id,
+      submittedAt: assignmentSubmissions.submittedAt,
+      fileId: assignmentSubmissionFiles.id,
+      originalName: assignmentSubmissionFiles.originalName,
+      mimeType: assignmentSubmissionFiles.mimeType,
+      sizeBytes: assignmentSubmissionFiles.sizeBytes,
+    })
+    .from(assignmentTargets)
     .innerJoin(assignments, eq(assignments.id, assignmentTargets.assignmentId))
     .innerJoin(cohortEnrollments, eq(cohortEnrollments.id, assignmentTargets.enrollmentId))
     .innerJoin(academicStudents, eq(academicStudents.id, cohortEnrollments.studentId))
-    .leftJoin(assignmentSubmissions, and(eq(assignmentSubmissions.assignmentTargetId, assignmentTargets.id), eq(assignmentSubmissions.submittedByUserId, userId)))
-    .leftJoin(assignmentSubmissionFiles, eq(assignmentSubmissionFiles.submissionId, assignmentSubmissions.id))
-    .where(and(visibleTargetCondition(userId), eq(assignmentTargets.id, targetId))).limit(1);
+    .leftJoin(
+      assignmentSubmissions,
+      and(
+        eq(assignmentSubmissions.assignmentTargetId, assignmentTargets.id),
+        eq(assignmentSubmissions.submittedByUserId, userId),
+      ),
+    )
+    .leftJoin(
+      assignmentSubmissionFiles,
+      eq(assignmentSubmissionFiles.submissionId, assignmentSubmissions.id),
+    )
+    .where(and(visibleTargetCondition(userId), eq(assignmentTargets.id, targetId)))
+    .limit(1);
+}
+
+/**
+ * #516 분리 제출 기능 gate가 켜졌을 때만 쓰는 상세 조회입니다. 파일을 조인하지 않고 과제의 제출 형식·요구만 함께 읽습니다.
+ * 새 컬럼은 범위 SQL(migrate-academic-submission-artifacts.sql)이 소유하므로 Drizzle 모델 대신 컬럼 이름을 직접 씁니다.
+ * gate가 꺼진 기본 경로는 이 문장을 실행하지 않아 마이그레이션 전 DB에서도 기존 조회와 같습니다.
+ */
+export function buildStudentAssignmentArtifactDetailQuery(
+  database: StudentQueryDatabase,
+  userId: string,
+  targetId: string,
+) {
+  return database
+    .select({
+      assignmentId: assignments.id,
+      targetId: assignmentTargets.id,
+      title: assignments.title,
+      status: assignments.status,
+      dueAt: assignments.dueAt,
+      publishedAt: assignments.publishedAt,
+      instructions: assignments.instructions,
+      submissionId: assignmentSubmissions.id,
+      submittedAt: assignmentSubmissions.submittedAt,
+      submissionFormat: sql<string>`${assignments}.submission_format::text`,
+      textRequirement: sql<string | null>`${assignments}.text_requirement::text`,
+      slidesRequirement: sql<string | null>`${assignments}.slides_requirement::text`,
+    })
+    .from(assignmentTargets)
+    .innerJoin(assignments, eq(assignments.id, assignmentTargets.assignmentId))
+    .innerJoin(cohortEnrollments, eq(cohortEnrollments.id, assignmentTargets.enrollmentId))
+    .innerJoin(academicStudents, eq(academicStudents.id, cohortEnrollments.studentId))
+    .leftJoin(
+      assignmentSubmissions,
+      and(
+        eq(assignmentSubmissions.assignmentTargetId, assignmentTargets.id),
+        eq(assignmentSubmissions.submittedByUserId, userId),
+      ),
+    )
+    .where(and(visibleTargetCondition(userId), eq(assignmentTargets.id, targetId)))
+    .limit(1);
+}
+
+/**
+ * V2 최종 제출의 모든 파일(텍스트·발표자료 최대 2개)을 읽습니다. 단일 파일 `.limit(1)`을 쓰지 않습니다.
+ * 본인 대상·본인 제출 조건과 현재 학적 조건을 반복해 두 조회 사이의 권한 변경도 반영합니다.
+ * 결과는 3행까지 읽어 DB 이상(항목 중복 등)을 호출자가 실패로 판정할 수 있게 합니다.
+ */
+export function buildStudentSubmissionArtifactFilesQuery(
+  database: StudentQueryDatabase,
+  userId: string,
+  targetId: string,
+) {
+  return database
+    .select({
+      fileId: assignmentSubmissionFiles.id,
+      originalName: assignmentSubmissionFiles.originalName,
+      mimeType: assignmentSubmissionFiles.mimeType,
+      sizeBytes: assignmentSubmissionFiles.sizeBytes,
+      artifactType: sql<string>`${assignmentSubmissionFiles}.artifact_type::text`,
+      fileFormat: sql<string>`${assignmentSubmissionFiles}.file_format::text`,
+    })
+    .from(assignmentSubmissionFiles)
+    .innerJoin(
+      assignmentSubmissions,
+      and(
+        eq(assignmentSubmissions.id, assignmentSubmissionFiles.submissionId),
+        eq(assignmentSubmissions.submittedByUserId, userId),
+      ),
+    )
+    .innerJoin(
+      assignmentTargets,
+      eq(assignmentTargets.id, assignmentSubmissions.assignmentTargetId),
+    )
+    .innerJoin(assignments, eq(assignments.id, assignmentTargets.assignmentId))
+    .innerJoin(cohortEnrollments, eq(cohortEnrollments.id, assignmentTargets.enrollmentId))
+    .innerJoin(academicStudents, eq(academicStudents.id, cohortEnrollments.studentId))
+    .where(and(visibleTargetCondition(userId), eq(assignmentTargets.id, targetId)))
+    .orderBy(sql`${assignmentSubmissionFiles}.artifact_type`, asc(assignmentSubmissionFiles.id))
+    .limit(3);
 }

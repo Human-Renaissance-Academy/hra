@@ -81,11 +81,12 @@
 | `docs/getting-started/glossary.md` | PR #301 추가. 처음 등장하는 개발·운영 용어를 풀이한다. | 안내 |
 | `docs/getting-started/project-tour.md` | PR #301 추가. 화면→서버→DB의 현재 파일 경로를 따라간다. | 현재 예시 |
 | `docs/developer/github-actions-security.md` | 후속 `main`에서 도입된 별도 CI 보안 안내. 원래 66개 집계에 넣지 않았고 원문 정책을 유지한다. | 현재 CI 규칙 |
-| `docs/developer/academic-submission-artifacts-migration.md` | #516 PR-C의 추가형 DB 변경 안내. 적용 전 구조 판정·기존 행 보존·V2 함수와 오류 코드를 설명하며 기능은 비활성, 운영 적용은 미확인이다. | 로컬 코드·운영 미적용 |
+| `docs/developer/academic-submission-artifacts-migration.md` | #516 PR-C의 추가형 DB 변경 안내와 PR-D 서비스 연결 결과. 적용 전 구조 판정·기존 행 보존·V2 함수와 오류 코드·과제 형식 payload·업로드 예산을 설명하며 기능은 별도 설정으로 비활성, 운영 적용은 미확인이다. | 로컬 코드·운영 미적용 |
 | `docs/developer/rate-limit-reservation-index.md` | #320의 로컬 통합 안내. 범위 SQL과 인덱스 카탈로그·합성 성능 증거를 설명하며 운영 적용은 미확인이다. | 로컬 코드·운영 미적용 |
 | `docs/developer/academic-assignment-reviews.md` | #162 추가. G3 과제 검토·피드백 이력 SQL, 검토자 파일 열람 감사, 검토·공개·학생 조회 화면을 설명하며 기능은 비활성, 운영 적용은 미확인이다. | 로컬 코드·운영 미적용 |
 | `docs/developer/academic-faculty-reviewers.md` | #161 추가. G2 교수 계정 연결·수업별 과제 검토자 지정 SQL과 과제 검토 권한 판정 서비스를 설명하며 기능은 비활성, 운영 적용은 미확인이다. | 로컬 코드·운영 미적용 |
 | `docs/developer/academic-staff-assignments.md` | #165 추가. G2 운영 인력 배정·학사 운영 관리자 지정 SQL과 출결 권한 판정 서비스를 설명하며 기능은 비활성, 운영 적용은 미확인이다. | 로컬 코드·운영 미적용 |
 | `docs/developer/academic-attendance.md` | #159 추가. G2 학생별 출결·정정 승인 SQL과 Application Service를 설명하며 기능은 비활성, 운영 적용은 미확인이다. | 로컬 코드·운영 미적용 |
+| `docs/developer/academic-completion.md` | #163 추가. G3 수료 기준 버전·수료 확정 이력 SQL과 Application Service·화면을 설명하며 기능은 비활성, 운영 적용은 미확인이다. | 로컬 코드·운영 미적용 |
 
 `mkdocs.yml`의 메뉴와 `.env.example`은 Markdown 66개 집계 밖의 설정 파일이다. PR #301은 새 안내의 탐색 경로와 안전한 합성 설정 예시를 보강하지만 실제 환경값을 저장하지 않는다. 이 표의 근거 경로는 리뷰 시 실제 저장소와 다시 대조하고, 새 코드·SQL·정책이 병합되면 해당 행의 상태도 갱신한다.

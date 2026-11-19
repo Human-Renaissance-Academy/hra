@@ -6,7 +6,8 @@
  * - 후속 서비스·리포지토리(#516 PR-D)가 SQL 함수 인자와 결과를 같은 값으로 다루게 합니다.
  *
  * 사용 위치:
- * - 아직 앱 코드에서 호출하지 않습니다. 기능은 비활성이며 앱은 기존 v1(PDF 단일) 함수만 사용합니다.
+ * - 과제 생성·초안 수정 입력 검증(`features/academics/assignments/validation.ts`)이 enum 값을 공유합니다.
+ * - V2 업로드·최종화 서비스(#516 PR-D)는 ACADEMIC_SUBMISSION_ARTIFACTS_ENABLED가 true일 때만 V2 함수를 호출합니다.
  *
  * 주의:
  * - 이 파일은 `schema.ts`에서 재수출하지 않으며 pgTable·pgEnum을 선언하지 않습니다.
