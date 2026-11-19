@@ -15,9 +15,11 @@ import { spawnSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
+  classifyDependencyDrift,
   dependencyDiagnosticLines,
   dependencySnapshot,
   lockRegistryViolations,
+  regenerateDependencyPolicy,
   verifyDependencyPolicy as verifyV3DependencyPolicy,
 } from "../_lib/dependency-policy.mjs";
 const policy = JSON.parse(
@@ -261,7 +263,11 @@ test("손상된 원장은 원문 없이 실패 차단한다", () => {
     error = caught;
   }
   assert.equal(error?.message, "DEPENDENCY_TRIAGE_CHANGED");
-  assert.deepEqual(dependencyDiagnosticLines(error), ["DEPENDENCY_TRIAGE_CHANGED"]);
+  // 손상된 원장은 비교할 수 없으므로 변화 유형을 unclassified로만 표시하고 원문은 내보내지 않는다.
+  assert.deepEqual(dependencyDiagnosticLines(error), [
+    "DEPENDENCY_TRIAGE_CHANGED",
+    "DEPENDENCY_DRIFT_KIND unclassified",
+  ]);
 });
 
 test("v3 검토 정본은 20개 명시 판단과 3개 공유 사용 맥락을 유지한다", () => {
@@ -1616,3 +1622,360 @@ for (const [name, mutate] of [
     mutate(f);
     assert.throws(() => verifyFixture(f), /DEPENDENCY_/);
   });
+
+// ---------------------------------------------------------------------------
+// #368 원장 변화 유형 진단과 재생성 도구 회귀
+// - 변화 유형(removal-only/metadata-only/additions-present)은 진단 전용이며 모든 유형이 계속 실패한다.
+// - 재생성은 제거·메타데이터 변화만 반영하고 새 평가가 필요한 변화는 거부한다.
+// ---------------------------------------------------------------------------
+const repositoryFile = (path) => readFileSync(new URL("../../" + path, import.meta.url));
+// 원장 packages의 독립 nodes/via 집합으로 npm 응답을 복원한다(위 root audit 복원과 같은 규칙).
+const auditFromPolicy = (source) => ({
+  auditReportVersion: 2,
+  vulnerabilities: Object.fromEntries(
+    source.packages.map((pkg) => [
+      pkg.name,
+      {
+        name: pkg.name,
+        severity: pkg.severity,
+        range: pkg.range,
+        nodes: pkg.nodes.map((node) => node.path),
+        via: pkg.via.map((v) =>
+          v.source ? { ...v, url: "https://github.com/advisories/" + v.id } : v.dependency,
+        ),
+      },
+    ]),
+  ),
+});
+// 실제 저장소의 manifest/lock bytes와 원장을 그대로 쓰는 재생성 입력입니다.
+const realTargets = {
+  root: {
+    policyPath: "security/dependency-triage.json",
+    input: () => ({
+      manifestBytes: repositoryFile("package.json"),
+      lockBytes: repositoryFile("package-lock.json"),
+    }),
+  },
+  mobile: {
+    policyPath: "security/mobile-dependency-triage.json",
+    input: () => ({
+      manifestBytes: repositoryFile("apps/mobile/package.json"),
+      lockBytes: repositoryFile("apps/mobile/package-lock.json"),
+    }),
+  },
+};
+const regenerateToday = "2026-11-19";
+// 원장에만 남은(=audit에서 사라진) 패키지·권고·평가·맥락을 덧붙여 상위 철회를 재현한다.
+function withWithdrawnFixture(source) {
+  const result = structuredClone(source);
+  result.packages.push({
+    name: "zz-fixture-withdrawn",
+    severity: "high",
+    range: "<99",
+    nodes: [{ path: "node_modules/zz-fixture-withdrawn", version: "1.0.0", development: true }],
+    via: [
+      {
+        source: 999990,
+        id: "GHSA-test-wdrn",
+        severity: "high",
+        range: "<99",
+        title: "SENSITIVE_SENTINEL",
+      },
+    ],
+  });
+  result.assessments.push({
+    key: "zz-fixture-withdrawn:999990",
+    attackCondition: "철회 재현용 합성 평가로 실제 사용 경로가 없다.",
+    contextId: "fixture-withdrawn",
+    owner: "repo-maintainers",
+    priority: "P2",
+    reviewedOn: "2026-11-19",
+    reviewBy: "2026-11-20",
+  });
+  result.contexts.push({
+    id: "fixture-withdrawn",
+    usedApi: "철회 재현용 합성 맥락의 사용 API 설명",
+    callLocations: "철회 재현용 합성 맥락의 호출 위치 설명",
+    assessment: "철회 재현용 합성 맥락의 사용면 평가 설명",
+    residualAssumptions: "철회 재현용 합성 맥락의 잔여 전제 설명",
+  });
+  return result;
+}
+function captureError(run) {
+  try {
+    run();
+  } catch (error) {
+    return error;
+  }
+  assert.fail("차단되어야 할 변화가 통과했다");
+}
+
+test("변화 유형: 원장에만 남은 권고와 파생 등급 하락은 removal-only이며 철회 후보 GHSA를 표시한다", () => {
+  const ledger = withWithdrawnFixture(policy);
+  const snapshot = dependencySnapshot(audit, lock);
+  // 철회로 상위 패키지 등급이 낮아진 선례(#540)도 removal-only로 본다.
+  const lowered = structuredClone(ledger);
+  lowered.packages.find((pkg) => pkg.name === "esbuild").severity = "critical";
+  assert.notEqual(snapshot.find((pkg) => pkg.name === "esbuild").severity, "critical");
+  const drift = classifyDependencyDrift(snapshot, lowered.packages);
+  assert.equal(drift.kind, "removal-only");
+  assert.deepEqual(drift.removedAdvisories, ["GHSA-test-wdrn"]);
+  // verify는 여전히 실패하고 유형 줄만 추가된다.
+  const error = captureError(() => verifyReviewedFixture(audit, lock, ledger, "2026-11-19"));
+  assert.equal(error.message, "DEPENDENCY_TRIAGE_CHANGED");
+  const lines = dependencyDiagnosticLines(error);
+  assert.ok(lines.includes("DEPENDENCY_DRIFT_KIND removal-only"));
+  assert.ok(lines.includes("DEPENDENCY_DRIFT_REMOVED_ADVISORIES GHSA-test-wdrn"));
+  assert.doesNotMatch(lines.join("\n"), /SENSITIVE_SENTINEL/);
+});
+test("변화 유형: 새 권고·등급 상승은 additions-present로 분류하고 차단한다", () => {
+  for (const change of [
+    (a) =>
+      a.vulnerabilities.esbuild.via.push({
+        source: 999999,
+        url: "https://github.com/advisories/GHSA-test-1234",
+        severity: "high",
+        range: "<99",
+        title: "t",
+      }),
+    (a) => (a.vulnerabilities.esbuild.severity = "critical"),
+    (a) => (a.vulnerabilities.esbuild.via[0].severity = "critical"),
+  ]) {
+    const input = structuredClone(audit);
+    change(input);
+    const error = captureError(() => verifyReviewedFixture(input, lock, policy, "2026-11-19"));
+    assert.equal(error.message, "DEPENDENCY_TRIAGE_CHANGED");
+    assert.ok(dependencyDiagnosticLines(error).includes("DEPENDENCY_DRIFT_KIND additions-present"));
+  }
+  // 제거와 추가가 섞이면 추가 쪽으로 분류한다.
+  const mixed = structuredClone(audit);
+  mixed.vulnerabilities.esbuild.via[0].severity = "critical";
+  const drift = classifyDependencyDrift(
+    dependencySnapshot(mixed, lock),
+    withWithdrawnFixture(policy).packages,
+  );
+  assert.equal(drift.kind, "additions-present");
+});
+test("변화 유형: 권고 title·range 변화와 등급 하락만 있으면 metadata-only이며 계속 차단한다", () => {
+  const input = structuredClone(audit);
+  input.vulnerabilities.esbuild.via[0].title = "SENSITIVE_SENTINEL";
+  input.vulnerabilities.esbuild.via[0].range += " || 99.0.0";
+  const error = captureError(() => verifyReviewedFixture(input, lock, policy, "2026-11-19"));
+  const lines = dependencyDiagnosticLines(error);
+  assert.equal(lines[0], "DEPENDENCY_TRIAGE_CHANGED");
+  assert.ok(lines.includes("DEPENDENCY_DRIFT_KIND metadata-only"));
+  assert.doesNotMatch(lines.join("\n"), /SENSITIVE_SENTINEL|99\.0\.0/);
+  const lowered = structuredClone(policy);
+  lowered.packages.find((pkg) => pkg.name === "esbuild").via[0].severity = "critical";
+  assert.equal(
+    classifyDependencyDrift(dependencySnapshot(audit, lock), lowered.packages).kind,
+    "metadata-only",
+  );
+});
+test("변화 유형 요약은 외부에서 붙인 오류 필드를 출력하지 않는다", () => {
+  const forged = new Error("DEPENDENCY_TRIAGE_CHANGED");
+  forged.driftKind = "removal-only";
+  forged.removedAdvisories = ["SENSITIVE_SENTINEL"];
+  assert.deepEqual(dependencyDiagnosticLines(forged), ["DEPENDENCY_TRIAGE_CHANGED"]);
+});
+
+for (const [name, target] of Object.entries(realTargets))
+  test(`재생성: ${name} 현재 audit에 대해 결과가 현재 원장과 byte 단위로 같다(멱등)`, () => {
+    const raw = repositoryFile(target.policyPath).toString("utf8");
+    const current = JSON.parse(raw);
+    const outcome = regenerateDependencyPolicy(
+      auditFromPolicy(current),
+      target.input(),
+      current,
+      regenerateToday,
+    );
+    assert.equal(outcome.changed, false);
+    assert.equal(outcome.summary.driftKind, "none");
+    assert.equal(JSON.stringify(outcome.policy, null, 2) + "\n", raw);
+  });
+for (const [name, target] of Object.entries(realTargets))
+  test(`재생성: ${name} 철회 재현은 평가·맥락만 제거하고 유지 평가 필드를 그대로 둔다`, () => {
+    const raw = repositoryFile(target.policyPath).toString("utf8");
+    const current = JSON.parse(raw);
+    const outcome = regenerateDependencyPolicy(
+      auditFromPolicy(current),
+      target.input(),
+      withWithdrawnFixture(current),
+      regenerateToday,
+    );
+    assert.equal(outcome.changed, true);
+    assert.equal(outcome.summary.driftKind, "removal-only");
+    assert.deepEqual(outcome.summary.removedAdvisories, ["GHSA-test-wdrn"]);
+    assert.deepEqual(outcome.summary.removedAssessments, ["zz-fixture-withdrawn:999990"]);
+    assert.deepEqual(outcome.summary.removedContexts, ["fixture-withdrawn"]);
+    // 결과 전체가 원래 원장과 byte 단위로 같으므로 유지 평가의 reviewedOn/reviewBy/판단 문구도 같다.
+    assert.equal(JSON.stringify(outcome.policy, null, 2) + "\n", raw);
+    for (const [index, item] of current.assessments.entries())
+      assert.equal(JSON.stringify(outcome.policy.assessments[index]), JSON.stringify(item));
+  });
+test("재생성: 새 권고·등급 상승은 평가를 만들지 않고 제거도 부분 반영하지 않는다", () => {
+  const current = JSON.parse(repositoryFile(realTargets.root.policyPath));
+  const cases = [
+    [
+      (a) =>
+        a.vulnerabilities.esbuild.via.push({
+          source: 999999,
+          url: "https://github.com/advisories/GHSA-test-1234",
+          severity: "low",
+          range: "<99",
+          title: "t",
+        }),
+      "ADVISORY_ONLY_IN_AUDIT",
+    ],
+    [(a) => (a.vulnerabilities.esbuild.via[0].severity = "critical"), "ADVISORY_METADATA_CHANGED"],
+  ];
+  for (const [change, kind] of cases) {
+    const input = auditFromPolicy(current);
+    change(input);
+    const error = captureError(() =>
+      regenerateDependencyPolicy(
+        input,
+        realTargets.root.input(),
+        withWithdrawnFixture(current),
+        regenerateToday,
+      ),
+    );
+    assert.equal(error.message, "DEPENDENCY_REGENERATE_REVIEW_REQUIRED");
+    assert.ok(error.items.some((item) => item.kind === kind));
+    assert.doesNotMatch(JSON.stringify(error.items), /SENSITIVE_SENTINEL/);
+  }
+});
+test("재생성: binding 불일치·만료·P1은 자동 갱신·기한 연장·수용 없이 거부한다", () => {
+  const current = JSON.parse(repositoryFile(realTargets.root.policyPath));
+  const input = realTargets.root.input();
+  const changedLock = { ...input, lockBytes: Buffer.concat([input.lockBytes, Buffer.from("\n")]) };
+  assert.throws(
+    () =>
+      regenerateDependencyPolicy(auditFromPolicy(current), changedLock, current, regenerateToday),
+    /DEPENDENCY_REGENERATE_BINDING_CHANGED/,
+  );
+  assert.throws(
+    () =>
+      regenerateDependencyPolicy(
+        auditFromPolicy(current),
+        input,
+        withWithdrawnFixture(current),
+        "2026-12-04",
+      ),
+    /DEPENDENCY_TRIAGE_INVALID/,
+  );
+  const p1 = structuredClone(current);
+  p1.assessments[0].priority = "P1";
+  assert.throws(
+    () => regenerateDependencyPolicy(auditFromPolicy(p1), input, p1, regenerateToday),
+    /DEPENDENCY_TRIAGE_INVALID/,
+  );
+});
+test("재생성 CLI는 verify와 같은 npm audit 인자를 쓴다", () => {
+  const auditArguments = (file) =>
+    readFileSync(new URL("../" + file, import.meta.url), "utf8").match(
+      /spawnSync\(\s*"npm",\s*(\[[^\]]*\])/,
+    )?.[1];
+  const verifyArguments = auditArguments("verify-dependencies.mjs");
+  assert.ok(verifyArguments);
+  assert.equal(
+    auditArguments("regenerate-dependency-triage.mjs")?.replace(/\s+/g, " "),
+    verifyArguments.replace(/\s+/g, " "),
+  );
+});
+/** 격리 mirror와 가짜 npm으로 재생성 CLI의 dry-run/--write/거부를 확인한다. */
+function runRegenerateCli(ledger, auditReport, args) {
+  const directory = mkdtempSync(join(tmpdir(), "hra-regenerate-fixture-"));
+  try {
+    mkdirSync(join(directory, "scripts/_lib"), { recursive: true });
+    mkdirSync(join(directory, "security"));
+    mkdirSync(join(directory, "bin"));
+    for (const file of ["regenerate-dependency-triage.mjs", "_lib/dependency-policy.mjs"])
+      writeFileSync(
+        join(directory, "scripts", file),
+        readFileSync(new URL("../" + file, import.meta.url)),
+      );
+    writeFileSync(join(directory, "package.json"), repositoryFile("package.json"));
+    writeFileSync(join(directory, "package-lock.json"), repositoryFile("package-lock.json"));
+    const ledgerPath = join(directory, "security/dependency-triage.json");
+    writeFileSync(ledgerPath, JSON.stringify(ledger, null, 2) + "\n");
+    const auditPath = join(directory, "audit.json");
+    writeFileSync(auditPath, JSON.stringify(auditReport));
+    const counter = join(directory, "calls.txt");
+    writeFileSync(
+      join(directory, "bin/npm"),
+      `#!${process.execPath}
+const fs=require('node:fs');fs.appendFileSync(${JSON.stringify(counter)},'audit\\n');
+process.stdout.write(fs.readFileSync(${JSON.stringify(auditPath)}));process.exit(1);
+`,
+      { mode: 0o700 },
+    );
+    const result = spawnSync(
+      process.execPath,
+      [join(directory, "scripts/regenerate-dependency-triage.mjs"), ...args],
+      {
+        cwd: directory,
+        env: {
+          PATH: join(directory, "bin") + ":" + process.env.PATH,
+          HOME: directory,
+          TMPDIR: directory,
+        },
+        encoding: "utf8",
+        timeout: 15000,
+      },
+    );
+    return {
+      status: result.status,
+      stdout: result.stdout,
+      stderr: result.stderr,
+      ledger: readFileSync(ledgerPath, "utf8"),
+      calls: existsSync(counter) ? readFileSync(counter, "utf8").split("\n").filter(Boolean) : [],
+      leftovers: readdirSync(directory).filter((name) =>
+        name.startsWith("hra-dependency-regenerate-"),
+      ),
+    };
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+}
+test("재생성 CLI: dry-run은 쓰지 않고 --write만 철회 항목을 제거해 기록한다", () => {
+  const raw = repositoryFile(realTargets.root.policyPath).toString("utf8");
+  const current = JSON.parse(raw);
+  const ledger = withWithdrawnFixture(current);
+  const before = JSON.stringify(ledger, null, 2) + "\n";
+  const dry = runRegenerateCli(ledger, auditFromPolicy(current), ["--target", "root"]);
+  assert.equal(dry.status, 0, dry.stderr);
+  assert.equal(dry.ledger, before);
+  assert.match(dry.stdout, /변화 유형: removal-only/);
+  assert.match(dry.stdout, /GHSA-test-wdrn/);
+  assert.doesNotMatch(dry.stdout, /SENSITIVE_SENTINEL/);
+  assert.deepEqual(dry.leftovers, []);
+  const written = runRegenerateCli(ledger, auditFromPolicy(current), [
+    "--target",
+    "root",
+    "--write",
+  ]);
+  assert.equal(written.status, 0, written.stderr);
+  assert.equal(written.ledger, raw);
+});
+test("재생성 CLI: 추가가 있으면 exit 1이며 --write여도 원장을 바꾸지 않는다", () => {
+  const current = JSON.parse(repositoryFile(realTargets.root.policyPath));
+  const ledger = withWithdrawnFixture(current);
+  const before = JSON.stringify(ledger, null, 2) + "\n";
+  const report = auditFromPolicy(current);
+  report.vulnerabilities.esbuild.severity = "critical";
+  const result = runRegenerateCli(ledger, report, ["--target", "root", "--write"]);
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /DEPENDENCY_REGENERATE_REVIEW_REQUIRED/);
+  assert.match(result.stderr, /PACKAGE_METADATA_CHANGED/);
+  assert.equal(result.ledger, before);
+});
+test("재생성 CLI: 잘못된 인자는 npm을 실행하지 않고 실패한다", () => {
+  const current = JSON.parse(repositoryFile(realTargets.root.policyPath));
+  for (const args of [[], ["--target"], ["--target", "web"], ["--target", "root", "--force"]]) {
+    const result = runRegenerateCli(current, auditFromPolicy(current), args);
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /DEPENDENCY_ARGUMENTS_INVALID/);
+    assert.deepEqual(result.calls, []);
+  }
+});

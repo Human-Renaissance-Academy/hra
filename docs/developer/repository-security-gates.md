@@ -47,6 +47,34 @@ CLI는 첫 audit 전에 양 target의 source package/lock/policy bytes를 captur
 
 `package-lock.json`의 모든 `resolved`는 `https://registry.npmjs.org/`로 시작해야 한다(워크스페이스 link 제외). 개인 `~/.npmrc`나 사내 미러가 만든 외부 피드 주소가 섞이면 `DEPENDENCY_LOCK_REGISTRY_INVALID`와 설치 경로만 출력하고 차단한다(#432). 외부 주소 자체는 로그에 남기지 않는다.
 
+### 상위 권고 철회·정정 대응 절차
+
+lockfile 변경 없이 `DEPENDENCY_TRIAGE_CHANGED`가 나면 `verify:dependencies`는 기존 `DEPENDENCY_CHANGE` 줄 뒤에 변화 유형을 한 줄 더 출력한다(#368). 유형은 진단 전용이며 **어느 유형이든 종료 코드는 실패**다. 자동 통과·자동 수용은 없다.
+
+| 출력                                      | 의미                                                                                                                                                                                                               | 대응                                                                                       |
+| ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------ |
+| `DEPENDENCY_DRIFT_KIND removal-only`      | 원장에만 남은 패키지·설치 경로·권고·전이 링크가 있고, 나머지는 등급 하락·권고 range/title 변화뿐이다. 상위 철회·정정의 전형이다. `DEPENDENCY_DRIFT_REMOVED_ADVISORIES`에 audit 전체에서 사라진 GHSA를 함께 적는다. | 공식 권고에서 철회·정정을 확인한 뒤 아래 재생성 명령 사용                                  |
+| `DEPENDENCY_DRIFT_KIND metadata-only`     | 추가·제거 없이 권고 range/title 변화나 등급 하락만 있다.                                                                                                                                                           | 정정 내용을 확인하고 재생성 명령 사용. range가 넓어졌다면 기존 판단이 여전히 맞는지 재검토 |
+| `DEPENDENCY_DRIFT_KIND additions-present` | 새 패키지·설치 경로·권고·전이 링크, 등급 상승, 설치본 metadata 변화 또는 설명할 수 없는 차이가 하나라도 있다. 제거가 섞여 있어도 이 유형이다.                                                                      | 권고별 새 평가·패치를 일반 의존성 검토로 처리. 재생성 명령은 거부한다                      |
+| `DEPENDENCY_DRIFT_KIND unclassified`      | 원장 구조가 손상돼 비교할 수 없다.                                                                                                                                                                                 | 원장 손상을 먼저 조사                                                                      |
+
+```bash
+npm run deps:triage:regenerate -- --target root     # dry-run(기본): 원장을 쓰지 않고 요약만 출력
+npm run deps:triage:regenerate -- --target mobile --write
+```
+
+이 명령은 #540·#545의 수동 재생성 절차를 재현한다. `verify:dependencies`와 같은 격리 방식·같은 `npm audit` 인자(회귀 테스트로 고정)로 fresh audit를 실행해 `dependencySnapshot()`으로 `packages`를 다시 만들고, 더는 필요하지 않은 평가 key와 참조가 끊긴 맥락만 제거한다. 유지하는 평가·맥락 객체(`reviewedOn`·`reviewBy`·`attackCondition`·`owner`·`priority`·`contextId`와 맥락 문구)와 `note`는 그대로 복사하고, 결과는 같은 audit·입력으로 `verifyDependencyPolicy`를 통과해야만 출력한다. 다음은 exit 1로 거부하며 원장을 바꾸지 않는다.
+
+- 새 권고·패키지·설치 경로·전이 링크·등급 상승 등 새 평가가 필요한 변화(`DEPENDENCY_REGENERATE_REVIEW_REQUIRED`와 해당 항목). 같은 실행의 제거 항목도 부분 반영하지 않는다.
+- 현재 package.json/lock bytes와 원장 `manifestBinding`·`lockBinding` 불일치(`DEPENDENCY_REGENERATE_BINDING_CHANGED`). binding은 자동 갱신하지 않으며 lock·manifest 변경은 일반 의존성 검토 대상이다.
+- 만료·P1·미분류 평가(`DEPENDENCY_TRIAGE_INVALID`). 기한을 연장하거나 P1을 수용하지 않는다.
+
+`--write`는 capture한 세 입력이 그대로일 때만 원장을 덮어쓴다. 출력 요약(변화 유형, 패키지·평가·맥락 수 변화, 철회 후보 GHSA, 제거한 평가 key·맥락)은 PR 본문에 붙인다. 이 명령은 게이트를 통과시키는 권한이 아니다. 생성된 원장 PR은 **보안 게이트 변경으로서 독립 리뷰**(AGENTS.md §11 높은 위험)를 받고, 리뷰어는 철회 후보 GHSA를 공식 권고에서 확인한다. 이 명령을 위해 루트 `package.json`에 script를 추가했으므로 같은 변경에서 루트 원장 `manifestBinding` digest만 새 bytes로 수동 갱신했다(lock·평가·기한은 그대로).
+
+**원장 형식 결론.** schema v3는 바꾸지 않는다. `packages`는 사람이 쓰지 않는 기계 생성 영역(audit 스냅샷)으로 보고 이 명령으로만 재생성하며, 사람이 작성·검토하는 영역은 권고 단위 `assessments`(P2 판단·공격 조건·기한)와 공유 `contexts`로 한정한다. 이렇게 하면 철회·정정 때 손으로 고치는 부분이 사라지고, 새 권고·경로는 여전히 평가 누락으로 실패한다. P1/P2 판단은 평가별 `priority`이고 위험 수용 권한은 owner 승인 절차에 있으며, 게이트는 P2 외 값을 계속 실패시킨다.
+
+**GitHub Dependabot alerts와의 비교.** Dependabot alerts도 같은 GitHub Advisory Database와 lockfile을 근거로 경고를 만들고 철회된 권고의 경고를 자동으로 닫으므로, 위험 목록 자체는 원장과 중복된다. 그러나 alerts는 PR 단위의 결정적 차단 조건이 아니고(저장소 설정·상태에 따라 비동기로 갱신되며 dismiss는 사유만 남기는 UI 조작이다), 권고별 사용면 판단·재검토 기한·P1/P2 구분·검토 입력 binding을 코드 리뷰 대상으로 남기지 않는다. 따라서 **PR 차단의 정본은 계속 이 원장과 `verify:dependencies`**이고, Dependabot alerts는 새 권고를 빨리 알아차리기 위한 참고 정보로만 쓴다. alert를 dismiss해도 원장 평가를 대체하지 않으며, 원장의 권고별 평가가 alert 상태에 따라 자동으로 바뀌지도 않는다.
+
 ### 루트 원장 변경 이력
 
 UTC 2026-11-19에는 picomatch 철회 반영 뒤, 기한이 다가온 루트 `shadcn-ts-morph-glob`(2026-11-26)과 모바일 `expo-cli-config-glob`·`jest-test-runner`(2026-11-25) 평가를 기한 연장이 아닌 재검토로 다시 확인했다. `gh api /advisories`로 [glob 권고](https://github.com/advisories/GHSA-3g3m-2fjr-6pw4)(`>=9.0.0 <=14.0.1`, 첫 수정 14.0.2)와 [minimatch 권고](https://github.com/advisories/GHSA-g3hv-75wg-m249)(`>=7.0.0 <11.0.1`, 첫 수정 11.0.1)가 철회되지 않았음을 확인했고, `npm view`로 glob 13.x 최신 13.0.7(2026-11-06)·minimatch 10.x 최신 10.2.6도 영향 범위임을 확인했다. 루트 `shadcn-ts-morph-glob` 3건은 최신 shadcn 4.23.0도 ts-morph `^26.0.0`(→ @ts-morph/common `~0.27.0`, minimatch `^10.0.1`)을 유지한다. @ts-morph/common 0.29.1(2026-11-16)은 minimatch `^11.0.1`이지만 ts-morph 28로만 도달하므로 범위 밖 0.x override 없이는 적용할 수 없다. dev=true 개발 도구 전용 4주 기준으로 검토일 `2026-11-19`, 기한 **2026-11-26 → 2026-12-17**로 정했다. 모바일 두 context는 아래 모바일 이력에 적었다. lockfile·`package.json`·다른 context는 바꾸지 않았다. 이에 루트의 가장 이른 기한은 `build-esbuild`·`tooling-minimatch-glob`의 2026-12-03, 모바일은 `eslint-lint-tooling`의 2026-12-02가 됐다.
