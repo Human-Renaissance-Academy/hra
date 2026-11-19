@@ -17,7 +17,7 @@ jobs:
   issue:
     name: 이슈 형식
     if: github.event_name == 'issues'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     concurrency:
       group: process-format-issue-${{ github.event.issue.number }}
@@ -39,7 +39,7 @@ jobs:
   pull-request:
     name: PR 형식
     if: github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     concurrency:
       group: process-format-pr-${{ github.event.pull_request.number }}
@@ -65,7 +65,7 @@ jobs:
   contracts:
     name: 형식·릴리스 계약 테스트
     if: github.event_name != 'issues'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
       contents: read
@@ -108,7 +108,7 @@ jobs:
   audit:
     name: 열린 이슈·PR 일괄 검사
     if: github.event_name == 'workflow_dispatch'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
       contents: read
