@@ -105,6 +105,8 @@ nav:
           - 로그·지표·기능 설정: developer/academic-observability.md
           - G1 통합 품질 검사: developer/academic-g1-quality-gate.md
       - 개인정보 정책 초안: ACADEMIC-PRIVACY-RETENTION-POLICY.md
+      - 출결·검토·수료 정책 초안: ACADEMIC-OPERATIONS-POLICY.md
+      - 주차별 텍스트 열람 범위 초안: WEEKLY-TEXT-ACCESS-POLICY.md
   - 앞으로의 플랫폼:
       - 목표 아키텍처: developer/platform-architecture.md
       - 전환 로드맵: PLATFORM-ROADMAP.md
