@@ -6,9 +6,15 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
-  auth: vi.fn(), profile: vi.fn(), log: vi.fn(),
-  materialCount: vi.fn(), materialList: vi.fn(), materialFind: vi.fn(),
-  weeklyCount: vi.fn(), weeklyList: vi.fn(), weeklyFind: vi.fn(),
+  auth: vi.fn(),
+  profile: vi.fn(),
+  log: vi.fn(),
+  materialCount: vi.fn(),
+  materialList: vi.fn(),
+  materialFind: vi.fn(),
+  weeklyCount: vi.fn(),
+  weeklyList: vi.fn(),
+  weeklyFind: vi.fn(),
 }));
 vi.mock("server-only", () => ({}));
 // 사용자별 자료 조회 빈도 제한(#444)은 이 파일의 관심사가 아니므로 항상 허용합니다. 제한 동작은 resource-read-limit 테스트가 검증합니다.
@@ -40,21 +46,50 @@ const userId = "11111111-1111-4111-8111-111111111111";
 const itemId = "22222222-2222-4222-8222-222222222222";
 const ownCohort = "33333333-3333-4333-8333-333333333333";
 const otherCohort = "44444444-4444-4444-8444-444444444444";
-const profile = { id: userId, name: "합성", email: null, role: "MEMBER", cohortId: ownCohort, image: null };
-const leak = { fileUrl: "https://private.invalid/secret.pdf", uploadedById: userId, uploaderName: "업로더", createdAt: new Date() };
+const profile = {
+  id: userId,
+  name: "합성",
+  email: null,
+  role: "MEMBER",
+  cohortId: ownCohort,
+  image: null,
+};
+const leak = {
+  fileUrl: "https://private.invalid/secret.pdf",
+  uploadedById: userId,
+  uploaderName: "업로더",
+  createdAt: new Date(),
+};
 // 수업일은 관리자 폼의 `YYYY-MM-DDT00:00:00` 벽시계 값을 Drizzle이 UTC로 읽은 형태입니다.
 const classDate = new Date("2026-10-05T00:00:00.000Z");
 
 const materialRow = {
-  id: itemId, title: "합성 강의자료", audience: "STUDENT", weekNumber: 3, lectureTitle: "고전 읽기", classDate, ...leak,
+  id: itemId,
+  title: "합성 강의자료",
+  audience: "STUDENT",
+  weekNumber: 3,
+  lectureTitle: "고전 읽기",
+  classDate,
+  ...leak,
 };
 const weeklyRow = {
-  id: itemId, title: "합성 텍스트", textType: "고전명작", classDate, cohortId: otherCohort, cohortName: "다른 기수",
-  hasBody: true, hasFile: false, body: "# 본문", fileName: null, ...leak,
+  id: itemId,
+  title: "합성 텍스트",
+  textType: "고전명작",
+  classDate,
+  cohortId: otherCohort,
+  cohortName: "다른 기수",
+  hasBody: true,
+  hasFile: false,
+  body: "# 본문",
+  fileName: null,
+  ...leak,
 };
 
-const listRequest = (path: string, query = "") => new Request(`https://qa.invalid/api/v1/resources/${path}${query}`);
-const detailRequest = (path: string, query = "") => new Request(`https://qa.invalid/api/v1/resources/${path}/${itemId}${query}`);
+const listRequest = (path: string, query = "") =>
+  new Request(`https://qa.invalid/api/v1/resources/${path}${query}`);
+const detailRequest = (path: string, query = "") =>
+  new Request(`https://qa.invalid/api/v1/resources/${path}/${itemId}${query}`);
 const context = (id = itemId) => ({ params: Promise.resolve({ id }) });
 
 beforeEach(() => {
@@ -70,11 +105,28 @@ beforeEach(() => {
 });
 
 const lists = [
-  { name: "강의자료", path: "class-materials", handler: listClassMaterials, count: mocks.materialCount, list: mocks.materialList },
-  { name: "주차별 텍스트", path: "weekly-texts", handler: listWeeklyTexts, count: mocks.weeklyCount, list: mocks.weeklyList },
+  {
+    name: "강의자료",
+    path: "class-materials",
+    handler: listClassMaterials,
+    count: mocks.materialCount,
+    list: mocks.materialList,
+  },
+  {
+    name: "주차별 텍스트",
+    path: "weekly-texts",
+    handler: listWeeklyTexts,
+    count: mocks.weeklyCount,
+    list: mocks.weeklyList,
+  },
 ] as const;
 const details = [
-  { name: "강의자료", path: "class-materials", handler: getClassMaterial, find: mocks.materialFind },
+  {
+    name: "강의자료",
+    path: "class-materials",
+    handler: getClassMaterial,
+    find: mocks.materialFind,
+  },
   { name: "주차별 텍스트", path: "weekly-texts", handler: getWeeklyText, find: mocks.weeklyFind },
 ] as const;
 
@@ -88,11 +140,28 @@ describe("강의자료 목록·상세 DTO", () => {
     expect(mocks.materialList).toHaveBeenCalledWith({ id: userId, role: "MEMBER" }, 10, 0);
     const body = await response.json();
     expect(body).toEqual({
-      classMaterials: [{ id: itemId, title: "합성 강의자료", audience: "STUDENT", weekNumber: 3,
-        lectureTitle: "고전 읽기", classDate: "2026-10-05" }],
-      page: { page: 1, pageSize: 10, totalCount: 1, totalPages: 1, hasNextPage: false, hasPreviousPage: false },
+      classMaterials: [
+        {
+          id: itemId,
+          title: "합성 강의자료",
+          audience: "STUDENT",
+          weekNumber: 3,
+          lectureTitle: "고전 읽기",
+          classDate: "2026-10-05",
+        },
+      ],
+      page: {
+        page: 1,
+        pageSize: 10,
+        totalCount: 1,
+        totalPages: 1,
+        hasNextPage: false,
+        hasPreviousPage: false,
+      },
     });
-    expect(JSON.stringify(body)).not.toMatch(/fileUrl|fileName|uploaded|uploader|createdAt|private\.invalid/);
+    expect(JSON.stringify(body)).not.toMatch(
+      /fileUrl|fileName|uploaded|uploader|createdAt|private\.invalid/,
+    );
   });
 
   it("FACULTY·ADMIN은 자신의 현재 역할로 저장소 필터를 호출한다", async () => {
@@ -109,8 +178,17 @@ describe("강의자료 목록·상세 DTO", () => {
     expect(response.status).toBe(200);
     expect(mocks.materialFind).toHaveBeenCalledWith({ id: userId, role: "MEMBER" }, itemId);
     const body = await response.json();
-    expect(body).toEqual({ classMaterial: { id: itemId, title: "합성 강의자료", audience: "STUDENT", weekNumber: 3,
-      lectureTitle: "고전 읽기", classDate: "2026-10-05", fileName: "강의.pdf" } });
+    expect(body).toEqual({
+      classMaterial: {
+        id: itemId,
+        title: "합성 강의자료",
+        audience: "STUDENT",
+        weekNumber: 3,
+        lectureTitle: "고전 읽기",
+        classDate: "2026-10-05",
+        fileName: "강의.pdf",
+      },
+    });
     expect(JSON.stringify(body)).not.toMatch(/fileUrl|uploader|private\.invalid/);
   });
 
@@ -123,24 +201,62 @@ describe("강의자료 목록·상세 DTO", () => {
 });
 
 describe("주차별 텍스트 목록·상세 DTO", () => {
-  it("다른 기수 텍스트도 공동 자료로 목록에 포함하며 본문·URL·파일명은 제외한다", async () => {
+  it("현재 계정 주체로 기수 범위 목록(#441)을 조회하며 본문·URL·파일명은 제외한다", async () => {
     const response = await listWeeklyTexts(listRequest("weekly-texts", "?page=1&pageSize=5"));
     expect(response.status).toBe(200);
-    expect(mocks.weeklyList).toHaveBeenCalledWith(5, 0);
+    // 기수 범위는 저장소 SQL 조건이 강제합니다. 실제 SQL 경계는 weekly-text-cohort-scope-postgres가 검증합니다.
+    expect(mocks.weeklyCount).toHaveBeenCalledWith(
+      expect.objectContaining({ id: userId, role: "MEMBER" }),
+    );
+    expect(mocks.weeklyList).toHaveBeenCalledWith(
+      expect.objectContaining({ id: userId, role: "MEMBER" }),
+      5,
+      0,
+    );
     const body = await response.json();
-    expect(body.weeklyTexts).toEqual([{ id: itemId, title: "합성 텍스트", textType: "고전명작",
-      cohort: { id: otherCohort, name: "다른 기수" }, classDate: "2026-10-05", hasBody: true, hasFile: false }]);
+    expect(body.weeklyTexts).toEqual([
+      {
+        id: itemId,
+        title: "합성 텍스트",
+        textType: "고전명작",
+        cohort: { id: otherCohort, name: "다른 기수" },
+        classDate: "2026-10-05",
+        hasBody: true,
+        hasFile: false,
+      },
+    ]);
     expect(JSON.stringify(body)).not.toMatch(/body"|fileUrl|fileName|createdAt|private\.invalid/);
   });
 
   it("상세는 Markdown 본문과 파일명만 추가하고 기수 없는 텍스트·빈 분류는 null이다", async () => {
-    mocks.weeklyFind.mockResolvedValue({ ...weeklyRow, cohortId: null, cohortName: null, textType: "", hasFile: true, fileName: "텍스트.pdf" });
+    mocks.weeklyFind.mockResolvedValue({
+      ...weeklyRow,
+      cohortId: null,
+      cohortName: null,
+      textType: "",
+      hasFile: true,
+      fileName: "텍스트.pdf",
+    });
     const response = await getWeeklyText(detailRequest("weekly-texts"), context());
     expect(response.status).toBe(200);
-    expect(mocks.weeklyFind).toHaveBeenCalledWith(itemId);
+    expect(mocks.weeklyFind).toHaveBeenCalledWith(
+      expect.objectContaining({ id: userId, role: "MEMBER" }),
+      itemId,
+    );
     const body = await response.json();
-    expect(body).toEqual({ weeklyText: { id: itemId, title: "합성 텍스트", textType: null, cohort: null,
-      classDate: "2026-10-05", hasBody: true, hasFile: true, body: "# 본문", fileName: "텍스트.pdf" } });
+    expect(body).toEqual({
+      weeklyText: {
+        id: itemId,
+        title: "합성 텍스트",
+        textType: null,
+        cohort: null,
+        classDate: "2026-10-05",
+        hasBody: true,
+        hasFile: true,
+        body: "# 본문",
+        fileName: "텍스트.pdf",
+      },
+    });
     expect(JSON.stringify(body)).not.toMatch(/fileUrl|private\.invalid/);
   });
 
@@ -159,20 +275,31 @@ describe.each(lists)("$name 목록 공통 경계", ({ path, handler, count, list
     expect(response.status).toBe(200);
     const body = await response.json();
     expect(Object.values(body)[0]).toEqual([]);
-    expect(body.page).toEqual({ page: 4, pageSize: 5, totalCount: 12, totalPages: 3, hasNextPage: false, hasPreviousPage: true });
+    expect(body.page).toEqual({
+      page: 4,
+      pageSize: 5,
+      totalCount: 12,
+      totalPages: 3,
+      hasNextPage: false,
+      hasPreviousPage: true,
+    });
     expect(list).not.toHaveBeenCalled();
   });
 
-  it.each(["?page=1&page=2", "?q=검색", "?page=0", "?pageSize=51", "?page=9007199254740991&pageSize=50", "?page=2147483649"])(
-    "잘못된 query %s는 인증·DB 전에 400이다",
-    async (query) => {
-      const response = await handler(listRequest(path, query));
-      expect(response.status).toBe(400);
-      expect((await response.json()).error.code).toBe("INVALID_INPUT");
-      expect(mocks.auth).not.toHaveBeenCalled();
-      expect(count).not.toHaveBeenCalled();
-    },
-  );
+  it.each([
+    "?page=1&page=2",
+    "?q=검색",
+    "?page=0",
+    "?pageSize=51",
+    "?page=9007199254740991&pageSize=50",
+    "?page=2147483649",
+  ])("잘못된 query %s는 인증·DB 전에 400이다", async (query) => {
+    const response = await handler(listRequest(path, query));
+    expect(response.status).toBe(400);
+    expect((await response.json()).error.code).toBe("INVALID_INPUT");
+    expect(mocks.auth).not.toHaveBeenCalled();
+    expect(count).not.toHaveBeenCalled();
+  });
 
   it.each([
     { name: "익명", status: 401, code: "UNAUTHENTICATED" },

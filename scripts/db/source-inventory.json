@@ -55,7 +55,7 @@
       "role": "fresh_candidate",
       "sha256": "1f2084557bf9e1c551df9f9bb1a055d0b14dc180f81c92b2486c73f47d42a73b",
       "id": "fresh-custom-protect-application-answers",
-      "predecessors": ["fresh-g1-submission-file-reads"]
+      "predecessors": ["fresh-g1-submission-artifacts"]
     },
     {
       "path": "scripts/db/candidates/db-fresh/custom-protect-application-submissions.sql",
@@ -119,6 +119,13 @@
       "sha256": "ae10c5725af83c5e5f91b1f0bf7b606d86b5f9867b02cc888fab6e932a74f9bd",
       "id": "fresh-g1-students",
       "predecessors": ["fresh-schema-export"]
+    },
+    {
+      "path": "scripts/db/candidates/db-fresh/g1-submission-artifacts.sql",
+      "role": "fresh_candidate",
+      "sha256": "bb4d4b49258d7ba1904064a8061eb20d4258526830c206999445d52a9008b216",
+      "id": "fresh-g1-submission-artifacts",
+      "predecessors": ["fresh-g1-submission-file-reads"]
     },
     {
       "path": "scripts/db/candidates/db-fresh/g1-submission-file-reads.sql",
@@ -219,11 +226,30 @@
       "predecessors": []
     },
     {
+      "path": "scripts/migrate-academic-attendance.sql",
+      "role": "versioned_candidate",
+      "sha256": "9c9fd5a6a27de71c33e427688cbffbc59c5bcaf4eb0067d0faeb295d4c2dfede",
+      "id": "g2-attendance",
+      "predecessors": [
+        "g1-students",
+        "g2-staff-assignments"
+      ]
+    },
+    {
       "path": "scripts/migrate-academic-students.sql",
       "role": "versioned_candidate",
       "sha256": "2ca8845821ccf17c5f5268c1975ec025837e5e1f268e4ffd39d7bf191dd1c378",
       "id": "g1-students",
       "predecessors": []
+    },
+    {
+      "path": "scripts/migrate-academic-submission-artifacts.sql",
+      "role": "versioned_candidate",
+      "sha256": "be7cc23f91867b1039d7d6fe5c2a71948028ac18ae61f7b5e67d314df610c24f",
+      "id": "g1-submission-artifacts",
+      "predecessors": [
+        "g1-submission-file-reads"
+      ]
     },
     {
       "path": "scripts/migrate-academic-submission-file-reads.sql",
@@ -306,7 +332,8 @@
     "scripts/migrate-academic-assignment-actions.sql",
     "scripts/migrate-academic-upload-authorizations.sql",
     "scripts/migrate-academic-submission-finalization.sql",
-    "scripts/migrate-academic-submission-file-reads.sql"
+    "scripts/migrate-academic-submission-file-reads.sql",
+    "scripts/migrate-academic-submission-artifacts.sql"
   ],
   "scripts": [
     {

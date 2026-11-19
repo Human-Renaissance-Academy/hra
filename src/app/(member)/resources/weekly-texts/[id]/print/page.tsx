@@ -21,7 +21,7 @@ export default async function WeeklyTextPrintPage({ params }: Props) {
     notFound();
   }
 
-  const text = await getWebWeeklyTextPrintable(session.user.role, parsedId.data);
+  const text = await getWebWeeklyTextPrintable(session.user, parsedId.data);
 
   if (!text || !text.body) {
     notFound();

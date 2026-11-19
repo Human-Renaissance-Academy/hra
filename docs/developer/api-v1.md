@@ -98,7 +98,7 @@ OpenAPI의 JSON 표현은 [OpenAPI 3.1.1 명세](https://spec.openapis.org/oas/v
 권한 범위는 기존 Web 자료실과 같습니다.
 
 - **강의자료**: `MEMBER`는 학생용(`STUDENT`)만, `ADMIN`·`FACULTY`는 학생용·교수용(`FACULTY`)을 받습니다. 기존 `classMaterialReadFilter`를 목록·상세·파일 SQL WHERE에 적용하므로 MEMBER가 교수용 자료를 요청하면 없는 자료와 같은 404 `NOT_FOUND`입니다.
-- **주차별 텍스트**: 공동 자료 정책(#100)에 따라 승인 회원은 **기수와 무관하게** 열람합니다(허용 범위 정책 확인은 #441). Web 통합 목록·상세·기존 다운로드 경로와 같은 범위이며, 본인 기수만 보여 주는 `/resources/weekly-texts` 업로드 화면의 목록 필터는 표시용으로 API에 적용하지 않습니다.
+- **주차별 텍스트**: 기수 제한 자료입니다(#441). `MEMBER`는 현재 DB에 배정된 본인 기수(`users.cohortId`)의 텍스트만, `ADMIN`·`FACULTY`는 모든 기수를 받습니다. `weeklyTextReadFilter`(`src/features/weekly-texts/access.ts`)를 목록·건수·상세·파일 SQL WHERE에 적용하므로 다른 기수·기수 미지정 텍스트와 기수 미배정 MEMBER의 요청은 목록에서 빠지고 상세·파일은 없는 자료와 같은 404 `NOT_FOUND`입니다. Web 통합 목록·주차별 텍스트 화면·상세·인쇄·다운로드(첨부·사진)와 같은 범위입니다.
 - **가이드북 파일**: 승인 회원은 모든 가이드북 원본을 받습니다.
 
 목록은 `page`(기본 1)·`pageSize`(기본 10, 최대 50)만 받고 가이드북 목록과 같은 400·범위 밖 빈 배열 규칙을 따릅니다. 정렬은 Web 통합 목록과 같은 수업일 역순(없으면 마지막)·작성 시각 역순이며 ID 역순으로 안정화합니다. 수업일 `classDate`는 Web 화면과 같은 KST 변환의 `YYYY-MM-DD` 달력 날짜이고, 시간대 없는 `createdAt`은 보내지 않습니다.

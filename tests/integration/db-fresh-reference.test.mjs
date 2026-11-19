@@ -76,15 +76,15 @@ test(
     await t.test(
       "전체 prefix 계약을 고정하고 독립 reference 외의 준비 완료를 주장하지 않는다",
       async () => {
-        assert.equal(reference.contracts.length, 20);
-        assert.equal(reference.prefixes.length, 20);
+        assert.equal(reference.contracts.length, 21);
+        assert.equal(reference.prefixes.length, 21);
         ensure(
           reference.checks.objects > 1000 &&
             reference.checks.behaviors >= 10 &&
             reference.checks.mutations === reference.contracts.length,
           "FRESH_PREFIX_ASSERTIONS_COMPLETE",
         );
-        assert.equal(reference.checks.immediateReplays, 18);
+        assert.equal(reference.checks.immediateReplays, 19);
         ensure(
           reference.checks.scopePrivate && reference.checks.physicalBackend,
           "FRESH_OWNED_OPERATOR_PINNED",
@@ -103,11 +103,11 @@ test(
         ])
           assert.match(value, /^[a-f0-9]{64}$/);
         assert.equal(reference.provenance.toolVersion, "0.31.11");
-        // #507·#165·#161·#162 검토 SQL은 목록에만 추가하며 이 기존 reference 실행 순서에는 편입하지 않습니다.
-        assert.equal(reference.provenance.inventoryLegacySqlSourceCount, 22);
-        assert.equal(reference.provenance.inventoryCandidateSqlSourceCount, 19);
-        assert.equal(reference.provenance.inventoryTotalSqlSourceCount, 41);
-        assert.equal(reference.provenance.rawSqlSourceCount, 17);
+        // #507·#165·#159·#161·#162 검토 SQL은 목록에만 추가하며 이 기존 reference 실행 순서에는 편입하지 않습니다.
+        assert.equal(reference.provenance.inventoryLegacySqlSourceCount, 24);
+        assert.equal(reference.provenance.inventoryCandidateSqlSourceCount, 20);
+        assert.equal(reference.provenance.inventoryTotalSqlSourceCount, 44);
+        assert.equal(reference.provenance.rawSqlSourceCount, 18);
         ensure(
           reference.prefixes.every(
             (prefix) => prefix.source !== "scripts/migrate-507-email-identity-unique.sql",
@@ -119,6 +119,12 @@ test(
             (prefix) => prefix.source !== "scripts/migrate-academic-staff-assignments.sql",
           ),
           "FRESH_STAFF_CANDIDATE_NOT_APPLIED",
+        );
+        ensure(
+          reference.prefixes.every(
+            (prefix) => prefix.source !== "scripts/migrate-academic-attendance.sql",
+          ),
+          "FRESH_ATTENDANCE_CANDIDATE_NOT_APPLIED",
         );
         ensure(
           reference.prefixes.every(

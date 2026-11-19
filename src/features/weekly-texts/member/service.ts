@@ -3,16 +3,30 @@
  *
  * 역할:
  * - 현재 계정 행과 역할을 다시 확인하고 PENDING·삭제·역할 변경 주체를 거부합니다.
- * - 공동 자료 정책(#100)에 따라 승인 회원은 다른 기수의 텍스트도 열람합니다(Web 상세·다운로드와 동일).
+ * - 주차별 텍스트는 기수 제한 자료입니다(#441). MEMBER는 현재 DB에 배정된 본인 기수만, FACULTY·ADMIN은 전체 기수를
+ *   열람합니다(Web 목록·상세·인쇄·다운로드와 같은 SQL 조건). 다른 기수·기수 미배정은 목록에서 빠지고 상세·파일은 NOT_FOUND입니다.
  * - 본문만 있는 텍스트의 파일 요청과 없는 텍스트는 같은 NOT_FOUND로 처리합니다.
  */
 import "server-only";
 
 import { apiV1UuidSchema } from "@hra/contracts/api-v1";
-import { openResourceAttachment, ResourceFileError } from "@/features/resources/file-download/service";
-import { resourceListOffset, toResourceCalendarDate, verifySharedResourceReader } from "@/features/resources/reader";
+import {
+  openResourceAttachment,
+  ResourceFileError,
+} from "@/features/resources/file-download/service";
+import {
+  resourceListOffset,
+  toResourceCalendarDate,
+  verifySharedResourceReader,
+} from "@/features/resources/reader";
 import type { MePrincipal } from "@/features/users/me/service";
-import { countWeeklyTexts, findWeeklyText, findWeeklyTextFile, listWeeklyTexts, type WeeklyTextRecord } from "./repository";
+import {
+  countWeeklyTexts,
+  findWeeklyText,
+  findWeeklyTextFile,
+  listWeeklyTexts,
+  type WeeklyTextRecord,
+} from "./repository";
 
 export type MemberWeeklyTextSummary = {
   id: string;
@@ -58,30 +72,37 @@ export async function listWeeklyTextsForMember(input: {
   const verified = await verifySharedResourceReader(input.principal);
   if (verified.kind !== "ok") return verified;
 
-  const totalCount = await countWeeklyTexts();
+  const totalCount = await countWeeklyTexts(verified.reader);
   if (offset >= totalCount) return { kind: "ok", items: [], totalCount };
-  const rows = await listWeeklyTexts(input.pageSize, offset);
+  const rows = await listWeeklyTexts(verified.reader, input.pageSize, offset);
   return { kind: "ok", items: rows.map(toSummary), totalCount };
 }
 
-/** 잘못된 ID와 없는 텍스트를 같은 not_found로 처리합니다. 첨부 사진은 반환하지 않습니다. */
-export async function getWeeklyTextForMember(principal: MePrincipal, id: string): Promise<MemberWeeklyTextDetailResult> {
+/** 잘못된 ID·없는 텍스트·열람 범위 밖(다른 기수) 텍스트를 같은 not_found로 처리합니다. 첨부 사진은 반환하지 않습니다. */
+export async function getWeeklyTextForMember(
+  principal: MePrincipal,
+  id: string,
+): Promise<MemberWeeklyTextDetailResult> {
   const verified = await verifySharedResourceReader(principal);
   if (verified.kind !== "ok") return verified;
   const parsedId = apiV1UuidSchema.safeParse(id);
   if (!parsedId.success) return { kind: "not_found" };
 
-  const row = await findWeeklyText(parsedId.data);
+  const row = await findWeeklyText(verified.reader, parsedId.data);
   if (!row) return { kind: "not_found" };
   return { kind: "ok", item: { ...toSummary(row), body: row.body, fileName: row.fileName } };
 }
 
 /** 첨부가 있는 텍스트만 서버가 원본을 읽어 첨부 스트림으로 반환합니다. */
-export async function downloadWeeklyTextFile(principal: MePrincipal, id: string, signal?: AbortSignal): Promise<Response> {
+export async function downloadWeeklyTextFile(
+  principal: MePrincipal,
+  id: string,
+  signal?: AbortSignal,
+): Promise<Response> {
   const verified = await verifySharedResourceReader(principal);
   if (verified.kind === "unauthenticated") throw new ResourceFileError("UNAUTHENTICATED");
   if (verified.kind === "forbidden") throw new ResourceFileError("FORBIDDEN");
   const parsedId = apiV1UuidSchema.safeParse(id);
   if (!parsedId.success) throw new ResourceFileError("NOT_FOUND");
-  return openResourceAttachment(await findWeeklyTextFile(parsedId.data), signal);
+  return openResourceAttachment(await findWeeklyTextFile(verified.reader, parsedId.data), signal);
 }
