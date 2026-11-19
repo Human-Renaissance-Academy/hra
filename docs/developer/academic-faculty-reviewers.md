@@ -86,5 +86,5 @@ node scripts/check-environment-contract.mjs
 ## 7. 남은 작업
 
 - [ ] #143 운영 승인(정책 초안 P11·P12)과 운영 DB 적용 절차·백업 확인
-- [ ] #162 제출물 열람·피드백 작성에서 `canReviewAssignment`·`can_review_assignment` 사용과 학사 운영 관리자의 피드백 공개 처리
+- [x] #162 제출물 열람·피드백 작성에서 `can_review_assignment` 사용과 학사 운영 관리자의 피드백 공개 처리([과제 검토·피드백](academic-assignment-reviews.md), 기능 비활성)
 - [ ] 연결·지정 관리 화면과 Server Action, 이슈 #161 완료 조건의 역할 조합(ADMIN/교수 A·B/Advisor A·B/MEMBER/PENDING/익명) E2E
