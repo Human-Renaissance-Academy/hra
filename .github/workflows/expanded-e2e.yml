@@ -31,7 +31,7 @@ concurrency:
 jobs:
   expanded:
     name: 공개 24건 · 학사 G1 10개 필수 사례
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 25
     env:
       # 런너도 별도 환경 허용 목록으로 다시 제한하며 운영 비밀정보는 전달하지 않습니다.

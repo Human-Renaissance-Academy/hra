@@ -29,7 +29,7 @@ jobs:
     # Preview·실패 배포 이벤트에는 운영 점검을 붙이지 않습니다.
     if: github.event_name != 'deployment_status' || (github.event.deployment_status.state == 'success' && github.event.deployment.environment == 'Production')
     name: 격리 점검·알림 보고서 계약
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -47,7 +47,7 @@ jobs:
     # PR 코드는 운영 사이트를 호출하지 않고 위 합성 계약만 검사합니다.
     if: github.event_name != 'pull_request'
     name: ${{ inputs.fixture_alert && '알림 경로 합성 검증 (의도된 실패)' || 'Production 읽기 점검' }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     concurrency:
       group: production-smoke
