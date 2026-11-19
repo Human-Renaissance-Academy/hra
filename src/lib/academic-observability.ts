@@ -9,14 +9,79 @@ import { z } from "zod/v4";
 import { logServerError } from "@/lib/errors";
 
 const actionSchema = z.enum([
-  "ENROLLMENT_LINK", "STUDENT_REGISTER", "ASSIGNMENT_CREATE", "ASSIGNMENT_UPDATE",
-  "ASSIGNMENT_PUBLISH", "ASSIGNMENT_CLOSE", "ASSIGNMENT_LIST", "UPLOAD_INTENT",
-  "UPLOAD_TOKEN", "UPLOAD_VERIFY", "UPLOAD_CANCEL", "UPLOAD_RECEIPT", "SUBMISSION_FINALIZE", "FILE_READ", "UPLOAD_CLEANUP", "HEALTH_READ",
+  "ENROLLMENT_LINK",
+  "STUDENT_REGISTER",
+  "ASSIGNMENT_CREATE",
+  "ASSIGNMENT_UPDATE",
+  "ASSIGNMENT_PUBLISH",
+  "ASSIGNMENT_CLOSE",
+  "ASSIGNMENT_LIST",
+  "UPLOAD_INTENT",
+  "UPLOAD_TOKEN",
+  "UPLOAD_VERIFY",
+  "UPLOAD_CANCEL",
+  "UPLOAD_RECEIPT",
+  "SUBMISSION_FINALIZE",
+  "SUBMISSION_EXPORT",
+  "FILE_READ",
+  "UPLOAD_CLEANUP",
+  "HEALTH_READ",
 ]);
-const resourceSchema = z.enum(["ENROLLMENT_BATCH", "STUDENT", "ASSIGNMENT", "UPLOAD_INTENT", "SUBMISSION", "SUBMISSION_FILE", "HEALTH"]);
-const outcomeSchema = z.enum(["AUTHORIZED", "DENIED", "FAILED", "COMPLETED", "REPLAYED", "STREAM_INTERRUPTED", "RETRY", "EXPIRED", "CANCELLED", "SKIPPED"]);
-const failureSchema = z.enum(["AUTHORIZATION", "INPUT", "GATE", "CONFLICT", "STORAGE", "STREAM", "NOT_READY", "UNKNOWN"]);
-const sqlStateSchema = z.enum(["22023", "22P02", "23502", "23503", "23505", "23514", "40001", "40P01", "42501", "42P01", "42703", "P0001", "XX000", "HRA01", "HRA02", "HRA03", "HRA04", "HRA05", "HRA06", "HRA07", "HRA08", "HRA09"]);
+const resourceSchema = z.enum([
+  "ENROLLMENT_BATCH",
+  "STUDENT",
+  "ASSIGNMENT",
+  "UPLOAD_INTENT",
+  "SUBMISSION",
+  "SUBMISSION_FILE",
+  "HEALTH",
+]);
+const outcomeSchema = z.enum([
+  "AUTHORIZED",
+  "DENIED",
+  "FAILED",
+  "COMPLETED",
+  "REPLAYED",
+  "STREAM_INTERRUPTED",
+  "RETRY",
+  "EXPIRED",
+  "CANCELLED",
+  "SKIPPED",
+]);
+const failureSchema = z.enum([
+  "AUTHORIZATION",
+  "INPUT",
+  "GATE",
+  "CONFLICT",
+  "STORAGE",
+  "STREAM",
+  "NOT_READY",
+  "UNKNOWN",
+]);
+const sqlStateSchema = z.enum([
+  "22023",
+  "22P02",
+  "23502",
+  "23503",
+  "23505",
+  "23514",
+  "40001",
+  "40P01",
+  "42501",
+  "42P01",
+  "42703",
+  "P0001",
+  "XX000",
+  "HRA01",
+  "HRA02",
+  "HRA03",
+  "HRA04",
+  "HRA05",
+  "HRA06",
+  "HRA07",
+  "HRA08",
+  "HRA09",
+]);
 
 export type AcademicAction = z.infer<typeof actionSchema>;
 export type AcademicResource = z.infer<typeof resourceSchema>;
@@ -70,11 +135,15 @@ export function academicSqlState(error: unknown): string | undefined {
 
 /** 내부 서비스에만 전달하는 요청별 관측기입니다. 클라이언트 입력을 받지 않습니다. */
 export function createAcademicObservation(action: AcademicAction, resourceType: AcademicResource) {
-  return createObservation(action,resourceType,randomUUID());
+  return createObservation(action, resourceType, randomUUID());
 }
 
 /** 파생 관측기도 서버에서 생성한 같은 참조만 공유하며 actor·완료 상태는 독립적으로 검증합니다. */
-function createObservation(action: AcademicAction, resourceType: AcademicResource, correlationId: string): AcademicObservation {
+function createObservation(
+  action: AcademicAction,
+  resourceType: AcademicResource,
+  correlationId: string,
+): AcademicObservation {
   let actorUserId: string | null = null;
   let resourceId: string | null = null;
   let requestId: string | null = null;
@@ -82,11 +151,17 @@ function createObservation(action: AcademicAction, resourceType: AcademicResourc
   return {
     correlationId,
     /** 실제 세션 인증과 대상 인가를 마친 직후에만 호출합니다. */
-    authenticated(userId: string) { actorUserId = uuidOrNull(userId); },
-    get authenticatedActorId() { return actorUserId; },
-    get failureRecorded() { return failureRecorded; },
+    authenticated(userId: string) {
+      actorUserId = uuidOrNull(userId);
+    },
+    get authenticatedActorId() {
+      return actorUserId;
+    },
+    get failureRecorded() {
+      return failureRecorded;
+    },
     fork(childAction: AcademicAction, childResource: AcademicResource) {
-      return createObservation(childAction,childResource,correlationId);
+      return createObservation(childAction, childResource, correlationId);
     },
     /** 입력 검증 후 참조 ID를 보관하여 이후 실패에도 동일한 ID를 남깁니다. */
     identify(ids: ObservationIds) {
@@ -98,16 +173,27 @@ function createObservation(action: AcademicAction, resourceType: AcademicResourc
       const safeResource = resourceSchema.safeParse(resourceType);
       const safeOutcome = outcomeSchema.safeParse(outcome);
       if (!safeAction.success || !safeResource.success || !safeOutcome.success) return false;
-      if (["DENIED", "FAILED", "STREAM_INTERRUPTED"].includes(safeOutcome.data)) failureRecorded = true;
+      if (["DENIED", "FAILED", "STREAM_INTERRUPTED"].includes(safeOutcome.data))
+        failureRecorded = true;
       const failure = failureSchema.safeParse(ownValue(details, "failureCode"));
       const state = sqlStateSchema.safeParse(ownValue(details, "sqlState"));
-      const retries = z.number().int().min(0).max(1_000_000).safeParse(ownValue(details, "retryCount"));
+      const retries = z
+        .number()
+        .int()
+        .min(0)
+        .max(1_000_000)
+        .safeParse(ownValue(details, "retryCount"));
       // spread나 toJSON 대신 허용된 고정 키만으로 새로운 평탄한 레코드를 만듭니다.
       const event = {
-        schemaVersion: 1, action: safeAction.data, resourceType: safeResource.data,
+        schemaVersion: 1,
+        action: safeAction.data,
+        resourceType: safeResource.data,
         resourceId: uuidOrNull(ownValue(details, "resourceId")) ?? resourceId,
         requestId: uuidOrNull(ownValue(details, "requestId")) ?? requestId,
-        actorUserId, outcome: safeOutcome.data, timestamp: new Date().toISOString(), correlationId,
+        actorUserId,
+        outcome: safeOutcome.data,
+        timestamp: new Date().toISOString(),
+        correlationId,
         failureCode: failure.success ? failure.data : null,
         sqlState: state.success ? state.data : null,
         retryCount: retries.success ? retries.data : null,
@@ -126,4 +212,3 @@ function createObservation(action: AcademicAction, resourceType: AcademicResourc
     },
   };
 }
-
