@@ -63,6 +63,7 @@ const ids = {
   pending: "15900000-0000-4000-8000-000000000009",
   student1: "15900000-0000-4000-8000-00000000000a",
   student2: "15900000-0000-4000-8000-00000000000b",
+  managerStaff: "15900000-0000-4000-8000-00000000000c",
 };
 const roles: Record<string, string> = {
   approver: "MEMBER",
@@ -76,6 +77,7 @@ const roles: Record<string, string> = {
   pending: "PENDING",
   student1: "MEMBER",
   student2: "MEMBER",
+  managerStaff: "MEMBER",
 };
 const students = {
   one: "15900000-0000-4000-8000-0000000000a1",
@@ -144,11 +146,14 @@ describe.skipIf(!bin)("#159 학생별 출결과 정정 승인(격리 PostgreSQL)
         '${randomUUID()}','${cohort}','${ids[user]}','${role}',NULL,NULL,'IN_PERSON','${evidence}'))->'assignment'->>'id';`);
     return { cohort, enrollments, assignments };
   };
-  /** KST 기준 오늘에서 dayOffset일 떨어진 날 KST 10:00 수업(UTC 저장)을 만듭니다. */
-  const classOn = (cohort: string, dayOffset: number, type = "CLASS") => {
+  /**
+   * KST 기준 오늘에서 dayOffset일 떨어진 날의 수업을 만듭니다. 기존 일정 저장 방식(buildEventDate의 Date.UTC)처럼
+   * 한국 벽시계 날짜·시각을 시간대 없는 timestamp 숫자 그대로 저장합니다.
+   */
+  const classOn = (cohort: string, dayOffset: number, type = "CLASS", clock = "10:00") => {
     const id = randomUUID();
     value(`INSERT INTO schedule_events(id,event_date,event_type,cohort_id,title) VALUES ('${id}',
-      ((((now() AT TIME ZONE 'Asia/Seoul')::date + ${dayOffset}) + time '10:00') AT TIME ZONE 'Asia/Seoul') AT TIME ZONE 'UTC',
+      ((now() AT TIME ZONE 'Asia/Seoul')::date + ${dayOffset}) + time '${clock}',
       '${type}','${cohort}','합성 수업');`);
     return id;
   };
@@ -195,7 +200,9 @@ describe.skipIf(!bin)("#159 학생별 출결과 정정 승인(격리 PostgreSQL)
     cluster.sql(`INSERT INTO academic_students(id,user_id,display_name) VALUES
       ('${students.one}','${ids.student1}','합성 학생 1'),('${students.two}','${ids.student2}','합성 학생 2');
       SELECT public.designate_academic_operations_manager('${randomUUID()}','${ids.approver}','${ids.approver}',
-        '${randomUUID()}','${ids.manager}',NULL,NULL,'IN_PERSON','${evidence}');`);
+        '${randomUUID()}','${ids.manager}',NULL,NULL,'IN_PERSON','${evidence}');
+      SELECT public.designate_academic_operations_manager('${randomUUID()}','${ids.approver}','${ids.approver}',
+        '${randomUUID()}','${ids.managerStaff}',NULL,NULL,'IN_PERSON','${evidence}');`);
 
     const transport = createPsqlTransport(cluster.environment);
     neonConfig.fetchEndpoint = qaNeonEndpoint;
@@ -266,16 +273,33 @@ describe.skipIf(!bin)("#159 학생별 출결과 정정 승인(격리 PostgreSQL)
         FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='public' AND (p.proname LIKE '%academic_attendance%');`),
       ).toBe("14|false");
     });
+
+    it("이 파일 함수에 소유자 외 EXECUTE 권한이 남아 있으면 전체를 롤백합니다", () => {
+      value(
+        "DO $$BEGIN IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='attendance_probe') THEN CREATE ROLE attendance_probe NOLOGIN; END IF; END$$;",
+      );
+      value(
+        "GRANT EXECUTE ON FUNCTION public.list_own_academic_attendance(uuid) TO attendance_probe;",
+      );
+      expect(run(migration)).toMatchObject({ ok: false });
+      value(
+        "REVOKE EXECUTE ON FUNCTION public.list_own_academic_attendance(uuid) FROM attendance_probe;",
+      );
+      expect(run(migration)).toMatchObject({ ok: true });
+    });
   });
 
   describe("7일 입력 창(KST)", () => {
-    it("수업일은 UTC 저장값을 KST 날짜로 해석하고, 창은 수업일 00:00부터 +7일 24:00 미만입니다", () => {
-      // UTC 3/6 15:30은 KST 3/7 00:30이므로 수업일은 3/7입니다.
-      expect(value("SELECT academic_attendance_class_date('2026-03-06 15:30:00');")).toBe(
-        "2026-03-07",
-      );
-      expect(value("SELECT academic_attendance_class_date('2026-03-06 14:59:59');")).toBe(
+    it("수업일은 저장된 한국 벽시계 값의 날짜이고, 창은 수업일 KST 00:00부터 +7일 24:00 미만입니다", () => {
+      // 저녁·자정 직전 수업도 시간대 변환으로 다음 날로 밀리지 않아야 합니다.
+      expect(value("SELECT academic_attendance_class_date('2026-03-06 19:00:00');")).toBe(
         "2026-03-06",
+      );
+      expect(value("SELECT academic_attendance_class_date('2026-03-06 23:59:00');")).toBe(
+        "2026-03-06",
+      );
+      expect(value("SELECT academic_attendance_class_date('2026-03-07 00:00:00');")).toBe(
+        "2026-03-07",
       );
       const inside = (instant: string) =>
         value(`SELECT '${instant}'::timestamptz <@ academic_attendance_window('2026-03-07');`);
@@ -299,6 +323,13 @@ describe.skipIf(!bin)("#159 학생별 출결과 정정 승인(격리 PostgreSQL)
         ok: false,
         code: "HRA05",
       });
+      // 밤 수업(KST 23:30)도 그 날짜가 수업일입니다. 8일 전 밤 수업은 닫혀 있고 오늘 밤 수업은 열려 있습니다.
+      expect(
+        record("advisor", classOn(cohort, -8, "CLASS", "23:30"), enrollments.two, "PRESENT", 0),
+      ).toEqual({ ok: false, code: "HRA08" });
+      expect(
+        record("advisor", classOn(cohort, 0, "CLASS", "23:30"), enrollments.two, "PRESENT", 0),
+      ).toEqual({ ok: true, out: "1" });
     });
   });
 
@@ -325,6 +356,15 @@ describe.skipIf(!bin)("#159 학생별 출결과 정정 승인(격리 PostgreSQL)
           code: "HRA01",
         });
       expect(cell(event, enrollments.one)).toBe("UNMARKED");
+      // 인가 전에는 학적 존재 여부를 알려주지 않습니다(없는 학적도 비배정자에게는 HRA01).
+      expect(record("admin", event, randomUUID(), "PRESENT", 0)).toEqual({
+        ok: false,
+        code: "HRA01",
+      });
+      expect(record("advisor", event, randomUUID(), "PRESENT", 0)).toEqual({
+        ok: false,
+        code: "HRA03",
+      });
       expect(record("assistantB", event, enrollments.one, "LATE", 0)).toEqual({
         ok: true,
         out: "1",
@@ -472,6 +512,33 @@ describe.skipIf(!bin)("#159 학생별 출결과 정정 승인(격리 PostgreSQL)
       expect(decide("advisor", lift)).toEqual({ ok: false, code: "HRA01" });
       expect(decide("manager", lift, "REJECT")).toEqual({ ok: true, out: "REJECTED" });
       expect(cell(event, enrollments.one)).toBe(`EXCUSED|2|${ids.advisor}`);
+    });
+
+    it("출결표의 인정결석 정정 사유·요청자는 학사 운영 관리자 지정도 가진 배정자에게만 보입니다", () => {
+      const cohort = randomUUID();
+      const enrollment = randomUUID();
+      value(`INSERT INTO cohorts(id,name) VALUES('${cohort}','합성 관리자 배정 기수');
+        INSERT INTO cohort_enrollments(id,student_id,cohort_id,enrolled_at)
+          VALUES ('${enrollment}','${students.one}','${cohort}',now() - interval '60 days');`);
+      for (const [user, role] of [
+        ["managerStaff", "ADVISOR"],
+        ["assistantA", "ASSISTANT"],
+        ["assistantB", "ASSISTANT"],
+      ] as const)
+        value(`SELECT public.assign_academic_cohort_staff('${randomUUID()}','${ids.manager}','${randomUUID()}',
+          '${cohort}','${ids[user]}','${role}',NULL,NULL,'IN_PERSON','${evidence}');`);
+      const event = classOn(cohort, 0);
+      const other = classOn(cohort, -10);
+      value(requestSql("assistantA", event, enrollment, "EXCUSED", 0, "VERIFIED_CONTACT"));
+      value(requestSql("assistantA", other, enrollment, "LATE", 0));
+      const pending = (actor: keyof typeof ids, target: string) =>
+        value(`SELECT concat_ws('|', e->'pendingCorrection'->>'requestedStatus',
+          coalesce(e->'pendingCorrection'->>'reason','숨김'), coalesce(e->'pendingCorrection'->>'requestedByUserId','숨김'))
+          FROM jsonb_array_elements(public.list_academic_attendance_for_event('${ids[actor]}','${target}')->'entries') e;`);
+      expect(pending("assistantB", event)).toBe("EXCUSED|숨김|숨김");
+      expect(pending("managerStaff", event)).toBe(`EXCUSED|합성 정정 사유|${ids.assistantA}`);
+      // 인정결석이 아닌 정정의 사유는 같은 기수 운영 인력이 결정할 수 있으므로 보입니다.
+      expect(pending("assistantB", other)).toBe(`LATE|합성 정정 사유|${ids.assistantA}`);
     });
 
     it("요청 당시 버전이 아니면 요청을 거부합니다", () => {

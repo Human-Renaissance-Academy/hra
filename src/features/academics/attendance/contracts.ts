@@ -212,8 +212,9 @@ export const eventSheetSchema = z
             id: z.uuid(),
             requestedStatus: status,
             previousStatus: status.nullable(),
-            reason: z.string(),
-            requestedByUserId: z.uuid(),
+            // 인정결석 관련 요청의 사유·요청자는 학사 운영 관리자가 아니면 null입니다.
+            reason: z.string().nullable(),
+            requestedByUserId: z.uuid().nullable(),
             requestedAt: timestamp,
           })
           .nullable(),

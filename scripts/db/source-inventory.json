@@ -201,7 +201,7 @@
     {
       "path": "scripts/migrate-academic-attendance.sql",
       "role": "versioned_candidate",
-      "sha256": "29104a860c4766673cbf5f5fc75632a736cbc4a04c70b25f22b6796d4b529696",
+      "sha256": "9c9fd5a6a27de71c33e427688cbffbc59c5bcaf4eb0067d0faeb295d4c2dfede",
       "id": "g2-attendance",
       "predecessors": [
         "g1-students",

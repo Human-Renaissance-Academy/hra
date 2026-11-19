@@ -385,10 +385,12 @@ BEGIN
 END;
 $triggers$;
 
--- 수업일(KST 날짜). schedule_events.event_date는 시간대 없는 UTC 값으로 저장됩니다(src/lib/db/schema.ts).
+-- 수업일(KST 날짜). schedule_events.event_date는 관리자가 입력한 한국 달력의 날짜·시각(벽시계 값)을
+-- 시간대 없는 timestamp 숫자 그대로 저장합니다(src/features/schedule/actions/index.ts buildEventDate의 Date.UTC,
+-- 관리자 목록·공개 API도 UTC 표시로 같은 숫자를 읽음). 따라서 시간대 변환 없이 날짜 부분이 곧 KST 수업일입니다.
 CREATE OR REPLACE FUNCTION public.academic_attendance_class_date(p_event_date timestamp)
 RETURNS date LANGUAGE sql STABLE SET search_path = pg_catalog, public AS $class_date$
-  SELECT ((p_event_date AT TIME ZONE 'UTC') AT TIME ZONE 'Asia/Seoul')::date;
+  SELECT p_event_date::date;
 $class_date$;
 
 -- 7일 입력 창(P6): 수업일 KST 00:00부터 수업일+7일 KST 24:00 미만, 즉 [수업일 00:00, 수업일+8일 00:00) KST.
@@ -496,6 +498,7 @@ DECLARE
   digest text;
   prior public.academic_attendance_events;
   cell record;
+  event_cohort uuid;
   assignment_id uuid;
   entry_window tstzrange;
   current_row public.academic_attendance_records;
@@ -516,8 +519,18 @@ BEGIN
   IF p_status = 'EXCUSED' THEN
     RAISE SQLSTATE 'HRA08' USING MESSAGE = '인정결석은 학사 운영 관리자 승인 절차로만 지정합니다.';
   END IF;
+  -- 수업의 기수 확인 → 운영 인력 인가 → 셀 확인·잠금 순서입니다. 인가되지 않은 주체는 학적 존재 여부를
+  -- 알 수 없고 셀 잠금도 잡지 못합니다. 잠금 뒤 기수가 바뀌었으면 충돌로 거부합니다.
+  SELECT e.cohort_id INTO event_cohort FROM public.schedule_events e
+    WHERE e.id = p_schedule_event_id AND e.event_type::text = 'CLASS';
+  IF event_cohort IS NULL THEN
+    RAISE SQLSTATE 'HRA03' USING MESSAGE = '출결 대상 수업을 찾을 수 없습니다.';
+  END IF;
+  assignment_id := public.require_academic_attendance_staff(p_actor_id, event_cohort);
   SELECT * INTO cell FROM public.lock_academic_attendance_cell(p_schedule_event_id, p_enrollment_id);
-  assignment_id := public.require_academic_attendance_staff(p_actor_id, cell.cohort_id);
+  IF cell.cohort_id <> event_cohort THEN
+    RAISE SQLSTATE 'HRA04' USING MESSAGE = '확인 중 수업 기수가 바뀌었습니다. 다시 시도해 주세요.';
+  END IF;
   entry_window := public.academic_attendance_window(cell.class_date);
   IF now() < lower(entry_window) THEN
     RAISE SQLSTATE 'HRA05' USING MESSAGE = '아직 출결 입력 기간이 아닙니다.';
@@ -577,6 +590,7 @@ DECLARE
   digest text;
   prior public.academic_attendance_events;
   cell record;
+  event_cohort uuid;
   assignment_id uuid;
   entry_window tstzrange;
   current_row public.academic_attendance_records;
@@ -598,8 +612,18 @@ BEGIN
     SELECT * INTO correction FROM public.academic_attendance_corrections WHERE id = prior.correction_id;
     RETURN jsonb_build_object('correction', to_jsonb(correction), 'replayed', true);
   END IF;
+  -- 수업의 기수 확인 → 운영 인력 인가 → 셀 확인·잠금 순서입니다. 인가되지 않은 주체는 학적 존재 여부를
+  -- 알 수 없고 셀 잠금도 잡지 못합니다. 잠금 뒤 기수가 바뀌었으면 충돌로 거부합니다.
+  SELECT e.cohort_id INTO event_cohort FROM public.schedule_events e
+    WHERE e.id = p_schedule_event_id AND e.event_type::text = 'CLASS';
+  IF event_cohort IS NULL THEN
+    RAISE SQLSTATE 'HRA03' USING MESSAGE = '출결 대상 수업을 찾을 수 없습니다.';
+  END IF;
+  assignment_id := public.require_academic_attendance_staff(p_actor_id, event_cohort);
   SELECT * INTO cell FROM public.lock_academic_attendance_cell(p_schedule_event_id, p_enrollment_id);
-  assignment_id := public.require_academic_attendance_staff(p_actor_id, cell.cohort_id);
+  IF cell.cohort_id <> event_cohort THEN
+    RAISE SQLSTATE 'HRA04' USING MESSAGE = '확인 중 수업 기수가 바뀌었습니다. 다시 시도해 주세요.';
+  END IF;
   entry_window := public.academic_attendance_window(cell.class_date);
   IF now() < lower(entry_window) THEN
     RAISE SQLSTATE 'HRA05' USING MESSAGE = '아직 출결 입력 기간이 아닙니다.';
@@ -671,6 +695,17 @@ BEGIN
   END IF;
   SELECT * INTO correction FROM public.academic_attendance_corrections WHERE id = p_correction_id;
   IF NOT FOUND THEN RAISE SQLSTATE 'HRA03' USING MESSAGE = '정정 요청을 찾을 수 없습니다.'; END IF;
+  -- 자기 결정 금지와 결정 권한을 셀 잠금 전에 확인합니다. 요청자·기수·요청 상태는 정정 행에서 바뀌지 않는 값입니다.
+  IF correction.requested_by_user_id = p_actor_id THEN
+    RAISE SQLSTATE 'HRA01' USING MESSAGE = '본인이 요청한 정정은 결정할 수 없습니다.';
+  END IF;
+  manager_id := public.find_academic_attendance_manager(p_actor_id);
+  IF manager_id IS NULL THEN
+    IF correction.requested_status = 'EXCUSED' OR correction.previous_status IS NOT DISTINCT FROM 'EXCUSED' THEN
+      RAISE SQLSTATE 'HRA01' USING MESSAGE = '인정결석은 학사 운영 관리자만 승인할 수 있습니다.';
+    END IF;
+    assignment_id := public.require_academic_attendance_staff(p_actor_id, correction.cohort_id);
+  END IF;
   -- 셀 잠금 → 정정 행 잠금 순서로 출결 입력·다른 결정과 직렬화합니다.
   IF p_decision = 'APPROVE' THEN
     SELECT * INTO cell FROM public.lock_academic_attendance_cell(correction.schedule_event_id, correction.enrollment_id);
@@ -681,16 +716,6 @@ BEGIN
   SELECT * INTO correction FROM public.academic_attendance_corrections WHERE id = p_correction_id FOR UPDATE;
   IF correction.status <> 'PENDING' THEN
     RAISE SQLSTATE 'HRA04' USING MESSAGE = '이미 결정된 정정 요청입니다.';
-  END IF;
-  IF correction.requested_by_user_id = p_actor_id THEN
-    RAISE SQLSTATE 'HRA01' USING MESSAGE = '본인이 요청한 정정은 결정할 수 없습니다.';
-  END IF;
-  manager_id := public.find_academic_attendance_manager(p_actor_id);
-  IF manager_id IS NULL THEN
-    IF correction.requested_status = 'EXCUSED' OR correction.previous_status IS NOT DISTINCT FROM 'EXCUSED' THEN
-      RAISE SQLSTATE 'HRA01' USING MESSAGE = '인정결석은 학사 운영 관리자만 승인할 수 있습니다.';
-    END IF;
-    assignment_id := public.require_academic_attendance_staff(p_actor_id, correction.cohort_id);
   END IF;
   PERFORM set_config('hra.academic_attendance_write', 'on', true);
   IF p_decision = 'APPROVE' THEN
@@ -742,12 +767,14 @@ $decide$;
 
 -- 운영 인력용 수업일 출결표(P10). 요청 시각에 해당 기수에 유효하게 배정된 운영 인력만 조회합니다.
 -- 출결 대상 최소 명단(학적 UUID·표시 이름)과 셀 상태·버전·대기 중 정정만 돌려주며, 행이 없으면 미입력(null)입니다.
+-- 인정결석 관련 정정의 사유·요청자는 학사 운영 관리자 지정도 가진 경우에만 포함합니다.
 CREATE OR REPLACE FUNCTION public.list_academic_attendance_for_event(p_actor_id uuid, p_schedule_event_id uuid)
 RETURNS jsonb LANGUAGE plpgsql SET search_path = pg_catalog, public AS $list_event$
 DECLARE
   event_row record;
   class_day date;
   entry_window tstzrange;
+  can_see_excuse boolean;
 BEGIN
   IF p_actor_id IS NULL OR p_schedule_event_id IS NULL THEN
     RAISE SQLSTATE 'HRA07' USING MESSAGE = '조회 입력이 올바르지 않습니다.';
@@ -758,6 +785,7 @@ BEGIN
     RAISE SQLSTATE 'HRA03' USING MESSAGE = '출결 대상 수업을 찾을 수 없습니다.';
   END IF;
   PERFORM public.require_academic_attendance_staff(p_actor_id, event_row.cohort_id);
+  can_see_excuse := public.find_academic_attendance_manager(p_actor_id) IS NOT NULL;
   class_day := public.academic_attendance_class_date(event_row.event_date);
   entry_window := public.academic_attendance_window(class_day);
   RETURN jsonb_build_object(
@@ -767,7 +795,12 @@ BEGIN
         'enrollmentId', ce.id, 'displayName', st.display_name, 'status', r.status,
         'version', COALESCE(r.version, 0), 'recordedAt', r.recorded_at,
         'pendingCorrection', (SELECT jsonb_build_object('id', c.id, 'requestedStatus', c.requested_status,
-          'previousStatus', c.previous_status, 'reason', c.reason, 'requestedByUserId', c.requested_by_user_id,
+          'previousStatus', c.previous_status,
+          -- 인정결석 지정·해제 요청의 사유·요청자는 민감할 수 있어 결정 권한이 있는 학사 운영 관리자에게만 보입니다.
+          'reason', CASE WHEN can_see_excuse OR (c.requested_status <> 'EXCUSED'
+            AND c.previous_status IS DISTINCT FROM 'EXCUSED') THEN c.reason END,
+          'requestedByUserId', CASE WHEN can_see_excuse OR (c.requested_status <> 'EXCUSED'
+            AND c.previous_status IS DISTINCT FROM 'EXCUSED') THEN c.requested_by_user_id END,
           'requestedAt', c.requested_at)
           FROM public.academic_attendance_corrections c
           WHERE c.schedule_event_id = p_schedule_event_id AND c.enrollment_id = ce.id AND c.status = 'PENDING'))
@@ -815,4 +848,22 @@ REVOKE ALL ON FUNCTION public.request_academic_attendance_correction(uuid, uuid,
 REVOKE ALL ON FUNCTION public.decide_academic_attendance_correction(uuid, uuid, uuid, uuid, text) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.list_academic_attendance_for_event(uuid, uuid) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.list_own_academic_attendance(uuid) FROM PUBLIC;
+
+-- 함수를 교체해도 이전 GRANT가 남을 수 있으므로 소유자 외 EXECUTE 권한이 남아 있으면 중단합니다(#165와 같은 검사).
+DO $acl$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+    WHERE n.nspname = 'public' AND p.proname IN ('guard_academic_attendance_write', 'guard_academic_attendance_events',
+      'academic_attendance_class_date', 'academic_attendance_window', 'academic_attendance_replay',
+      'lock_academic_attendance_cell', 'require_academic_attendance_staff', 'find_academic_attendance_manager',
+      'record_academic_attendance', 'request_academic_attendance_correction', 'decide_academic_attendance_correction',
+      'list_academic_attendance_for_event', 'list_own_academic_attendance')
+      AND (p.proacl IS NULL OR EXISTS (SELECT 1 FROM aclexplode(p.proacl) a
+        WHERE a.grantee <> p.proowner AND a.privilege_type = 'EXECUTE'))
+  ) THEN
+    RAISE EXCEPTION 'attendance_migration_function_acl_mismatch';
+  END IF;
+END;
+$acl$;
 COMMIT;
