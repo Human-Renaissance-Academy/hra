@@ -79,6 +79,7 @@ Blob은 사진·PDF 같은 파일의 실제 내용을 보관하는 저장소입�
 | `ACADEMIC_APPROVER_USER_ID` | 학사 운영 책임자 계정 지정 | 검증된 계정 ID를 별도로 지정 |
 | `ACADEMIC_ENROLLMENT_WRITES_ENABLED` | 학사 개인정보 쓰기 허용 | 기본 비활성, 보존 정책과 운영 결정 필요 |
 | `ACADEMIC_UPLOADS_ENABLED` | 과제 파일 업로드 허용 | 기본 비활성, 제출 저장소·DB 준비 필요 |
+| `ACADEMIC_SUBMISSION_ARTIFACTS_ENABLED` | 과제 텍스트·발표자료 분리 제출(#516 V2) 허용 | 기본 비활성, 업로드 설정과 V2 DB SQL·운영 승인 필요 |
 | `ACADEMIC_UPLOAD_CLEANUP_ENABLED` | 미완료 학사 업로드 정리 실행 | 기본 비활성 |
 | `ACADEMIC_UPLOAD_CLEANUP_DELETE_ENABLED` | 위 정리에서 실제 파일 삭제 허용 | 없으면 dry-run, 즉 삭제 없이 확인 |
 | `CRON_SECRET` | 예약 작업 호출 인증 | 예약 작업을 운영할 환경에 설정 |

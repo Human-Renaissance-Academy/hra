@@ -265,6 +265,15 @@ export const environmentInventory = {
       active("false"),
     ),
     variable(
+      "ACADEMIC_SUBMISSION_ARTIFACTS_ENABLED",
+      "application",
+      "과제 텍스트·발표자료 분리 제출(V2) 공개",
+      false,
+      "ACADEMIC_UPLOADS_ENABLED와 함께 true; V2 DB SQL 적용·운영 승인 필요",
+      "정확한 true가 아니면 V2 과제 형식 지정·업로드·최종화 DISABLED; 기존 PDF 단일 제출은 영향 없음",
+      active("false"),
+    ),
+    variable(
       "ACADEMIC_UPLOAD_CLEANUP_ENABLED",
       "application",
       "미완료 제출 파일 cleanup 실행",

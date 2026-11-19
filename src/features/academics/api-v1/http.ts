@@ -18,7 +18,10 @@ import { isSameRequestOrigin } from "@/lib/request-origin";
 import { revalidateMobilePrincipalOverride } from "@/lib/api-v1-principal";
 
 /** 개인 결과와 오류가 공유 캐시나 다른 쿠키의 응답으로 재사용되지 않도록 합니다. */
-export const academicApiHeaders = { "Cache-Control": "private, no-store", Vary: "Cookie, Authorization" };
+export const academicApiHeaders = {
+  "Cache-Control": "private, no-store",
+  Vary: "Cookie, Authorization",
+};
 
 /** HTTP 입력 단계에서만 발생하는 공통 오류이며 내부 오류 원문은 보관하지 않습니다. */
 export class AcademicApiHttpError extends Error {
@@ -37,7 +40,8 @@ export function assertNoAcademicApiQuery(request: Request): void {
 async function readBoundedJson(request: Request): Promise<unknown> {
   assertNoAcademicApiQuery(request);
   const mediaType = request.headers.get("Content-Type")?.split(";", 1)[0].trim().toLowerCase();
-  if (mediaType !== "application/json" || !request.body) throw new AcademicApiHttpError("INVALID_INPUT");
+  if (mediaType !== "application/json" || !request.body)
+    throw new AcademicApiHttpError("INVALID_INPUT");
 
   const reader = request.body.getReader();
   const chunks: Uint8Array[] = [];
@@ -71,12 +75,17 @@ async function readBoundedJson(request: Request): Promise<unknown> {
 export async function readAcademicApiJson(request: Request): Promise<unknown> {
   const principal = await revalidateMobilePrincipalOverride();
   switch (principal.kind) {
-    case "REVOKED": throw new AcademicApiHttpError("UNAUTHENTICATED");
+    case "REVOKED":
+      throw new AcademicApiHttpError("UNAUTHENTICATED");
     case "NO_OVERRIDE":
       if (!isSameRequestOrigin(request)) throw new AcademicApiHttpError("FORBIDDEN");
       break;
-    case "VALID": break;
-    default: { const exhaustive: never = principal; throw exhaustive; }
+    case "VALID":
+      break;
+    default: {
+      const exhaustive: never = principal;
+      throw exhaustive;
+    }
   }
   return readBoundedJson(request);
 }
@@ -91,25 +100,42 @@ export async function readAcademicApiProtocolJson(request: Request): Promise<unk
 
 /** 기존 오류의 HTTP 상태나 문구를 복사하지 않고, 검증된 코드만 v1 계약으로 대응합니다. */
 function publicErrorCode(error: unknown): ApiV1ErrorCode {
-  if (error instanceof AcademicApiHttpError || error instanceof AcademicAccessError ||
-      error instanceof SubmissionFileAccessError) return error.code;
+  if (
+    error instanceof AcademicApiHttpError ||
+    error instanceof AcademicAccessError ||
+    error instanceof SubmissionFileAccessError
+  )
+    return error.code;
   if (error instanceof AcademicUploadError) {
     switch (error.code) {
-      case "INVALID_FILE": return "INVALID_INPUT";
+      case "INVALID_FILE":
+        return "INVALID_INPUT";
       case "EXPIRED":
-      case "NOT_READY": return "CONFLICT";
-      case "UNAVAILABLE": return "STORAGE_UNAVAILABLE";
-      default: return error.code;
+      case "NOT_READY":
+        return "CONFLICT";
+      case "UNAVAILABLE":
+        return "STORAGE_UNAVAILABLE";
+      default:
+        return error.code;
     }
   }
   if (error instanceof SubmissionFinalizationError) {
     switch (error.code) {
       // 기존 서비스가 감추는 소유권 거부는 v1에서도 없는 제출과 구분하지 않습니다.
-      case "FORBIDDEN": return "NOT_FOUND";
+      case "FORBIDDEN":
+        return "NOT_FOUND";
       case "EXPIRED":
       case "NOT_READY":
-      case "DEADLINE": return "CONFLICT";
-      default: return error.code;
+      case "DEADLINE":
+      // #516: v1 최종화가 V2 과제에 닿으면 기존과 같은 충돌로 응답합니다(공개 계약 코드 추가 없음).
+      case "WRONG_FORMAT":
+        return "CONFLICT";
+      // V2 전용 구성·합계 오류는 API v1에서 아직 호출되지 않지만, 생기면 기존 입력 오류 코드로 닫습니다.
+      case "INCOMPLETE":
+      case "TOO_LARGE":
+        return "INVALID_INPUT";
+      default:
+        return error.code;
     }
   }
   return "UNAVAILABLE";
@@ -118,8 +144,10 @@ function publicErrorCode(error: unknown): ApiV1ErrorCode {
 /** 모든 실패는 고정 한국어 문구·추적 ID만 반환하고 요청 예산의 재시도 시간을 보존합니다. */
 export function academicApiErrorResponse(error: unknown, requestId: string): Response {
   const code = publicErrorCode(error);
-  const retryAfterSeconds = error instanceof AcademicUploadError && error.code === "RATE_LIMITED"
-    ? error.retryAfterSeconds : undefined;
+  const retryAfterSeconds =
+    error instanceof AcademicUploadError && error.code === "RATE_LIMITED"
+      ? error.retryAfterSeconds
+      : undefined;
   if (code === "UNAVAILABLE" || code === "STORAGE_UNAVAILABLE") {
     // 원래 오류에는 SQL·파일명·Blob URL이 있을 수 있어 고정 오류와 요청 ID만 기록합니다.
     logServerError("api-v1/academic", new Error("ACADEMIC_API_UNAVAILABLE"), { requestId });
