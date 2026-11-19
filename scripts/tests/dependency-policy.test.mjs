@@ -639,13 +639,13 @@ const mobileAudit = {
     ]),
   ),
 };
-const mobileResult = { affectedPackages: 28, advisoryEntries: 2, p1: 0 };
+const mobileResult = { affectedPackages: 27, advisoryEntries: 2, p1: 0 };
 
 // npm의 상위 패키지 meta range는 새 upstream 릴리스만으로 바뀔 수 있다.
 // 실제 위험 평가에 쓰는 severity, via의 advisory range/ID/source와 lock nodes의 정확 일치는 유지한다.
 test("상위 패키지 파생 range만 바뀌면 통과하지만 실제 권고·등급·경로 변경은 차단한다", () => {
   const changedDerived = structuredClone(mobileAudit);
-  changedDerived.vulnerabilities["@expo/cli"].range += " || 999.0.0";
+  changedDerived.vulnerabilities.expo.range += " || 999.0.0";
   changedDerived.vulnerabilities["@expo/fingerprint"].range += " || 999.0.0";
   assert.deepEqual(
     verifyReviewedFixture(changedDerived, mobileLock, mobilePolicy, "2026-11-19"),
@@ -653,7 +653,7 @@ test("상위 패키지 파생 range만 바뀌면 통과하지만 실제 권고·
   );
 
   const severityChanged = structuredClone(changedDerived);
-  severityChanged.vulnerabilities["@expo/cli"].severity = "critical";
+  severityChanged.vulnerabilities["@expo/fingerprint"].severity = "critical";
   assert.throws(
     () => verifyReviewedFixture(severityChanged, mobileLock, mobilePolicy, "2026-11-19"),
     /DEPENDENCY_TRIAGE_CHANGED/,
@@ -667,21 +667,21 @@ test("상위 패키지 파생 range만 바뀌면 통과하지만 실제 권고·
   );
 
   const linkChanged = structuredClone(changedDerived);
-  linkChanged.vulnerabilities["@expo/cli"].via.push("previously-unreviewed-dependency");
+  linkChanged.vulnerabilities["@expo/fingerprint"].via.push("previously-unreviewed-dependency");
   assert.throws(
     () => verifyReviewedFixture(linkChanged, mobileLock, mobilePolicy, "2026-11-19"),
     /DEPENDENCY_TRIAGE_CHANGED/,
   );
 
   const versionChanged = structuredClone(mobileLock);
-  versionChanged.packages["node_modules/@expo/cli"].version = "99.0.0";
+  versionChanged.packages["node_modules/@expo/fingerprint"].version = "99.0.0";
   assert.throws(
     () => verifyReviewedFixture(changedDerived, versionChanged, mobilePolicy, "2026-11-19"),
     /DEPENDENCY_TRIAGE_CHANGED/,
   );
 
   const invalidRange = structuredClone(mobilePolicy);
-  invalidRange.packages.find((item) => item.name === "@expo/cli").range = "";
+  invalidRange.packages.find((item) => item.name === "@expo/fingerprint").range = "";
   assert.throws(
     () => verifyReviewedFixture(mobileAudit, mobileLock, invalidRange, "2026-11-19"),
     /DEPENDENCY_TRIAGE_CHANGED/,
@@ -700,7 +700,7 @@ test("모바일 원장은 lock 스냅샷과 정확히 일치하고 모든 resolv
 test("Expo 58 패치의 호환 버전과 Zod high audit 제거를 정확히 검증한다", () => {
   const app = JSON.parse(readFileSync(new URL("../../apps/mobile/package.json", import.meta.url)));
   for (const [name, version] of Object.entries({
-    expo: "58.0.23",
+    expo: "58.0.26",
     react: "19.3.0",
     "react-dom": "19.3.0",
     "react-native-safe-area-context": "5.11.1",
@@ -709,11 +709,13 @@ test("Expo 58 패치의 호환 버전과 Zod high audit 제거를 정확히 검�
     assert.equal(mobileLock.packages[""].dependencies[name], version);
     assert.equal(mobileLock.packages["node_modules/" + name].version, version);
   }
-  assert.equal(mobileLock.packages["node_modules/@expo/cli"].version, "58.1.19");
-  // 2026-11-18 picomatch high 권고 철회로 @expo/cli의 보고 등급은 다시 moderate입니다.
+  // Expo 58.0.26은 @expo/cli를 expo 아래에 중첩 설치하며, 58.1.20+는 glob 경로를 더 이상 쓰지 않습니다.
+  assert.equal(mobileLock.packages["node_modules/@expo/cli"], undefined);
+  assert.equal(mobileLock.packages["node_modules/expo/node_modules/@expo/cli"].version, "58.1.21");
+  assert.equal(mobileLock.packages["node_modules/@expo/fingerprint"].version, "0.21.10");
   assert.equal(
-    mobilePolicy.packages.find((item) => item.name === "@expo/cli").severity,
-    "moderate",
+    mobilePolicy.packages.some((item) => item.name === "@expo/cli"),
+    false,
   );
   assert.deepEqual(
     mobilePolicy.packages.filter((item) => ["zod", "picomatch"].includes(item.name)),
@@ -737,7 +739,10 @@ test("모바일 node-forge는 보안 패치 1.4.3을 사용하며 새 권고가 
     forge.integrity,
     "sha512-P6wzfh6t70avmV8FrVEAd/36sOPJQ+hkaJVX1Laap9J/77m7M0eyozDvc8SwnDf4P7MP94gwbAAo0rg3YVXT+g==",
   );
-  for (const path of ["node_modules/@expo/code-signing-certificates", "node_modules/@expo/cli"]) {
+  for (const path of [
+    "node_modules/@expo/code-signing-certificates",
+    "node_modules/expo/node_modules/@expo/cli",
+  ]) {
     assert.equal(mobileLock.packages[path].dependencies["node-forge"], "^1.4.0");
   }
   assert.equal(
@@ -781,6 +786,25 @@ test("모바일 감사에서 사라진 린트 경로와 CLI 링크는 원장에�
     mobilePolicy.packages.find((item) => item.name === "expo").via.map((item) => item.dependency),
     ["@expo/fingerprint"],
   );
+  // @expo/fingerprint 0.21.10은 glob 링크가 사라지고 minimatch 링크만 남습니다.
+  assert.deepEqual(
+    mobilePolicy.packages
+      .find((item) => item.name === "@expo/fingerprint")
+      .via.map((item) => item.dependency),
+    ["minimatch"],
+  );
+  assert.deepEqual(
+    mobilePolicy.assessments
+      .filter((item) => item.contextId === "expo-cli-config-glob")
+      .map((item) => item.key),
+    [
+      "@expo/fingerprint:minimatch",
+      "expo:@expo/fingerprint",
+      "glob:minimatch",
+      "glob:1244013",
+      "minimatch:1244623",
+    ],
+  );
   assert.deepEqual(
     mobilePolicy.packages
       .find((item) => item.name === "@typescript-eslint/eslint-plugin")
@@ -805,6 +829,7 @@ test("모바일 sharp는 수정본으로 해소해 원장에 남지 않는다", 
 // 2026-11-05 minimatch 권고 범위 정정(>=7.0.0 <11.0.1, source 1244012 → 1244623)으로 다시 확인한 평가는 검토일만 옮겼다.
 // 2026-11-19(UTC) 기한 전 registry 재확인으로 expo-cli-config-glob·jest-test-runner 전체 평가의 검토일을 옮겼다.
 // expo-cli-config-glob은 범위 안 부분 수정본(@expo/cli 58.1.20+, @expo/fingerprint 0.21.10)이 미적용이라 2주,
+// 이후 Expo 58.0.26 패치 적용으로 @expo/cli:glob·@expo/fingerprint:glob 평가는 제거했고 남은 평가의 기한은 바꾸지 않았다.
 // jest-test-runner는 범위 안 수정본이 없는 dev=false 테스트 도구 DoS라 3주다.
 test("모바일 평가는 사용면 위험별 기한을 두고 가장 이른 기한 다음 날 차단한다", () => {
   const deadlines = {
@@ -819,7 +844,7 @@ test("모바일 평가는 사용면 위험별 기한을 두고 가장 이른 기
     Object.keys(deadlines).sort(),
   );
   // 철회된 picomatch 권고(GHSA-fc5q-39xc-vjpf)의 171개 전이 평가와 전용 맥락은 남기지 않는다.
-  assert.equal(mobilePolicy.assessments.length, 52);
+  assert.equal(mobilePolicy.assessments.length, 50);
   assert.ok(
     mobilePolicy.assessments.every(
       (item) =>
