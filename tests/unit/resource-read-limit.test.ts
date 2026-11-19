@@ -14,36 +14,66 @@ import { readFileSync } from "node:fs";
 import { apiV1ResourceRateLimitedErrorSchema } from "@hra/contracts/api-v1";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { RateLimitReservation } from "@/lib/rate-limit";
-import { RESOURCE_READ_BURST_RATE_LIMIT, RESOURCE_READ_HOURLY_RATE_LIMIT } from "@/lib/rate-limit-core";
+import {
+  RESOURCE_READ_BURST_RATE_LIMIT,
+  RESOURCE_READ_HOURLY_RATE_LIMIT,
+} from "@/lib/rate-limit-core";
 
 const mocks = vi.hoisted(() => ({
-  auth: vi.fn(), authenticate: vi.fn(), validate: vi.fn(), profile: vi.fn(), get: vi.fn(), reserve: vi.fn(),
-  requireReader: vi.fn(), dbLimit: vi.fn(), log: vi.fn(),
-  guidebookCount: vi.fn(), guidebookList: vi.fn(), guidebookFile: vi.fn(),
-  materialCount: vi.fn(), materialList: vi.fn(), materialFind: vi.fn(), materialFile: vi.fn(),
-  weeklyCount: vi.fn(), weeklyList: vi.fn(), weeklyFind: vi.fn(), weeklyFile: vi.fn(),
+  auth: vi.fn(),
+  authenticate: vi.fn(),
+  validate: vi.fn(),
+  profile: vi.fn(),
+  get: vi.fn(),
+  reserve: vi.fn(),
+  requireReader: vi.fn(),
+  dbLimit: vi.fn(),
+  log: vi.fn(),
+  guidebookCount: vi.fn(),
+  guidebookList: vi.fn(),
+  guidebookFile: vi.fn(),
+  materialCount: vi.fn(),
+  materialList: vi.fn(),
+  materialFind: vi.fn(),
+  materialFile: vi.fn(),
+  weeklyCount: vi.fn(),
+  weeklyList: vi.fn(),
+  weeklyFind: vi.fn(),
+  weeklyFile: vi.fn(),
 }));
 vi.mock("server-only", () => ({}));
 vi.mock("@/lib/auth", () => ({ auth: mocks.auth }));
 vi.mock("@/lib/errors", () => ({ logServerError: mocks.log }));
 vi.mock("@/lib/rate-limit", () => ({ reserveResourceRead: mocks.reserve }));
 vi.mock("@/lib/resource-access", () => ({ requireSharedResourceReader: mocks.requireReader }));
-vi.mock("@/lib/db", () => ({ db: { select: () => ({ from: () => ({ where: () => ({ limit: mocks.dbLimit }) }) }) } }));
+// 주차별 텍스트 사진 조회는 기수 범위(#441)를 위해 weekly_texts와 조인하므로 innerJoin 체인도 같은 limit으로 연결합니다.
+vi.mock("@/lib/db", () => {
+  const where = () => ({ limit: mocks.dbLimit });
+  return { db: { select: () => ({ from: () => ({ where, innerJoin: () => ({ where }) }) }) } };
+});
 vi.mock("@/features/auth/mobile-session/service", () => ({
-  authenticateAccessToken: mocks.authenticate, validateMobileSession: mocks.validate,
+  authenticateAccessToken: mocks.authenticate,
+  validateMobileSession: mocks.validate,
 }));
 vi.mock("@/features/users/me/repository", () => ({ findUserProfileById: mocks.profile }));
 vi.mock("@/features/guidebooks/member-list/repository", () => ({
-  countGuidebooks: mocks.guidebookCount, listGuidebooks: mocks.guidebookList,
+  countGuidebooks: mocks.guidebookCount,
+  listGuidebooks: mocks.guidebookList,
 }));
-vi.mock("@/features/guidebooks/file-download/repository", () => ({ findGuidebookFile: mocks.guidebookFile }));
+vi.mock("@/features/guidebooks/file-download/repository", () => ({
+  findGuidebookFile: mocks.guidebookFile,
+}));
 vi.mock("@/features/class-materials/member/repository", () => ({
-  countClassMaterialsForReader: mocks.materialCount, listClassMaterialsForReader: mocks.materialList,
-  findClassMaterialForReader: mocks.materialFind, findClassMaterialFileForReader: mocks.materialFile,
+  countClassMaterialsForReader: mocks.materialCount,
+  listClassMaterialsForReader: mocks.materialList,
+  findClassMaterialForReader: mocks.materialFind,
+  findClassMaterialFileForReader: mocks.materialFile,
 }));
 vi.mock("@/features/weekly-texts/member/repository", () => ({
-  countWeeklyTexts: mocks.weeklyCount, listWeeklyTexts: mocks.weeklyList,
-  findWeeklyText: mocks.weeklyFind, findWeeklyTextFile: mocks.weeklyFile,
+  countWeeklyTexts: mocks.weeklyCount,
+  listWeeklyTexts: mocks.weeklyList,
+  findWeeklyText: mocks.weeklyFind,
+  findWeeklyTextFile: mocks.weeklyFile,
 }));
 vi.mock("@vercel/blob", () => ({ get: mocks.get }));
 
@@ -56,7 +86,10 @@ import { GET as guidebookFile } from "@/app/api/v1/resources/guidebooks/[id]/fil
 import { GET as weeklyTexts } from "@/app/api/v1/resources/weekly-texts/route";
 import { GET as weeklyText } from "@/app/api/v1/resources/weekly-texts/[id]/route";
 import { GET as weeklyTextFile } from "@/app/api/v1/resources/weekly-texts/[id]/file/route";
-import { enforceResourceReadLimit, ResourceReadRateLimitError } from "@/features/resources/read-limit";
+import {
+  enforceResourceReadLimit,
+  ResourceReadRateLimitError,
+} from "@/features/resources/read-limit";
 
 const userId = "61000000-0000-4000-8000-000000000001";
 const sessionId = "62000000-0000-4000-8000-000000000001";
@@ -69,25 +102,72 @@ const allowed: RateLimitReservation = { blocked: false, retryAfterSec: 0, reserv
 
 const v1Routes = [
   { name: "가이드북 목록", path: "guidebooks", run: (r: Request) => guidebooks(r), file: false },
-  { name: "가이드북 파일", path: `guidebooks/${itemId}/file`, run: (r: Request) => guidebookFile(r, context), file: true },
-  { name: "강의자료 목록", path: "class-materials", run: (r: Request) => classMaterials(r), file: false },
-  { name: "강의자료 상세", path: `class-materials/${itemId}`, run: (r: Request) => classMaterial(r, context), file: false },
-  { name: "강의자료 파일", path: `class-materials/${itemId}/file`, run: (r: Request) => classMaterialFile(r, context), file: true },
-  { name: "주차별 텍스트 목록", path: "weekly-texts", run: (r: Request) => weeklyTexts(r), file: false },
-  { name: "주차별 텍스트 상세", path: `weekly-texts/${itemId}`, run: (r: Request) => weeklyText(r, context), file: false },
-  { name: "주차별 텍스트 파일", path: `weekly-texts/${itemId}/file`, run: (r: Request) => weeklyTextFile(r, context), file: true },
+  {
+    name: "가이드북 파일",
+    path: `guidebooks/${itemId}/file`,
+    run: (r: Request) => guidebookFile(r, context),
+    file: true,
+  },
+  {
+    name: "강의자료 목록",
+    path: "class-materials",
+    run: (r: Request) => classMaterials(r),
+    file: false,
+  },
+  {
+    name: "강의자료 상세",
+    path: `class-materials/${itemId}`,
+    run: (r: Request) => classMaterial(r, context),
+    file: false,
+  },
+  {
+    name: "강의자료 파일",
+    path: `class-materials/${itemId}/file`,
+    run: (r: Request) => classMaterialFile(r, context),
+    file: true,
+  },
+  {
+    name: "주차별 텍스트 목록",
+    path: "weekly-texts",
+    run: (r: Request) => weeklyTexts(r),
+    file: false,
+  },
+  {
+    name: "주차별 텍스트 상세",
+    path: `weekly-texts/${itemId}`,
+    run: (r: Request) => weeklyText(r, context),
+    file: false,
+  },
+  {
+    name: "주차별 텍스트 파일",
+    path: `weekly-texts/${itemId}/file`,
+    run: (r: Request) => weeklyTextFile(r, context),
+    file: true,
+  },
 ] as const;
 
 /** Bearer가 없으면 쿠키 세션(Auth.js mock)으로 인증합니다. */
-const v1Request = (path: string, authorization?: string) => new Request(
-  `https://qa.invalid/api/v1/resources/${path}`,
-  { headers: { Cookie: "synthetic=valid", ...(authorization ? { Authorization: authorization } : {}) } },
-);
-const webRequest = (kind: string) => new Request(`https://qa.invalid/api/resources/${kind}/${itemId}/download`);
+const v1Request = (path: string, authorization?: string) =>
+  new Request(`https://qa.invalid/api/v1/resources/${path}`, {
+    headers: {
+      Cookie: "synthetic=valid",
+      ...(authorization ? { Authorization: authorization } : {}),
+    },
+  });
+const webRequest = (kind: string) =>
+  new Request(`https://qa.invalid/api/resources/${kind}/${itemId}/download`);
 
 /** 매 호출 새 본문 스트림을 만들어 반복 요청에서도 소비된 스트림을 재사용하지 않습니다. */
-const blobResponse = (contentType: string) => ({ statusCode: 200, blob: { contentType },
-  stream: new ReadableStream<Uint8Array>({ start(controller) { controller.enqueue(new TextEncoder().encode("DATA")); controller.close(); } }) });
+const blobResponse = (contentType: string) => ({
+  statusCode: 200,
+  blob: { contentType },
+  stream: new ReadableStream<Uint8Array>({
+    start(controller) {
+      controller.enqueue(new TextEncoder().encode("DATA"));
+      controller.close();
+    },
+  }),
+});
 
 beforeEach(() => {
   vi.resetAllMocks();
@@ -96,16 +176,41 @@ beforeEach(() => {
   mocks.reserve.mockResolvedValue(allowed);
   mocks.auth.mockResolvedValue({ user: { id: userId, role: "MEMBER" } });
   mocks.requireReader.mockResolvedValue({ user: { id: userId, role: "MEMBER" } });
-  mocks.authenticate.mockImplementation(async (token: string) => token === "valid" || token === "pending"
-    ? { userId, role: token === "pending" ? "PENDING" : "MEMBER", sessionVersion: 1, sessionId }
-    : null);
+  mocks.authenticate.mockImplementation(async (token: string) =>
+    token === "valid" || token === "pending"
+      ? { userId, role: token === "pending" ? "PENDING" : "MEMBER", sessionVersion: 1, sessionId }
+      : null,
+  );
   mocks.validate.mockImplementation(async () => {
     const token = mocks.authenticate.mock.calls.at(-1)?.[0];
     return { userId, role: token === "pending" ? "PENDING" : "MEMBER" };
   });
-  mocks.profile.mockResolvedValue({ id: userId, name: "합성", email: null, role: "MEMBER", cohortId: null, image: null });
-  const material = { id: itemId, title: "합성 강의자료", audience: "STUDENT", weekNumber: null, lectureTitle: null, classDate: null };
-  const text = { id: itemId, title: "합성 텍스트", textType: null, classDate: null, cohortId: null, cohortName: null, hasBody: true, hasFile: true };
+  mocks.profile.mockResolvedValue({
+    id: userId,
+    name: "합성",
+    email: null,
+    role: "MEMBER",
+    cohortId: null,
+    image: null,
+  });
+  const material = {
+    id: itemId,
+    title: "합성 강의자료",
+    audience: "STUDENT",
+    weekNumber: null,
+    lectureTitle: null,
+    classDate: null,
+  };
+  const text = {
+    id: itemId,
+    title: "합성 텍스트",
+    textType: null,
+    classDate: null,
+    cohortId: null,
+    cohortName: null,
+    hasBody: true,
+    hasFile: true,
+  };
   mocks.guidebookCount.mockResolvedValue(1);
   mocks.guidebookList.mockResolvedValue([{ id: itemId, title: "합성 가이드북" }]);
   mocks.materialCount.mockResolvedValue(1);
@@ -114,15 +219,20 @@ beforeEach(() => {
   mocks.weeklyCount.mockResolvedValue(1);
   mocks.weeklyList.mockResolvedValue([text]);
   mocks.weeklyFind.mockResolvedValue({ ...text, body: "본문", fileName: "텍스트.pdf" });
-  for (const find of [mocks.guidebookFile, mocks.materialFile, mocks.weeklyFile]) find.mockResolvedValue({ fileUrl, fileName: "자료.pdf" });
+  for (const find of [mocks.guidebookFile, mocks.materialFile, mocks.weeklyFile])
+    find.mockResolvedValue({ fileUrl, fileName: "자료.pdf" });
   mocks.dbLimit.mockResolvedValue([{ fileUrl, fileName: "자료.pdf" }]);
-  mocks.get.mockImplementation(async (url: string) => blobResponse(url.endsWith(".png") ? "image/png" : "application/pdf"));
+  mocks.get.mockImplementation(async (url: string) =>
+    blobResponse(url.endsWith(".png") ? "image/png" : "application/pdf"),
+  );
   vi.spyOn(console, "error").mockImplementation(() => undefined);
 });
 
 /** 성공·실패 모두 쿠키와 Bearer를 구분하는 캐시 헤더를 유지해야 합니다. */
 function expectDualVary(response: Response) {
-  const vary = (response.headers.get("vary") ?? "").split(",").map((value) => value.trim().toLowerCase());
+  const vary = (response.headers.get("vary") ?? "")
+    .split(",")
+    .map((value) => value.trim().toLowerCase());
   expect(vary).toEqual(expect.arrayContaining(["cookie", "authorization"]));
   expect(response.headers.get("cache-control")).toBe("private, no-store");
 }
@@ -135,13 +245,20 @@ describe.each(v1Routes)("$name 사용자별 조회 빈도 제한", ({ path, run,
     expect(response.headers.get("retry-after")).toBe("42");
     expectDualVary(response);
     expect(response.headers.get("x-request-id")).toMatch(/^[0-9a-f-]{36}$/);
-    if (file) expect(response.headers.get("content-security-policy")).toBe("sandbox; default-src 'none'");
+    if (file)
+      expect(response.headers.get("content-security-policy")).toBe("sandbox; default-src 'none'");
     const body = apiV1ResourceRateLimitedErrorSchema.parse(await response.json());
     expect(body.error.retryAfterSeconds).toBe(42);
     expect(body.error.requestId).toBe(response.headers.get("x-request-id"));
     expect(mocks.reserve).toHaveBeenCalledExactlyOnceWith(userId);
     expect(mocks.get).not.toHaveBeenCalled();
-    for (const read of [mocks.guidebookList, mocks.materialList, mocks.materialFind, mocks.weeklyList, mocks.weeklyFind]) {
+    for (const read of [
+      mocks.guidebookList,
+      mocks.materialList,
+      mocks.materialFind,
+      mocks.weeklyList,
+      mocks.weeklyFind,
+    ]) {
       expect(read).not.toHaveBeenCalled();
     }
   });
@@ -152,7 +269,14 @@ describe.each(v1Routes)("$name 사용자별 조회 빈도 제한", ({ path, run,
     expect(unauthenticated.status).toBe(401);
     expectDualVary(unauthenticated);
     // 가이드북 목록은 현재 계정 행으로 PENDING을 판단하므로 계정 행도 승인 대기 상태로 맞춥니다.
-    mocks.profile.mockResolvedValueOnce({ id: userId, name: "합성", email: null, role: "PENDING", cohortId: null, image: null });
+    mocks.profile.mockResolvedValueOnce({
+      id: userId,
+      name: "합성",
+      email: null,
+      role: "PENDING",
+      cohortId: null,
+      image: null,
+    });
     const pending = await run(v1Request(path, "Bearer pending"));
     expect(pending.status).toBe(403);
     expectDualVary(pending);
@@ -167,7 +291,12 @@ describe.each(v1Routes)("$name 사용자별 조회 빈도 제한", ({ path, run,
   });
 
   it("제한 저장소 장애는 자료를 제공하지 않는 503 UNAVAILABLE이다(fail-closed)", async () => {
-    mocks.reserve.mockResolvedValueOnce({ unavailable: true, blocked: true, retryAfterSec: 3600, reservationId: null });
+    mocks.reserve.mockResolvedValueOnce({
+      unavailable: true,
+      blocked: true,
+      retryAfterSec: 3600,
+      reservationId: null,
+    });
     const response = await run(v1Request(path, "Bearer valid"));
     expect(response.status).toBe(503);
     expect(response.headers.get("retry-after")).toBeNull();
@@ -186,26 +315,33 @@ describe.each(v1Routes)("$name 사용자별 조회 빈도 제한", ({ path, run,
 });
 
 describe("Web 자료실 다운로드 경로 사용자별 조회 빈도 제한", () => {
-  it.each(["class-materials", "guidebooks", "weekly-texts", "weekly-text-images", "class-log-images"])(
-    "%s 초과는 429와 Retry-After이며 DB·Blob을 읽지 않는다",
-    async (kind) => {
-      mocks.reserve.mockResolvedValueOnce({ blocked: true, retryAfterSec: 17, reservationId: null });
-      const response = await webDownload(webRequest(kind), webContext(kind));
-      expect(response.status).toBe(429);
-      expect(response.headers.get("retry-after")).toBe("17");
-      expect(response.headers.get("cache-control")).toBe("private, no-store");
-      expect(response.headers.get("x-content-type-options")).toBe("nosniff");
-      expect(await response.text()).toMatch(/[가-힣]/);
-      expect(mocks.reserve).toHaveBeenCalledExactlyOnceWith(userId);
-      expect(mocks.dbLimit).not.toHaveBeenCalled();
-      expect(mocks.get).not.toHaveBeenCalled();
-    },
-  );
+  it.each([
+    "class-materials",
+    "guidebooks",
+    "weekly-texts",
+    "weekly-text-images",
+    "class-log-images",
+  ])("%s 초과는 429와 Retry-After이며 DB·Blob을 읽지 않는다", async (kind) => {
+    mocks.reserve.mockResolvedValueOnce({ blocked: true, retryAfterSec: 17, reservationId: null });
+    const response = await webDownload(webRequest(kind), webContext(kind));
+    expect(response.status).toBe(429);
+    expect(response.headers.get("retry-after")).toBe("17");
+    expect(response.headers.get("cache-control")).toBe("private, no-store");
+    expect(response.headers.get("x-content-type-options")).toBe("nosniff");
+    expect(await response.text()).toMatch(/[가-힣]/);
+    expect(mocks.reserve).toHaveBeenCalledExactlyOnceWith(userId);
+    expect(mocks.dbLimit).not.toHaveBeenCalled();
+    expect(mocks.get).not.toHaveBeenCalled();
+  });
 
   it("알 수 없는 자료 종류와 잘못된 ID는 예산에 기록하지 않고 404이다", async () => {
     mocks.reserve.mockResolvedValue({ blocked: true, retryAfterSec: 17, reservationId: null });
-    expect((await webDownload(webRequest("unknown-kind"), webContext("unknown-kind"))).status).toBe(404);
-    const invalidId = await webDownload(webRequest("guidebooks"), { params: Promise.resolve({ kind: "guidebooks", id: "not-a-uuid" }) });
+    expect((await webDownload(webRequest("unknown-kind"), webContext("unknown-kind"))).status).toBe(
+      404,
+    );
+    const invalidId = await webDownload(webRequest("guidebooks"), {
+      params: Promise.resolve({ kind: "guidebooks", id: "not-a-uuid" }),
+    });
     expect(invalidId.status).toBe(404);
     expect(mocks.reserve).not.toHaveBeenCalled();
     expect(mocks.dbLimit).not.toHaveBeenCalled();
@@ -213,12 +349,19 @@ describe("Web 자료실 다운로드 경로 사용자별 조회 빈도 제한", 
 
   it("미로그인·승인 대기 이동은 제한보다 먼저이며 예산에 기록하지 않는다", async () => {
     mocks.requireReader.mockRejectedValueOnce(new Error("NEXT_REDIRECT"));
-    await expect(webDownload(webRequest("guidebooks"), webContext("guidebooks"))).rejects.toThrow("NEXT_REDIRECT");
+    await expect(webDownload(webRequest("guidebooks"), webContext("guidebooks"))).rejects.toThrow(
+      "NEXT_REDIRECT",
+    );
     expect(mocks.reserve).not.toHaveBeenCalled();
   });
 
   it("제한 저장소 장애는 파일을 제공하지 않는 503이다(fail-closed)", async () => {
-    mocks.reserve.mockResolvedValueOnce({ unavailable: true, blocked: true, retryAfterSec: 3600, reservationId: null });
+    mocks.reserve.mockResolvedValueOnce({
+      unavailable: true,
+      blocked: true,
+      retryAfterSec: 3600,
+      reservationId: null,
+    });
     const response = await webDownload(webRequest("guidebooks"), webContext("guidebooks"));
     expect(response.status).toBe(503);
     expect(response.headers.get("retry-after")).toBeNull();
@@ -248,19 +391,24 @@ describe("정상 사용 범위와 공유 예산", () => {
 
   it("모바일 목록·상세·파일 몇 건과 사진 100장짜리 Web 화면을 함께 열어도 제한되지 않는다", async () => {
     useInMemoryLimiter();
-    mocks.dbLimit.mockResolvedValue([{ fileUrl: `https://${host}/resource-uploads/qa/photo.png`, fileName: null }]);
+    mocks.dbLimit.mockResolvedValue([
+      { fileUrl: `https://${host}/resource-uploads/qa/photo.png`, fileName: null },
+    ]);
     const statuses: number[] = [];
     const record = async (response: Response) => {
       statuses.push(response.status);
       await response.body?.cancel();
     };
     // 모바일 앱 한 화면: 목록 3종 + 상세 2건 + 파일 3건
-    for (const route of v1Routes) await record(await route.run(v1Request(route.path, "Bearer valid")));
+    for (const route of v1Routes)
+      await record(await route.run(v1Request(route.path, "Bearer valid")));
     // Web 주차별 텍스트 상세 화면: 첨부 파일 1건 + 사진 최대 100장, 두 번 새로 고침
     for (let view = 0; view < 2; view += 1) {
       await record(await webDownload(webRequest("weekly-texts"), webContext("weekly-texts")));
       for (let image = 0; image < 100; image += 1) {
-        await record(await webDownload(webRequest("weekly-text-images"), webContext("weekly-text-images")));
+        await record(
+          await webDownload(webRequest("weekly-text-images"), webContext("weekly-text-images")),
+        );
       }
     }
     expect(statuses).toHaveLength(8 + 2 * 101);
@@ -272,7 +420,9 @@ describe("정상 사용 범위와 공유 예산", () => {
   it("같은 사용자가 분당 상한을 넘기면 Bearer든 쿠키든 같은 예산으로 429가 된다", async () => {
     useInMemoryLimiter();
     for (let index = 0; index < RESOURCE_READ_BURST_RATE_LIMIT.maxAttempts; index += 1) {
-      const response = await classMaterials(v1Request("class-materials", index % 2 ? "Bearer valid" : undefined));
+      const response = await classMaterials(
+        v1Request("class-materials", index % 2 ? "Bearer valid" : undefined),
+      );
       expect(response.status).toBe(200);
     }
     const bearer = await classMaterials(v1Request("class-materials", "Bearer valid"));
@@ -284,7 +434,10 @@ describe("정상 사용 범위와 공유 예산", () => {
 
   it("주차별 텍스트 상세의 첨부 사진은 지연 로딩해 화면 밖 사진이 예산을 쓰지 않는다", () => {
     const source = readFileSync("src/app/(member)/resources/weekly-texts/[id]/page.tsx", "utf8");
-    const imageTag = source.slice(source.indexOf("<img"), source.indexOf("/>", source.indexOf("<img")));
+    const imageTag = source.slice(
+      source.indexOf("<img"),
+      source.indexOf("/>", source.indexOf("<img")),
+    );
     expect(imageTag).toContain("/api/resources/weekly-text-images/");
     expect(imageTag).toContain('loading="lazy"');
     expect(imageTag).toContain('decoding="async"');
@@ -303,10 +456,15 @@ describe("enforceResourceReadLimit 재시도 값", () => {
     { retryAfterSec: 12.2, expected: 13 },
     { retryAfterSec: 99_999, expected: 3600 },
     { retryAfterSec: Number.NaN, expected: 3600 },
-  ])("$retryAfterSec초는 계약 범위의 $expected초로 고정한다", async ({ retryAfterSec, expected }) => {
-    mocks.reserve.mockResolvedValueOnce({ blocked: true, retryAfterSec, reservationId: null });
-    const error = await enforceResourceReadLimit(userId).catch((caught: unknown) => caught);
-    expect(error).toBeInstanceOf(ResourceReadRateLimitError);
-    expect(error instanceof ResourceReadRateLimitError ? error.retryAfterSeconds : null).toBe(expected);
-  });
+  ])(
+    "$retryAfterSec초는 계약 범위의 $expected초로 고정한다",
+    async ({ retryAfterSec, expected }) => {
+      mocks.reserve.mockResolvedValueOnce({ blocked: true, retryAfterSec, reservationId: null });
+      const error = await enforceResourceReadLimit(userId).catch((caught: unknown) => caught);
+      expect(error).toBeInstanceOf(ResourceReadRateLimitError);
+      expect(error instanceof ResourceReadRateLimitError ? error.retryAfterSeconds : null).toBe(
+        expected,
+      );
+    },
+  );
 });

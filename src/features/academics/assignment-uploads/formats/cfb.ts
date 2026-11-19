@@ -22,6 +22,10 @@
  * 미탐지(한계, 후속 과제):
  * - PPT RC4 CryptoAPI 암호화는 `EncryptedSummary` 스트림만 확인합니다. 이 스트림 없이
  *   `PowerPoint Document` 내부 CryptSession10Container만 있는 경우는 탐지하지 않습니다.
+ * - HWP 기본 `Scripts` 허용 한계: 속성 bit 3 없이 `DefaultJScript`가 최대 1 KiB(압축 상태, 풀면 수 KB의
+ *   JScript)까지 허용되므로 이 크기 안에 스크립트가 숨을 수 있습니다. #516 범위에서는 수용합니다
+ *   (서버는 실행하지 않고, 다운로드는 attachment로만 제공하며, 한글은 스크립트 실행 전에 확인을 묻습니다).
+ *   단, 업로드를 실제로 열기 전에 한컴 실제 샘플로 이 상한을 더 낮춰야 합니다.
  * - `PowerPoint Document` 스트림 안의 VBA 레코드, OLE 개체 임베드는 해석하지 않습니다.
  *   서버는 업로드 문서를 렌더링·실행하지 않으며 다운로드는 attachment로만 제공합니다.
  */
@@ -65,6 +69,18 @@ const HWP_PROPERTY_SCRIPT = 1 << 3;
 const HWP_PROPERTY_DRM = 1 << 4;
 /** 서명(32) + 버전(4) + 속성(4)까지 읽을 수 있어야 합니다. */
 const HWP_FILE_HEADER_MIN_BYTES = 40;
+
+/**
+ * HWP 기본 `Scripts` 저장소의 두 스트림 이름과 크기 상한(명세 기억 기반의 가정).
+ * 한글은 사용자 스크립트가 없어도 `DefaultJScript`(압축된 빈 기본 스크립트, 수십 바이트)와
+ * `JScriptVersion`(버전 정보, 수 바이트)을 담은 `Scripts`를 기본으로 저장하는 것으로 알려져 있습니다.
+ * → 실제 한컴 샘플로 확인이 필요합니다. 상한은 보수적으로 잡아, 이를 넘으면 실행 가능한
+ *   스크립트가 들어 있을 수 있다고 보고 거부합니다.
+ */
+const HWP_DEFAULT_SCRIPT_LIMITS = new Map<string, number>([
+  ["DEFAULTJSCRIPT", 1024],
+  ["JSCRIPTVERSION", 64],
+]);
 
 /** 다른 Office 형식(DOC·XLS)의 루트 이름. HWP·PPT와 공존하면 폴리글랏으로 보고 거부합니다. */
 const FOREIGN_ROOT_NAMES = ["WordDocument", "Workbook", "Book"] as const;
@@ -254,9 +270,17 @@ function readDirectory(context: CfbContext, firstDirectorySector: number, majorV
  * CFB 이름 비교는 대소문자를 구분하지 않으므로 대문자로 정규화하고, 같은 이름 중복은 손상으로 봅니다.
  */
 function rootChildren(entries: DirectoryEntry[]): Map<string, DirectoryEntry> {
+  return childrenOf(entries, entries[0]);
+}
+
+/** 저장소 엔트리(루트 포함)의 직계 자식 맵. 순회·중복 규칙은 `rootChildren`과 같습니다. */
+function childrenOf(
+  entries: DirectoryEntry[],
+  parent: DirectoryEntry,
+): Map<string, DirectoryEntry> {
   const children = new Map<string, DirectoryEntry>();
   const visited = new Uint8Array(entries.length);
-  const stack = [entries[0].child];
+  const stack = [parent.child];
   while (stack.length > 0) {
     const id = stack.pop() as number;
     if (id === NO_STREAM) continue;
@@ -389,8 +413,17 @@ export function detectCfbDocument(bytes: Uint8Array): DetectionResult {
       if (!fileHeader || !stream("DocInfo") || !(storage("BodyText") || storage("ViewText")))
         return fail("MALFORMED");
       checkHwpFileHeader(readStreamPrefix(context, header, root, fileHeader, 256));
-      // 스크립트 저장소(JScript 등)는 실행 콘텐츠이므로 거부합니다.
-      if (has(["Scripts"])) return fail("MACRO");
+      // 스크립트 저장 속성(bit 3)은 위에서 이미 거부했습니다. 속성 없이 `Scripts` 저장소가 있으면
+      // 기본 두 스트림(작은 크기)만 허용하고, 그 밖의 내용은 실행 콘텐츠로 보아 거부합니다.
+      const scripts = children.get("SCRIPTS");
+      if (scripts) {
+        if (scripts.type !== OBJECT_STORAGE) return fail("MACRO");
+        for (const [name, child] of childrenOf(entries, scripts)) {
+          const limit = HWP_DEFAULT_SCRIPT_LIMITS.get(name);
+          if (limit === undefined || child.type !== OBJECT_STREAM || child.size > limit)
+            return fail("MACRO");
+        }
+      }
       return { ok: true, format: "HWP" };
     }
     // 5) PPT: 두 필수 스트림이 있어야 하며, RC4 CryptoAPI 암호화 문서에 흔한
