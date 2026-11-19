@@ -19,7 +19,7 @@ concurrency:
 jobs:
   scope:
     name: 변경 범위 판별
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     outputs:
       web: ${{ steps.detect.outputs.web }}
     steps:
@@ -53,7 +53,7 @@ jobs:
     # job 이름을 유지해 기존 branch protection의 체크 이름을 바꾸지 않습니다.
     if: ${{ always() && (needs.scope.result != 'success' || needs.scope.outputs.web != 'false') }}
     name: Lint · Typecheck · Test · Build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     env:
       # PR 코드와 브라우저 검사는 운영 서비스의 DB·Blob 자격 증명을 받지 않습니다.

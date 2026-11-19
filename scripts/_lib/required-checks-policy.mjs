@@ -98,6 +98,9 @@ const CHECK_COMMANDS = {
     "npm run verify:csp",
   ],
 };
+/** 필수 검사 job이 실행되는 검토된 GitHub 호스트 runner 이미지입니다. */
+export const REVIEWED_RUNNER = "ubuntu-24.04";
+
 const JOB_IF = {
   "ci.yml:ci":
     "${{ always() && (needs.scope.result != 'success' || needs.scope.outputs.web != 'false') }}",
@@ -313,8 +316,10 @@ export function validateWorkflowCheckBoundaries(workflows) {
       continue;
     }
     // 단계 지문이 같아도 runner·컨테이너가 달라지면 명령 실행 경계가 바뀌므로 별도로 검사합니다.
+    // `ubuntu-latest`는 GitHub가 이미지를 바꾸면(2026-11: 24.04→26.04, PostgreSQL 16→18) 코드 변경 없이
+    // 필수 검사 결과가 달라지므로 검토한 이미지 버전을 고정합니다. 올릴 때는 별도 PR로 검증합니다.
     if (
-      job["runs-on"] !== "ubuntu-latest" ||
+      job["runs-on"] !== REVIEWED_RUNNER ||
       job.container !== undefined ||
       job.services !== undefined
     ) {
