@@ -310,6 +310,15 @@ export const environmentInventory = {
       active("false"),
     ),
     variable(
+      "ACADEMIC_ASSIGNMENT_REVIEW_ENABLED",
+      "application",
+      "과제 검토·피드백 작성과 학생 공개·검토자 제출 파일 열람(#162)",
+      false,
+      "학사 운영 정책 초안 P11·P12(#143) 운영 승인과 SQL 적용 후 ACADEMIC_ENABLED·ACADEMIC_FACULTY_REVIEW_ENABLED와 함께 true",
+      "정확한 true가 아니면 검토·공개 화면 404, 변경·목록 DISABLED, 검토자 파일 다운로드 404, 학생 피드백 빈 목록; DB 조회 없음",
+      active("false"),
+    ),
+    variable(
       "ACADEMIC_STAFF_ENABLED",
       "application",
       "기수별 운영 인력 배정·출결 권한 판정(#165)",
