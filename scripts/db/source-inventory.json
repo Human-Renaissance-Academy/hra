@@ -199,6 +199,26 @@
       ]
     },
     {
+      "path": "scripts/migrate-academic-faculty-reviewers.sql",
+      "role": "versioned_candidate",
+      "sha256": "d472f4457bf7b736b61a7d53146066b65afe36740f42f67a5b73442d1acf5375",
+      "id": "g2-faculty-reviewers",
+      "predecessors": [
+        "g1-assignments",
+        "g2-staff-assignments"
+      ]
+    },
+    {
+      "path": "scripts/migrate-academic-assignment-reviews.sql",
+      "role": "versioned_candidate",
+      "sha256": "f1d49fdd6eb7512351939a02d060214940d1e07944d3f503bcfff60d916d81ac",
+      "id": "g3-assignment-reviews",
+      "predecessors": [
+        "g1-submissions",
+        "g2-faculty-reviewers"
+      ]
+    },
+    {
       "path": "scripts/migrate-academic-staff-assignments.sql",
       "role": "versioned_candidate",
       "sha256": "6fdbca4b7ba9ebc7f93d565d98d3cfe3b5390d93efedf41fa4d4cad437616370",

@@ -103,10 +103,10 @@ test(
         ])
           assert.match(value, /^[a-f0-9]{64}$/);
         assert.equal(reference.provenance.toolVersion, "0.31.11");
-        // #507·#165·#159·#163 검토 SQL은 목록에만 추가하며 이 기존 reference 실행 순서에는 편입하지 않습니다.
-        assert.equal(reference.provenance.inventoryLegacySqlSourceCount, 23);
+        // #507·#165·#159·#161·#162·#163 검토 SQL은 목록에만 추가하며 이 기존 reference 실행 순서에는 편입하지 않습니다.
+        assert.equal(reference.provenance.inventoryLegacySqlSourceCount, 25);
         assert.equal(reference.provenance.inventoryCandidateSqlSourceCount, 20);
-        assert.equal(reference.provenance.inventoryTotalSqlSourceCount, 43);
+        assert.equal(reference.provenance.inventoryTotalSqlSourceCount, 45);
         assert.equal(reference.provenance.rawSqlSourceCount, 18);
         ensure(
           reference.prefixes.every(
@@ -125,6 +125,18 @@ test(
             (prefix) => prefix.source !== "scripts/migrate-academic-attendance.sql",
           ),
           "FRESH_ATTENDANCE_CANDIDATE_NOT_APPLIED",
+        );
+        ensure(
+          reference.prefixes.every(
+            (prefix) => prefix.source !== "scripts/migrate-academic-faculty-reviewers.sql",
+          ),
+          "FRESH_FACULTY_REVIEW_CANDIDATE_NOT_APPLIED",
+        );
+        ensure(
+          reference.prefixes.every(
+            (prefix) => prefix.source !== "scripts/migrate-academic-assignment-reviews.sql",
+          ),
+          "FRESH_ASSIGNMENT_REVIEW_CANDIDATE_NOT_APPLIED",
         );
         ensure(
           reference.prefixes.every(
