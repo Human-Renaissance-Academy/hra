@@ -101,6 +101,7 @@ nav:
           - 업로드·검증·정리: developer/academic-assignment-uploads.md
           - 최종 제출 확정: developer/academic-submission-finalization.md
           - 파일 다운로드와 삭제: developer/academic-submission-files.md
+          - 텍스트·발표자료 분리 제출 SQL: developer/academic-submission-artifacts-migration.md
       - 운영과 검증:
           - 로그·지표·기능 설정: developer/academic-observability.md
           - G1 통합 품질 검사: developer/academic-g1-quality-gate.md
