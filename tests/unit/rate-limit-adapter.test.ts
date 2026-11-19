@@ -63,6 +63,32 @@ describe("요청 제한 DB 어댑터", () => {
     expect(firstQuery.params).not.toContain("203.0.113.1");
   });
 
+  it("로그인 차단은 원본 이메일·IP 없이 해시 앞 8자리만 로그에 남긴다 (#508)", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    mocks.execute.mockResolvedValueOnce({
+      rows: [{ allowed: false, retry_after_sec: 60, reservation_id: null }],
+    });
+    const result = await reserveLoginAttempt("203.0.113.9", "Victim@Example.invalid");
+    expect(result.blocked).toBe(true);
+    expect(warn).toHaveBeenCalledTimes(1);
+    const [tag, event] = warn.mock.calls[0];
+    expect(tag).toBe("[rate-limit/login-blocked]");
+    expect(Object.keys(event).sort()).toEqual(["axes", "event", "keyPrefixes", "timestamp"]);
+    expect(event.axes).toEqual(["login-ip", "login-pair", "login-email"]);
+    for (const prefix of Object.values(event.keyPrefixes)) expect(prefix).toMatch(/^[0-9a-f]{8}$/);
+    expect(JSON.stringify(warn.mock.calls)).not.toMatch(/victim|example|203\.0\.113/i);
+    warn.mockRestore();
+  });
+
+  it("허용된 로그인과 저장소 장애는 차단 관측 로그를 남기지 않는다 (#508)", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    await reserveLoginAttempt("203.0.113.9", "a@example.invalid");
+    mocks.execute.mockRejectedValueOnce(new Error("DB unavailable"));
+    await reserveLoginAttempt("203.0.113.9", "a@example.invalid");
+    expect(warn).not.toHaveBeenCalled();
+    warn.mockRestore();
+  });
+
   it("업로드는 IP 축, 지원서는 IP 2개·이메일 축을 각각 예약한다", async () => {
     await reserveUploadAttempt("203.0.113.2");
     await reserveApplicationSubmission("203.0.113.2", "user@example.com");

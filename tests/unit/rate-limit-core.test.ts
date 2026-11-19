@@ -16,6 +16,8 @@
 import { describe, expect, it } from "vitest";
 import {
   APPLICATION_SUBMISSION_HOURLY_RATE_LIMIT,
+  LOGIN_EMAIL_RATE_LIMIT,
+  LOGIN_IP_RATE_LIMIT,
   LOGIN_RATE_LIMIT,
   UNKNOWN_IP,
   UPLOAD_RATE_LIMIT,
@@ -32,15 +34,18 @@ describe("정책 상수 - 이슈 #69 사양 회귀", () => {
     expect(LOGIN_RATE_LIMIT.maxAttempts).toBe(5);
   });
 
+  it("로그인 3축: IP 50 / 이메일 30, 모두 15분 (#508)", () => {
+    expect(LOGIN_IP_RATE_LIMIT).toEqual({ windowMs: 15 * 60 * 1000, maxAttempts: 50 });
+    expect(LOGIN_EMAIL_RATE_LIMIT).toEqual({ windowMs: 15 * 60 * 1000, maxAttempts: 30 });
+  });
+
   it("UPLOAD_RATE_LIMIT = 60초 / 30회 (Phase 1 사양)", () => {
     expect(UPLOAD_RATE_LIMIT.windowMs).toBe(60 * 1000);
     expect(UPLOAD_RATE_LIMIT.maxAttempts).toBe(30);
   });
 
   it("APPLICATION_SUBMISSION_HOURLY_RATE_LIMIT = 1시간 / 50회 (#121)", () => {
-    expect(APPLICATION_SUBMISSION_HOURLY_RATE_LIMIT.windowMs).toBe(
-      60 * 60 * 1000,
-    );
+    expect(APPLICATION_SUBMISSION_HOURLY_RATE_LIMIT.windowMs).toBe(60 * 60 * 1000);
     expect(APPLICATION_SUBMISSION_HOURLY_RATE_LIMIT.maxAttempts).toBe(50);
   });
 });
@@ -106,10 +111,14 @@ describe("extractClientIp", () => {
     process.env.VERCEL = "1";
     try {
       expect(extractClientIp(new Headers({ "x-forwarded-for": "203.0.113.1" }))).toBe(UNKNOWN_IP);
-      expect(extractClientIp(new Headers({
-        "x-vercel-forwarded-for": "invalid-value",
-        "x-forwarded-for": "203.0.113.1",
-      }))).toBe(UNKNOWN_IP);
+      expect(
+        extractClientIp(
+          new Headers({
+            "x-vercel-forwarded-for": "invalid-value",
+            "x-forwarded-for": "203.0.113.1",
+          }),
+        ),
+      ).toBe(UNKNOWN_IP);
     } finally {
       if (previous === undefined) delete process.env.VERCEL;
       else process.env.VERCEL = previous;
@@ -124,15 +133,11 @@ describe("extractClientIp", () => {
 
 describe("normalizeEmailForRateLimit", () => {
   it("이메일을 소문자로 변환한다 (동일 계정 카운트 통합)", () => {
-    expect(normalizeEmailForRateLimit("User@Example.COM")).toBe(
-      "user@example.com",
-    );
+    expect(normalizeEmailForRateLimit("User@Example.COM")).toBe("user@example.com");
   });
 
   it("양쪽 공백을 제거한다", () => {
-    expect(normalizeEmailForRateLimit("  user@example.com  ")).toBe(
-      "user@example.com",
-    );
+    expect(normalizeEmailForRateLimit("  user@example.com  ")).toBe("user@example.com");
   });
 
   it("string 이 아닌 값은 빈 문자열을 반환한다 (조작 방어)", () => {

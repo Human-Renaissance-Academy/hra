@@ -4,32 +4,15 @@
   "manifestBinding": {
     "algorithm": "sha256",
     "input": "package-json.raw-bytes-v1",
-    "digest": "cf2c7fca0a6c88938e7ef130166f7777f07e4f907c9b2de35432c42e39d29e56"
+    "digest": "b6f10b1f3916f85d66e929e53169936440c4a2273b0c1d133f0faf02e4b8177a"
   },
   "lockBinding": {
     "algorithm": "sha256",
     "input": "package-lock.raw-bytes-v1",
-    "digest": "ec75da5f4d1fe592446fa72de80e5eb076f923248baa0cd64848f5e05204f77f"
+    "digest": "8816177d3bde57054cae829cd83b1393f052317481460988542551defcf0f844"
   },
   "note": "모바일 앱(apps/mobile/package-lock.json) 원장이다. P2는 코드 사용면 평가이며 owner의 P1 위험 수용 승인이 아니다. advisory 집합과 nodes는 독립적이며 모든 조합이 실제 영향 경로라는 뜻이 아니다. 독립 리뷰에서 재검토한다.",
   "packages": [
-    {
-      "name": "@expo/cli",
-      "severity": "moderate",
-      "range": "0.19.0-canary-20240625-2333e70 - 57.0.32 || 58.0.0-canary-20260806-8c2d007 - 58.1.19",
-      "nodes": [
-        {
-          "path": "node_modules/@expo/cli",
-          "version": "58.1.19",
-          "development": false
-        }
-      ],
-      "via": [
-        {
-          "dependency": "glob"
-        }
-      ]
-    },
     {
       "name": "@expo/fingerprint",
       "severity": "moderate",
@@ -37,14 +20,11 @@
       "nodes": [
         {
           "path": "node_modules/@expo/fingerprint",
-          "version": "0.21.9",
+          "version": "0.21.10",
           "development": false
         }
       ],
       "via": [
-        {
-          "dependency": "glob"
-        },
         {
           "dependency": "minimatch"
         }
@@ -356,7 +336,7 @@
       "nodes": [
         {
           "path": "node_modules/expo",
-          "version": "58.0.23",
+          "version": "58.0.26",
           "development": false
         }
       ],
@@ -521,7 +501,7 @@
       "nodes": [
         {
           "path": "node_modules/jest-expo",
-          "version": "58.0.14",
+          "version": "58.0.15",
           "development": true
         }
       ],
@@ -804,24 +784,6 @@
     }
   ],
   "assessments": [
-    {
-      "key": "@expo/cli:glob",
-      "contextId": "expo-cli-config-glob",
-      "priority": "P2",
-      "owner": "repo-maintainers",
-      "reviewedOn": "2026-11-19",
-      "reviewBy": "2026-12-03",
-      "attackCondition": "glob 전이 advisory의 공격 조건을 해당 패키지 항목에서 별도로 검토한다. 2026-11-04 모바일 lock 최초 등록 시 확인한 경로이며 2026-11-19(UTC) registry 재확인 후 2026-12-03까지 함께 재검토한다."
-    },
-    {
-      "key": "@expo/fingerprint:glob",
-      "contextId": "expo-cli-config-glob",
-      "priority": "P2",
-      "owner": "repo-maintainers",
-      "reviewedOn": "2026-11-19",
-      "reviewBy": "2026-12-03",
-      "attackCondition": "glob 전이 advisory의 공격 조건을 해당 패키지 항목에서 별도로 검토한다. 2026-11-04 모바일 lock 최초 등록 시 확인한 경로이며 2026-11-19(UTC) registry 재확인 후 2026-12-03까지 함께 재검토한다."
-    },
     {
       "key": "@expo/fingerprint:minimatch",
       "contextId": "expo-cli-config-glob",
