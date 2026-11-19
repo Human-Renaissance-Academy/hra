@@ -93,6 +93,28 @@ describe("일정 삭제 오류의 제한적인 분류", () => {
     expect(mocks.log).not.toHaveBeenCalled();
   });
 
+  it.each(
+    ["23503", "23001"].flatMap((code) =>
+      [
+        "academic_attendance_records_event_fk",
+        "academic_attendance_corrections_event_fk",
+        "academic_attendance_events_event_fk",
+      ].map((constraint) => ({ code, constraint })),
+    ),
+  )("$code와 출결 $constraint가 함께 일치하면 출결 보존 안내를 반환한다", async (error) => {
+    mocks.query.mockRejectedValueOnce({
+      ...error,
+      message: "원본 DB 오류 private@example.test DELETE FROM schedule_events",
+    });
+    const result = await deleteScheduleEvent(event);
+    expect(result).toEqual({
+      success: false,
+      message: "출결 기록이 있는 수업은 삭제할 수 없습니다.",
+    });
+    expectSafeFailure(result);
+    expect(mocks.log).not.toHaveBeenCalled();
+  });
+
   it.each([
     { code: "23503", constraint: "unrelated_reference_fk" },
     { code: "23001", constraint: "unrelated_reference_fk" },

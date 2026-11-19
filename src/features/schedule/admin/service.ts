@@ -160,7 +160,7 @@ export async function updateAdminEvent(
   return null;
 }
 
-/** 과제의 일정·세션 참조 거부만 고정 안내로 바꾸며 다른 오류는 숨겨 분류하지 않습니다. */
+/** 과제·#161 검토자 지정·출결(#159)의 일정·세션 참조 거부만 고정 안내로 바꾸며 다른 오류는 숨겨 분류하지 않습니다. */
 export async function deleteAdminEvent(actor: ScheduleActor, id: string): Promise<ScheduleResult> {
   assertAdmin(actor);
   try {
@@ -195,6 +195,19 @@ export async function deleteAdminEvent(actor: ScheduleActor, id: string): Promis
       )
     ) {
       return { success: false, message: "검토자 지정이 있는 수업은 삭제할 수 없습니다." };
+    }
+    // #159 출결 기록·정정·이력이 참조하는 수업은 보존해야 하므로 같은 방식(SQLSTATE + 제약명)으로만 안내합니다.
+    const attendanceConstraints = [
+      "academic_attendance_records_event_fk",
+      "academic_attendance_corrections_event_fk",
+      "academic_attendance_events_event_fk",
+    ];
+    if (
+      ["23503", "23001"].some((code) =>
+        attendanceConstraints.some((constraint) => isConstraintViolation(error, code, constraint)),
+      )
+    ) {
+      return { success: false, message: "출결 기록이 있는 수업은 삭제할 수 없습니다." };
     }
     throw error;
   }

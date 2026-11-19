@@ -96,6 +96,29 @@
       ]
     },
     {
+      "ref": "scripts/migrate-academic-attendance.sql",
+      "phase": "academic",
+      "fresh": {
+        "disposition": "unresolved",
+        "required": true,
+        "reason": "G2 학생별 출결·정정 승인의 격리 검증 후보이며 #143 정책 운영 승인, G1 학적과 #165 운영 인력 배정의 설치 확정 전에는 설치를 확정하지 않는다."
+      },
+      "objects": ["academic-attendance-tables", "academic-attendance-functions", "academic-attendance-triggers"],
+      "requires": ["web-base", "academic-students", "academic-staff-tables", "academic-staff-functions"],
+      "checks": [
+        "소유 PostgreSQL에서 7일 입력 창 KST 경계, 같은 셀 동시 입력의 버전 충돌, 정정 자기 승인 거부와 재적용 멱등성을 확인한다.",
+        "이름만 같은 다른 표·제약·인덱스·트리거를 수용하지 않고 전체 롤백하며 PUBLIC 함수 실행 권한이 없는지 확인한다."
+      ],
+      "evidence": [
+        { "file": "scripts/migrate-academic-attendance.sql", "line": 1, "note": "schedule_events·cohort_enrollments·운영 인력 배정을 외래키로만 참조하는 G2 추가형 표·함수·트리거의 검토 후보 원문이다. 운영 적용 이력이 아니다." },
+        { "file": "tests/unit/academic-attendance-postgres.test.ts", "line": 1, "note": "소유 PostgreSQL의 입력 창·인가·버전 경합·정정 승인·불변성 회귀이며 전체 신규 설치를 증명하지 않는다." }
+      ],
+      "unresolved": [
+        "#143 운영 승인·운영 대상 catalog·권한·백업/복구와 #280 gate는 미완료다.",
+        "G1 g1Order·schema export·fresh bundle에 자동 편입하거나 운영 manifest를 적용됨으로 기록하지 않는다."
+      ]
+    },
+    {
       "ref": "scripts/migrate-mobile-sessions.sql",
       "phase": "schema-overlap",
       "fresh": { "disposition": "unresolved", "required": true, "reason": "모바일 세션 구조는 export가 소유하며 기존 DB의 엄격한 catalog 비교와 한국어 설명을 별도 원문으로 유지한다." },
@@ -1747,6 +1770,114 @@
       "unresolved": [
         "전체 fresh bundle의 engine/reference 동등성과 timeout·실패 원자성 통합 gate가 끝나지 않았으므로 운영 manifest/baseline 및 freshReady를 승격하지 않는다."
       ]
+    },
+    {
+      "ref": "scripts/migrate-academic-submission-artifacts.sql",
+      "phase": "academic",
+      "fresh": {
+        "disposition": "unresolved",
+        "required": true,
+        "reason": "G1 9개 원문 뒤에 적용하는 #516 추가형 구조이며 export·G1 raw SQL·후보 engine 전체 prefix 대조와 운영 승인 전에는 신규 설치 포함을 확정하지 않는다."
+      },
+      "objects": [
+        "academic-artifact-types",
+        "academic-artifact-columns",
+        "academic-artifact-constraints",
+        "academic-artifact-index",
+        "academic-artifact-functions",
+        "academic-submission-functions",
+        "academic-upload-functions",
+        "academic-complete-function"
+      ],
+      "requires": [
+        "web-base",
+        "academic-assignments",
+        "academic-submissions",
+        "academic-upload-auth",
+        "academic-file-reads"
+      ],
+      "checks": [
+        "적용 전 v1 구조(새 타입·컬럼 없음, 교체할 CHECK·UNIQUE·활성 인덱스가 원문과 동일)만 변경하고, 이미 v2이면 함수만 다시 정의하며 그 밖의 부분·변형 구조는 전체 롤백한다.",
+        "기존 행을 UPDATE하지 않고 상수 기본값의 ADD COLUMN으로 LEGACY 값만 보이게 하며 xmin·체크섬 보존을 격리 PostgreSQL에서 확인한다.",
+        "v1 발급·검증·최종화 진입점이 V2 과제에서 실패로 닫히고, 새 _v2 진입점의 PUBLIC EXECUTE가 회수되는지 확인한다."
+      ],
+      "evidence": [
+        {
+          "file": "scripts/migrate-academic-submission-artifacts.sql",
+          "line": 33,
+          "note": "적용 전 구조 판정과 v1 → v2 추가형 DDL."
+        },
+        {
+          "file": "scripts/migrate-academic-submission-artifacts.sql",
+          "line": 402,
+          "note": "형식별 의도 생성·최종 제출·지연 완결성 트리거 함수의 V2 분기."
+        },
+        {
+          "file": "scripts/migrate-academic-submission-artifacts.sql",
+          "line": 710,
+          "note": "V2 전용 발급·검증·최종화 함수와 PUBLIC 실행 권한 회수."
+        },
+        {
+          "file": "tests/unit/academic-submission-artifacts-postgres.test.ts",
+          "line": 1,
+          "note": "기존 자료 보존·재실행·구조 불일치 거부와 V2 필수/미사용/동시성/멱등 키의 격리 PostgreSQL 회귀."
+        }
+      ],
+      "unresolved": [
+        "현 전체 export와 G1 raw SQL·이 추가형 SQL의 객체 소유·중복 동등/대체 및 파일별 최종 catalog 대조를 아직 완료하지 않았다.",
+        "운영 대상·백업/복구·잠금 시간·#280 gate·#142 보존 정책 승인 전에는 운영 DB에 적용하지 않으며 앱 기능도 비활성이다."
+      ]
+    },
+    {
+      "ref": "scripts/db/candidates/db-fresh/g1-submission-artifacts.sql",
+      "phase": "academic",
+      "fresh": {
+        "disposition": "unresolved",
+        "required": true,
+        "reason": "원천 scripts/migrate-academic-submission-artifacts.sql에 연결한 owned-local 후보이며 전체 engine/reference prefix·동작·timeout 실패 통합 전에 설치 포함을 확정하지 않는다."
+      },
+      "objects": [
+        "academic-artifact-types",
+        "academic-artifact-columns",
+        "academic-artifact-constraints",
+        "academic-artifact-index",
+        "academic-artifact-functions",
+        "academic-submission-functions",
+        "academic-upload-functions",
+        "academic-complete-function"
+      ],
+      "requires": [
+        "web-base",
+        "academic-assignments",
+        "academic-submissions",
+        "academic-upload-auth",
+        "academic-file-reads"
+      ],
+      "checks": [
+        "원본 scripts/migrate-academic-submission-artifacts.sql의 외부 BEGIN/COMMIT과 승인된 statement timeout 행만 후보에서 제외하고 함수 본문·search_path·ACL·trigger를 보존한다.",
+        "path·role·원문/후보 SHA·predecessor는 scripts/db/source-inventory.json만 정본으로 사용하며 적용 이력이나 운영 승인을 나타내지 않는다.",
+        "독립 raw reference와 후보 engine 전체 C[k]·인가·데이터 보존·실패/재시도·경합을 대조해야 한다."
+      ],
+      "evidence": [
+        {
+          "file": "scripts/db/candidates/db-fresh/g1-submission-artifacts.sql",
+          "line": 1,
+          "note": "소유 로컬 후보의 실제 파일이며 원문/후보 SHA는 source inventory가 단독 소유한다."
+        },
+        {
+          "file": "scripts/migrate-academic-submission-artifacts.sql",
+          "line": 33,
+          "note": "적용 전 구조 판정과 v1 → v2 추가형 DDL."
+        },
+        {
+          "file": "scripts/tests/db-fresh-candidate-g1.test.mjs",
+          "line": 1,
+          "note": "원문 바이트와 검토된 정확한 외부 transaction·timeout 행 delta만 허용한다."
+        }
+      ],
+      "unresolved": [
+        "전체 fresh bundle의 engine/reference 동등성과 timeout·실패 원자성 통합 gate가 끝나지 않았으므로 운영 manifest/baseline 및 freshReady를 승격하지 않는다."
+      ]
     }
   ],
   "objects": [
@@ -1851,6 +1982,45 @@
       ],
       "requires": ["web-base"],
       "checks": ["소유 PostgreSQL에서 재적용·구조 불일치 롤백과 상한 경합 회귀를 확인한다."],
+      "unresolved": ["운영 catalog 관측과 승인된 upgrade·fresh bundle 편입은 #143·#280 후속 검토 대상이다."],
+      "requiredForFresh": true
+    },
+    {
+      "id": "academic-attendance-tables",
+      "kind": "table-set",
+      "names": ["public.academic_attendance_corrections", "public.academic_attendance_records", "public.academic_attendance_events"],
+      "owner": "scripts/migrate-academic-attendance.sql",
+      "definitions": [
+        { "source": "scripts/migrate-academic-attendance.sql", "relationship": "primary", "reason": "셀별 현재 출결·정정 요청/결정·추가 전용 이력 표의 검토 후보 정의이다." }
+      ],
+      "requires": ["web-base", "academic-students", "academic-staff-tables", "academic-staff-functions"],
+      "checks": ["소유 PostgreSQL에서 재적용·구조 불일치 롤백과 입력 창·버전 경합·자기 승인 회귀를 확인한다."],
+      "unresolved": ["운영 catalog 관측과 승인된 upgrade·fresh bundle 편입은 #143·#280 후속 검토 대상이다."],
+      "requiredForFresh": true
+    },
+    {
+      "id": "academic-attendance-functions",
+      "kind": "function-set",
+      "names": ["public.guard_academic_attendance_write", "public.guard_academic_attendance_events", "public.academic_attendance_class_date", "public.academic_attendance_window", "public.academic_attendance_replay", "public.lock_academic_attendance_cell", "public.require_academic_attendance_staff", "public.find_academic_attendance_manager", "public.record_academic_attendance", "public.request_academic_attendance_correction", "public.decide_academic_attendance_correction", "public.list_academic_attendance_for_event", "public.list_own_academic_attendance"],
+      "owner": "scripts/migrate-academic-attendance.sql",
+      "definitions": [
+        { "source": "scripts/migrate-academic-attendance.sql", "relationship": "primary", "reason": "입력 창·셀 잠금·출결 입력·정정 요청/결정·출결 조회 SQL 함수의 검토 후보 정의이다." }
+      ],
+      "requires": ["web-base", "academic-students", "academic-staff-tables", "academic-staff-functions"],
+      "checks": ["소유 PostgreSQL에서 재적용·구조 불일치 롤백과 입력 창·버전 경합·자기 승인 회귀를 확인한다."],
+      "unresolved": ["운영 catalog 관측과 승인된 upgrade·fresh bundle 편입은 #143·#280 후속 검토 대상이다."],
+      "requiredForFresh": true
+    },
+    {
+      "id": "academic-attendance-triggers",
+      "kind": "trigger-set",
+      "names": ["public.academic_attendance_records.academic_attendance_records_guard", "public.academic_attendance_records.academic_attendance_records_truncate_guard", "public.academic_attendance_corrections.academic_attendance_corrections_guard", "public.academic_attendance_corrections.academic_attendance_corrections_truncate_guard", "public.academic_attendance_events.academic_attendance_events_guard", "public.academic_attendance_events.academic_attendance_events_truncate_guard"],
+      "owner": "scripts/migrate-academic-attendance.sql",
+      "definitions": [
+        { "source": "scripts/migrate-academic-attendance.sql", "relationship": "primary", "reason": "출결·정정 함수 전용 쓰기와 이력 추가 전용을 강제하는 트리거의 검토 후보 정의이다." }
+      ],
+      "requires": ["web-base", "academic-students", "academic-staff-tables", "academic-staff-functions"],
+      "checks": ["소유 PostgreSQL에서 재적용·구조 불일치 롤백과 입력 창·버전 경합·자기 승인 회귀를 확인한다."],
       "unresolved": ["운영 catalog 관측과 승인된 upgrade·fresh bundle 편입은 #143·#280 후속 검토 대상이다."],
       "requiredForFresh": true
     },
@@ -2681,6 +2851,16 @@
           "source": "scripts/db/candidates/db-fresh/g1-submissions.sql",
           "relationship": "unresolved",
           "reason": "원본 scripts/migrate-academic-submissions.sql의 외부 BEGIN/COMMIT과 승인된 statement timeout 행만 후보에서 제외하고 함수 본문·search_path·ACL·trigger를 보존한다. 전체 engine prefix와 동작·실패 gate의 동등/대체 판정은 미완료다."
+        },
+        {
+          "source": "scripts/migrate-academic-submission-artifacts.sql",
+          "relationship": "replacement",
+          "reason": "#516 추가형 SQL이 의도 생성·최종 제출·지연 완결성 트리거 함수와 #148 원시 최종화를 형식별 분기로 다시 정의한다. 다른 함수는 원 소유 원문 그대로다."
+        },
+        {
+          "source": "scripts/db/candidates/db-fresh/g1-submission-artifacts.sql",
+          "relationship": "unresolved",
+          "reason": "원본 scripts/migrate-academic-submission-artifacts.sql의 외부 BEGIN/COMMIT과 승인된 statement timeout 행만 후보에서 제외하고 함수 본문·search_path·ACL·trigger를 보존한다. 전체 engine prefix와 동작·실패 gate의 동등/대체 판정은 미완료다."
         }
       ],
       "requires": ["academic-submissions"],
@@ -2725,6 +2905,16 @@
           "source": "scripts/db/candidates/db-fresh/g1-upload-authorizations.sql",
           "relationship": "unresolved",
           "reason": "원본 scripts/migrate-academic-upload-authorizations.sql의 외부 BEGIN/COMMIT과 승인된 statement timeout 행만 후보에서 제외하고 함수 본문·search_path·ACL·trigger를 보존한다. 전체 engine prefix와 동작·실패 gate의 동등/대체 판정은 미완료다."
+        },
+        {
+          "source": "scripts/migrate-academic-submission-artifacts.sql",
+          "relationship": "replacement",
+          "reason": "#516 추가형 SQL이 v1 발급·검증 함수를 LEGACY 과제 전용으로 다시 정의해 V2 과제에서 upload_conflict로 닫는다. 취소·정리·인가 함수는 원 소유 원문 그대로다."
+        },
+        {
+          "source": "scripts/db/candidates/db-fresh/g1-submission-artifacts.sql",
+          "relationship": "unresolved",
+          "reason": "원본 scripts/migrate-academic-submission-artifacts.sql의 외부 BEGIN/COMMIT과 승인된 statement timeout 행만 후보에서 제외하고 함수 본문·search_path·ACL·trigger를 보존한다. 전체 engine prefix와 동작·실패 gate의 동등/대체 판정은 미완료다."
         }
       ],
       "requires": ["academic-upload-auth","academic-submission-functions"],
@@ -2747,6 +2937,16 @@
           "source": "scripts/db/candidates/db-fresh/g1-submission-finalization.sql",
           "relationship": "unresolved",
           "reason": "원본 scripts/migrate-academic-submission-finalization.sql의 외부 BEGIN/COMMIT과 승인된 statement timeout 행만 후보에서 제외하고 함수 본문·search_path·ACL·trigger를 보존한다. 전체 engine prefix와 동작·실패 gate의 동등/대체 판정은 미완료다."
+        },
+        {
+          "source": "scripts/migrate-academic-submission-artifacts.sql",
+          "relationship": "replacement",
+          "reason": "#516 추가형 SQL이 v1 최종화 wrapper를 다시 정의해 V2 과제에서 SUB01로 거부한다. LEGACY 반환 DTO와 오류 코드는 같다."
+        },
+        {
+          "source": "scripts/db/candidates/db-fresh/g1-submission-artifacts.sql",
+          "relationship": "unresolved",
+          "reason": "원본 scripts/migrate-academic-submission-artifacts.sql의 외부 BEGIN/COMMIT과 승인된 statement timeout 행만 후보에서 제외하고 함수 본문·search_path·ACL·trigger를 보존한다. 전체 engine prefix와 동작·실패 gate의 동등/대체 판정은 미완료다."
         }
       ],
       "requires": ["academic-upload-auth","academic-upload-functions"],
@@ -3168,13 +3368,193 @@
       "checks": ["감사 row UPDATE/DELETE의 변경 거부 trigger와 enabled 상태를 확인한다."],
       "unresolved": ["fresh prefix별 trigger 종류·정의·enabled/deferred 상태를 실제 catalog/동작으로 대조하지 않았다."],
       "requiredForFresh": true
+    },
+    {
+      "id": "academic-artifact-types",
+      "kind": "type-set",
+      "names": [
+        "public.assignment_submission_format",
+        "public.assignment_artifact_requirement",
+        "public.assignment_artifact_type",
+        "public.assignment_file_format"
+      ],
+      "owner": "scripts/migrate-academic-submission-artifacts.sql",
+      "definitions": [
+        {
+          "source": "scripts/migrate-academic-submission-artifacts.sql",
+          "relationship": "primary",
+          "reason": "해당 inventory 원문이 이 사용자 정의 객체·효과의 선언 소유자다."
+        },
+        {
+          "source": "scripts/db/candidates/db-fresh/g1-submission-artifacts.sql",
+          "relationship": "unresolved",
+          "reason": "원본 scripts/migrate-academic-submission-artifacts.sql의 외부 BEGIN/COMMIT과 승인된 statement timeout 행만 후보에서 제외하고 함수 본문·search_path·ACL·trigger를 보존한다. 전체 engine prefix와 동작·실패 gate의 동등/대체 판정은 미완료다."
+        }
+      ],
+      "requires": [],
+      "checks": [
+        "enum 이름·값·순서가 원문과 같고 다른 라벨이나 일부 타입만 있는 구조를 거부한다."
+      ],
+      "unresolved": [
+        "현 export에는 이 enum이 없으며 export 소유 전환 여부는 #516 후속 검토 대상이다."
+      ],
+      "requiredForFresh": true
+    },
+    {
+      "id": "academic-artifact-columns",
+      "kind": "column",
+      "names": [
+        "public.assignments.submission_format",
+        "public.assignments.text_requirement",
+        "public.assignments.slides_requirement",
+        "public.assignment_upload_intents.artifact_type",
+        "public.assignment_upload_intents.file_format",
+        "public.assignment_submissions.submission_format",
+        "public.assignment_submission_files.artifact_type",
+        "public.assignment_submission_files.file_format",
+        "public.academic_upload_authorizations.artifact_type",
+        "public.academic_upload_authorizations.file_format"
+      ],
+      "owner": "scripts/migrate-academic-submission-artifacts.sql",
+      "definitions": [
+        {
+          "source": "scripts/migrate-academic-submission-artifacts.sql",
+          "relationship": "primary",
+          "reason": "해당 inventory 원문이 이 사용자 정의 객체·효과의 선언 소유자다."
+        },
+        {
+          "source": "scripts/db/candidates/db-fresh/g1-submission-artifacts.sql",
+          "relationship": "unresolved",
+          "reason": "원본 scripts/migrate-academic-submission-artifacts.sql의 외부 BEGIN/COMMIT과 승인된 statement timeout 행만 후보에서 제외하고 함수 본문·search_path·ACL·trigger를 보존한다. 전체 engine prefix와 동작·실패 gate의 동등/대체 판정은 미완료다."
+        }
+      ],
+      "requires": [
+        "academic-artifact-types",
+        "academic-assignments",
+        "academic-submissions",
+        "academic-upload-auth"
+      ],
+      "checks": [
+        "상수 LEGACY 기본값·NOT NULL·요구 컬럼 NULL 허용과 업로드 의도 참조의 NULL 허용을 비교 스키마로 대조한다."
+      ],
+      "unresolved": [
+        "Drizzle 모델은 v1 구조를 유지하므로 export와 이 컬럼의 소유 관계를 아직 확정하지 않았다."
+      ],
+      "requiredForFresh": true
+    },
+    {
+      "id": "academic-artifact-constraints",
+      "kind": "constraint-set",
+      "names": [
+        "public.assignments_submission_artifacts_shape",
+        "public.assignment_upload_intents_artifact_format",
+        "public.assignment_upload_intents_format_mime",
+        "public.assignment_upload_intents_v2_key_shape",
+        "public.assignment_upload_intents_artifact_identity_unique",
+        "public.assignment_submissions_format_intent_shape",
+        "public.assignment_submission_files_submission_artifact_unique",
+        "public.assignment_submission_files_artifact_format",
+        "public.assignment_submission_files_format_mime",
+        "public.academic_upload_authorizations_artifact_format",
+        "public.academic_upload_authorizations_intent_artifact_fk"
+      ],
+      "owner": "scripts/migrate-academic-submission-artifacts.sql",
+      "definitions": [
+        {
+          "source": "scripts/migrate-academic-submission-artifacts.sql",
+          "relationship": "primary",
+          "reason": "해당 inventory 원문이 이 사용자 정의 객체·효과의 선언 소유자다."
+        },
+        {
+          "source": "scripts/db/candidates/db-fresh/g1-submission-artifacts.sql",
+          "relationship": "unresolved",
+          "reason": "원본 scripts/migrate-academic-submission-artifacts.sql의 외부 BEGIN/COMMIT과 승인된 statement timeout 행만 후보에서 제외하고 함수 본문·search_path·ACL·trigger를 보존한다. 전체 engine prefix와 동작·실패 gate의 동등/대체 판정은 미완료다."
+        }
+      ],
+      "requires": [
+        "academic-artifact-columns"
+      ],
+      "checks": [
+        "형식×MIME·유형×형식·V2 최소 1개 항목·LEGACY/V2 의도 참조 CHECK와 (제출, 유형) UNIQUE·복합 FK를 원문 정의로 대조한다.",
+        "교체한 v1 CHECK(검증 메타·파일 메타·원장 파일명)와 제거한 제출당 단일 파일 UNIQUE가 남지 않았는지 확인한다."
+      ],
+      "unresolved": [
+        "fresh prefix별 제약 정의·검증 상태를 export·후보 engine 전체 catalog로 아직 대조하지 않았다."
+      ],
+      "requiredForFresh": true
+    },
+    {
+      "id": "academic-artifact-index",
+      "kind": "index-set",
+      "names": [
+        "public.academic_upload_authorizations_active_artifact_idx"
+      ],
+      "owner": "scripts/migrate-academic-submission-artifacts.sql",
+      "definitions": [
+        {
+          "source": "scripts/migrate-academic-submission-artifacts.sql",
+          "relationship": "primary",
+          "reason": "해당 inventory 원문이 이 사용자 정의 객체·효과의 선언 소유자다."
+        },
+        {
+          "source": "scripts/db/candidates/db-fresh/g1-submission-artifacts.sql",
+          "relationship": "unresolved",
+          "reason": "원본 scripts/migrate-academic-submission-artifacts.sql의 외부 BEGIN/COMMIT과 승인된 statement timeout 행만 후보에서 제외하고 함수 본문·search_path·ACL·trigger를 보존한다. 전체 engine prefix와 동작·실패 gate의 동등/대체 판정은 미완료다."
+        }
+      ],
+      "requires": [
+        "academic-artifact-columns"
+      ],
+      "checks": [
+        "(대상, 산출물 유형)당 활성 발급 원장 1개의 부분 UNIQUE와 이전 대상 단일 인덱스 제거를 확인한다."
+      ],
+      "unresolved": [
+        "fresh prefix별 인덱스 정의를 export·후보 engine 전체 catalog로 아직 대조하지 않았다."
+      ],
+      "requiredForFresh": true
+    },
+    {
+      "id": "academic-artifact-functions",
+      "kind": "function-set",
+      "names": [
+        "public.issue_academic_assignment_upload_v2(uuid,uuid,uuid,assignment_artifact_type,assignment_file_format,text,integer)",
+        "public.verify_authorized_academic_upload_v2(uuid,uuid,text,text)",
+        "public.complete_academic_assignment_submission_v2(uuid,uuid,uuid[],uuid,boolean)"
+      ],
+      "owner": "scripts/migrate-academic-submission-artifacts.sql",
+      "definitions": [
+        {
+          "source": "scripts/migrate-academic-submission-artifacts.sql",
+          "relationship": "primary",
+          "reason": "해당 inventory 원문이 이 사용자 정의 객체·효과의 선언 소유자다."
+        },
+        {
+          "source": "scripts/db/candidates/db-fresh/g1-submission-artifacts.sql",
+          "relationship": "unresolved",
+          "reason": "원본 scripts/migrate-academic-submission-artifacts.sql의 외부 BEGIN/COMMIT과 승인된 statement timeout 행만 후보에서 제외하고 함수 본문·search_path·ACL·trigger를 보존한다. 전체 engine prefix와 동작·실패 gate의 동등/대체 판정은 미완료다."
+        }
+      ],
+      "requires": [
+        "academic-artifact-constraints",
+        "academic-artifact-index",
+        "academic-upload-functions",
+        "academic-submission-functions"
+      ],
+      "checks": [
+        "V2 발급·검증·원자 최종화의 필수/미사용/0개/중복/대상 혼합/합계 100MiB/마감/동일 키 동일 묶음 복구와 다른 묶음 SUB01을 확인한다.",
+        "SECURITY INVOKER·고정 search_path와 PUBLIC EXECUTE 회수를 확인한다."
+      ],
+      "unresolved": [
+        "함수 signature·본문·SECURITY INVOKER/ACL/search_path·trigger 동작을 전체 fresh prefix 계약에서 아직 대조하지 않았다."
+      ],
+      "requiredForFresh": true
     }
   ],
   "fixtures": [
     {
       "id": "academic-g1",
       "file": "tests/support/academic-g1-fixture.mjs",
-      "description": "G1의 최소 합성 base와 9개 raw SQL 순서를 관측한 참고 계약이다. 각 파일 2회는 해당 fixture 재실행 검증이며 적용 이력·미래 실행 권한이 아니다.",
+      "description": "G1의 최소 합성 base와 10개 raw SQL 순서를 관측한 참고 계약이다. 각 파일 2회는 해당 fixture 재실행 검증이며 적용 이력·미래 실행 권한이 아니다.",
       "steps": [
         {
           "kind": "synthetic-base",
@@ -3208,6 +3588,7 @@
         },
         { "ref": "scripts/migrate-academic-faculty-reviewers.sql", "reason": "G2 교수 과제 검토 권한 후보는 이 fixture 범위 밖이며 전용 격리 회귀로 검증한다. fresh bundle·운영 편입은 미해결이다." },
         { "ref": "scripts/migrate-academic-staff-assignments.sql", "reason": "G2 운영 인력 배정 후보는 이 fixture 범위 밖이며 전용 격리 회귀로 검증한다. fresh bundle·운영 편입은 미해결이다." },
+        { "ref": "scripts/migrate-academic-attendance.sql", "reason": "G2 출결 후보는 이 fixture 범위 밖이며 전용 격리 회귀로 검증한다. fresh bundle·운영 편입은 미해결이다." },
         { "ref": "scripts/migrate-mobile-sessions.sql", "reason": "이 기존 학사 fixture는 모바일 로그인 설치를 수행하지 않는다." },
         { "ref": "scripts/db/candidates/db-fresh/mobile-sessions.sql", "reason": "모바일 세션 신규 후보는 별도 소유 로컬 시험 범위다." },
         {
@@ -3291,6 +3672,10 @@
           "reason": "이 fixture는 기존 raw 원문 부분집합을 실행하며 별도 owned-local fresh engine 후보를 실행하지 않는다. 후보 제외는 운영 객체 누락이나 engine 검증 완료를 뜻하지 않는다."
         },
         {
+          "ref": "scripts/db/candidates/db-fresh/g1-submission-artifacts.sql",
+          "reason": "이 fixture는 기존 raw 원문 부분집합을 실행하며 별도 owned-local fresh engine 후보를 실행하지 않는다. 후보 제외는 운영 객체 누락이나 engine 검증 완료를 뜻하지 않는다."
+        },
+        {
           "ref": "scripts/db/candidates/db-fresh/g1-submission-file-reads.sql",
           "reason": "이 fixture는 기존 raw 원문 부분집합을 실행하며 별도 owned-local fresh engine 후보를 실행하지 않는다. 후보 제외는 운영 객체 누락이나 engine 검증 완료를 뜻하지 않는다."
         },
@@ -3314,17 +3699,17 @@
       "evidence": [
         {
           "file": "tests/support/academic-g1-fixture.mjs",
-          "line": 24,
+          "line": 34,
           "note": "G1 원문 목록의 literal 배열."
         },
         {
           "file": "tests/support/academic-g1-fixture.mjs",
-          "line": 33,
+          "line": 49,
           "note": "base 내부 installQaFixture 호출 뒤 회원·기수·일정 준비."
         },
         {
           "file": "tests/support/academic-g1-fixture.mjs",
-          "line": 50,
+          "line": 72,
           "note": "각 파일을 두 번 실행한 뒤 다음 파일로 이동하는 실제 loop."
         },
         {
@@ -3401,6 +3786,7 @@
         },
         { "ref": "scripts/migrate-academic-faculty-reviewers.sql", "reason": "G2 교수 과제 검토 권한 후보는 이 fixture 범위 밖이며 전용 격리 회귀로 검증한다. fresh bundle·운영 편입은 미해결이다." },
         { "ref": "scripts/migrate-academic-staff-assignments.sql", "reason": "G2 운영 인력 배정 후보는 이 fixture 범위 밖이며 전용 격리 회귀로 검증한다. fresh bundle·운영 편입은 미해결이다." },
+        { "ref": "scripts/migrate-academic-attendance.sql", "reason": "G2 출결 후보는 이 fixture 범위 밖이며 전용 격리 회귀로 검증한다. fresh bundle·운영 편입은 미해결이다." },
         { "ref": "scripts/migrate-mobile-sessions.sql", "reason": "이 기존 경로 fixture는 모바일 로그인 설치를 수행하지 않는다." },
         { "ref": "scripts/db/candidates/db-fresh/mobile-sessions.sql", "reason": "모바일 세션 신규 후보는 별도 소유 로컬 시험 범위다." },
         {
@@ -3465,6 +3851,10 @@
         },
         {
           "ref": "scripts/db/candidates/db-fresh/g1-students.sql",
+          "reason": "이 fixture는 기존 raw 원문 부분집합을 실행하며 별도 owned-local fresh engine 후보를 실행하지 않는다. 후보 제외는 운영 객체 누락이나 engine 검증 완료를 뜻하지 않는다."
+        },
+        {
+          "ref": "scripts/db/candidates/db-fresh/g1-submission-artifacts.sql",
           "reason": "이 fixture는 기존 raw 원문 부분집합을 실행하며 별도 owned-local fresh engine 후보를 실행하지 않는다. 후보 제외는 운영 객체 누락이나 engine 검증 완료를 뜻하지 않는다."
         },
         {
