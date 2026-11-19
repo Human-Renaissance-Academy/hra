@@ -283,6 +283,15 @@ export const environmentInventory = {
       active("false"),
     ),
     variable(
+      "ACADEMIC_FACULTY_REVIEW_ENABLED",
+      "application",
+      "교수 계정 연결·수업별 과제 검토 권한 판정(#161)",
+      false,
+      "학사 운영 정책 초안 P11(#143) 운영 승인과 SQL 적용 후 ACADEMIC_ENABLED와 함께 true",
+      "정확한 true가 아니면 연결·지정 변경과 목록 DISABLED, 과제 검토 권한 판정 항상 false; DB 조회 없음",
+      active("false"),
+    ),
+    variable(
       "ACADEMIC_STAFF_ENABLED",
       "application",
       "기수별 운영 인력 배정·출결 권한 판정(#165)",

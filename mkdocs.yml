@@ -107,6 +107,7 @@ nav:
       - 개인정보 정책 초안: ACADEMIC-PRIVACY-RETENTION-POLICY.md
       - 출결·검토·수료 정책 초안: ACADEMIC-OPERATIONS-POLICY.md
       - G2 운영 인력 배정(비활성): developer/academic-staff-assignments.md
+      - G2 교수 과제 검토 권한(비활성): developer/academic-faculty-reviewers.md
       - 주차별 텍스트 열람 범위 초안: WEEKLY-TEXT-ACCESS-POLICY.md
   - 앞으로의 플랫폼:
       - 모바일·API v1 동결 결정: decisions/2026-11-19-mobile-api-freeze.md

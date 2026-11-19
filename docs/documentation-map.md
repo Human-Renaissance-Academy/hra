@@ -82,6 +82,7 @@ G1은 첫 학사 기능 묶음으로, 학생·수강 이력, 과제 대상, 개�
 | 운영 확인과 통합 검사 | [로그·지표·기능 설정](developer/academic-observability.md), [G1 통합 품질 검사](developer/academic-g1-quality-gate.md) |
 | 결정이 필요한 개인정보 정책 | [보존·파기 정책 초안](ACADEMIC-PRIVACY-RETENTION-POLICY.md) |
 | G2 운영 인력 배정(기능 비활성) | [운영 인력 배정과 출결 권한 판정](developer/academic-staff-assignments.md) |
+| G2 교수 과제 검토 권한(기능 비활성) | [교수 계정 연결과 수업별 과제 검토 권한](developer/academic-faculty-reviewers.md) |
 
 정책 초안에 적힌 보존 기간이나 기능 문서의 체크리스트를 승인 완료로 해석하지 않는다. 실제 결과를 기록할 때는 날짜, 코드 버전, 환경, 실행한 명령, 통과·실패·미실행 범위를 함께 남긴다.
 
