@@ -6,6 +6,9 @@ import { AcademicAccessError } from "@/lib/academic-permissions";
 import { getMyAssignment } from "@/features/academics/student-assignments/queries";
 import { getMyAcademicUiContext } from "@/features/academics/student-assignments/ui-queries";
 import { formatKstDateTimeWithSeconds } from "@/lib/date-time";
+import { listMyPublishedFeedback } from "@/features/academics/assignment-reviews/service";
+import { getWebAcademicPrincipal } from "@/features/academics/staff/web-principal";
+import { logServerError } from "@/lib/errors";
 import { FileSubmissionForm } from "../_components/file-submission-form";
 import { ArtifactSubmissionForm } from "../_components/artifact-submission-form";
 export const dynamic = "force-dynamic";
@@ -34,6 +37,15 @@ export default async function MyAssignmentPage({ params }: { params: Promise<{ i
       </section>
     );
   }
+  // #162 학사 운영 관리자가 공개한 본인 피드백만 표시합니다. 기능이 꺼져 있으면 DB 조회 없이 빈 목록입니다.
+  let feedback: Awaited<ReturnType<typeof listMyPublishedFeedback>> = [];
+  let feedbackFailed = false;
+  try {
+    feedback = await listMyPublishedFeedback(await getWebAcademicPrincipal(), id);
+  } catch (error) {
+    feedbackFailed = true;
+    logServerError("assignment-review/student-feedback", error);
+  }
   const open =
     assignment.status === "PUBLISHED" &&
     new Date(assignment.dueAt).getTime() > new Date(context.serverNow).getTime();
@@ -55,6 +67,25 @@ export default async function MyAssignmentPage({ params }: { params: Promise<{ i
         <ArtifactSubmissionForm assignment={assignment} open={open} />
       ) : (
         <FileSubmissionForm assignment={assignment} open={open} />
+      )}
+      {feedbackFailed && (
+        <p role="alert">피드백을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.</p>
+      )}
+      {feedback.length > 0 && (
+        <section aria-labelledby="assignment-feedback" className="space-y-3">
+          <h2 id="assignment-feedback" className="text-2xl font-semibold">
+            피드백
+          </h2>
+          {feedback.map((item) => (
+            <div key={item.id} className="space-y-2 rounded-xl border border-[#D9D9D9] p-5">
+              <p className="whitespace-pre-wrap break-words">{item.body}</p>
+              {item.gradeLabel && <p>평가 표기: {item.gradeLabel}</p>}
+              <p className="text-sm text-[#666666]">
+                공개 {formatKstDateTimeWithSeconds(new Date(item.publishedAt))} (한국시간)
+              </p>
+            </div>
+          ))}
+        </section>
       )}
     </article>
   );

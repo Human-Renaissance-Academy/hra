@@ -54,6 +54,17 @@ it("기존 전역 보안 헤더와 PDF의 같은 출처 임베드 경계를 유�
   expect(rules?.indexOf(academic!)).toBeGreaterThan(
     rules?.findIndex((rule) => rule.source === "/api/:path*") ?? -1,
   );
+  // #162 검토자 다운로드도 정적 헤더가 Route 응답을 덮으므로 일반 API CSP 뒤에서 sandbox를 고정해야 한다.
+  const reviewer = rules?.find(
+    (rule) => rule.source === "/api/academic/reviews/submissions/:id/file/:fileId",
+  );
+  expect(reviewer?.headers).toContainEqual({
+    key: "Content-Security-Policy",
+    value: "sandbox; default-src 'none'",
+  });
+  expect(rules?.indexOf(reviewer!)).toBeGreaterThan(
+    rules?.findIndex((rule) => rule.source === "/api/:path*") ?? -1,
+  );
 });
 
 // 공급자 모듈은 실행하지 않고 TypeScript AST의 정적 문자열 인수만 읽는다.

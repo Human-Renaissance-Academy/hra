@@ -15,7 +15,11 @@ import {
 import { attachmentDisposition } from "@/lib/resource-download";
 import { DOCUMENT_MIME_TYPES } from "@/features/academics/assignment-uploads/formats/types";
 import { buildAuthorizedSubmissionFileRead } from "./data";
-import { requireSubmissionFileReader, SubmissionFileAccessError } from "./access";
+import {
+  requireSubmissionFileReader,
+  SubmissionFileAccessError,
+  type SubmissionFileReader,
+} from "./access";
 
 export type SubmissionFileParams = { id: string; fileId: string };
 const identifiers = z.object({ id: z.uuid(), fileId: z.uuid() });
@@ -155,6 +159,16 @@ function failure(error: SubmissionFileAccessError, observation: AcademicObservat
 }
 
 /**
+ * 파일 전달 경로별 인증·인가 단계입니다. 본인·관리 열람(기본)과 #162 지정 검토자 열람이 같은 전달·헤더·관측을 공유합니다.
+ * - authenticate: 세션에서 요청 주체를 확정하고 사용자 ID를 돌려줍니다. 실패는 SubmissionFileAccessError로 던집니다.
+ * - authorize: 같은 SQL 안에서 인가와 감사 행을 확정한 파일 메타데이터 행을 돌려주며, 허가가 없으면 undefined입니다.
+ */
+export interface SubmissionFileAuthorization {
+  authenticate: () => Promise<string>;
+  authorize: (ids: SubmissionFileParams) => Promise<unknown>;
+}
+
+/**
  * params도 인증 이후 평가하며 소유권·감사 확정 전에는 Blob을 요청하지 않습니다.
  * 오류 응답만 어댑터가 선택할 수 있고, 기존 Web 호출은 기본 text/plain 계약을 유지합니다.
  */
@@ -165,17 +179,40 @@ export async function downloadSubmissionFile(
     observation: AcademicObservation,
   ) => Response = failure,
 ): Promise<Response> {
+  let reader: SubmissionFileReader | undefined;
+  return deliverSubmissionFile(
+    params,
+    {
+      authenticate: async () => {
+        reader = await requireSubmissionFileReader();
+        return reader.userId;
+      },
+      authorize: async (ids) => {
+        if (!reader) throw new SubmissionFileAccessError("UNAUTHENTICATED");
+        return (await db.execute(buildAuthorizedSubmissionFileRead(reader, ids.id, ids.fileId)))
+          .rows[0];
+      },
+    },
+    respondFailure,
+  );
+}
+
+/** 인증 → 식별자 검증 → 인가·감사 → private Blob 대조 → 첨부 스트림 순서의 공통 전달 경로입니다. */
+export async function deliverSubmissionFile(
+  params: Promise<SubmissionFileParams>,
+  authorization: SubmissionFileAuthorization,
+  respondFailure: (
+    error: SubmissionFileAccessError,
+    observation: AcademicObservation,
+  ) => Response = failure,
+): Promise<Response> {
   const observation = createAcademicObservation("FILE_READ", "SUBMISSION_FILE");
   try {
-    const reader = await requireSubmissionFileReader();
-    observation.authenticated(reader.userId);
+    observation.authenticated(await authorization.authenticate());
     const parsed = identifiers.safeParse(await params);
     if (!parsed.success) throw new SubmissionFileAccessError("NOT_FOUND");
     observation.identify({ resourceId: parsed.data.fileId });
-    const result = await db.execute(
-      buildAuthorizedSubmissionFileRead(reader, parsed.data.id, parsed.data.fileId),
-    );
-    const row = result.rows[0];
+    const row = await authorization.authorize(parsed.data);
     if (!row) throw new SubmissionFileAccessError("NOT_FOUND");
     const file = authorizedFile.parse(row);
     observation.identify({ resourceId: parsed.data.fileId, requestId: file.access_id });
