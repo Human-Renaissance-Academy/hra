@@ -9,7 +9,10 @@ import {
   toApiV1ErrorResponse,
   type ApiV1ErrorCode,
 } from "@hra/contracts/api-v1";
-import { AcademicUploadError } from "@/features/academics/assignment-uploads/contract";
+import {
+  AcademicUploadError,
+  isAcademicSubmissionArtifactsEnabled,
+} from "@/features/academics/assignment-uploads/contract";
 import { SubmissionFileAccessError } from "@/features/academics/submission-files/access";
 import { SubmissionFinalizationError } from "@/features/academics/submissions/validation";
 import { AcademicAccessError } from "@/lib/academic-permissions";
@@ -34,6 +37,16 @@ export class AcademicApiHttpError extends Error {
 /** query를 지원하지 않는 단건 조회·명령에서 중복 키를 포함한 모든 query를 거부합니다. */
 export function assertNoAcademicApiQuery(request: Request): void {
   if (new URL(request.url).searchParams.size > 0) throw new AcademicApiHttpError("INVALID_INPUT");
+}
+
+/**
+ * #516 분리 제출(V2) operation 전용 기능 gate입니다. 세 gate 중 하나라도 꺼져 있으면
+ * 기능 존재를 드러내지 않도록 입력·서비스 호출 전에 없는 경로와 같은 404 응답을 돌려줍니다.
+ * 꺼진 기능 요청은 인가 거부가 아니므로 업로드·제출 관측 이벤트를 남기지 않습니다. 켜져 있으면 null입니다.
+ */
+export function academicApiArtifactsDisabledResponse(): Response | null {
+  if (isAcademicSubmissionArtifactsEnabled()) return null;
+  return academicApiErrorResponse(new AcademicApiHttpError("NOT_FOUND"), crypto.randomUUID());
 }
 
 /** 실제 스트림 크기를 제한하여 누락·위조된 Content-Length로도 한도를 넘길 수 없게 합니다. */
@@ -130,7 +143,7 @@ function publicErrorCode(error: unknown): ApiV1ErrorCode {
       // #516: v1 최종화가 V2 과제에 닿으면 기존과 같은 충돌로 응답합니다(공개 계약 코드 추가 없음).
       case "WRONG_FORMAT":
         return "CONFLICT";
-      // V2 전용 구성·합계 오류는 API v1에서 아직 호출되지 않지만, 생기면 기존 입력 오류 코드로 닫습니다.
+      // V2 전용 구성(필수 누락·미사용 첨부·중복)·합계 오류는 공개 코드를 늘리지 않고 기존 입력 오류로 응답합니다.
       case "INCOMPLETE":
       case "TOO_LARGE":
         return "INVALID_INPUT";

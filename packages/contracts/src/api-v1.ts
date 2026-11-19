@@ -178,7 +178,12 @@ export const API_V1_MAX_PAGE_SIZE = 50;
 export const apiV1PaginationQuerySchema = z
   .object({
     page: z.coerce.number().int().min(1).default(1),
-    pageSize: z.coerce.number().int().min(1).max(API_V1_MAX_PAGE_SIZE).default(API_V1_DEFAULT_PAGE_SIZE),
+    pageSize: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .max(API_V1_MAX_PAGE_SIZE)
+      .default(API_V1_DEFAULT_PAGE_SIZE),
     q: z
       .string()
       .trim()
@@ -428,7 +433,12 @@ export type ApiV1ScheduleResponse = z.infer<typeof apiV1ScheduleResponseSchema>;
 export const apiV1GuidebookListQuerySchema = z
   .object({
     page: z.coerce.number().int().min(1).default(1),
-    pageSize: z.coerce.number().int().min(1).max(API_V1_MAX_PAGE_SIZE).default(API_V1_DEFAULT_PAGE_SIZE),
+    pageSize: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .max(API_V1_MAX_PAGE_SIZE)
+      .default(API_V1_DEFAULT_PAGE_SIZE),
   })
   .strict();
 export type ApiV1GuidebookListQuery = z.infer<typeof apiV1GuidebookListQuerySchema>;
@@ -446,7 +456,10 @@ export const apiV1GuidebookSummarySchema = z
 export type ApiV1GuidebookSummary = z.infer<typeof apiV1GuidebookSummarySchema>;
 
 /** DB 조회 결과에서 회원에게 허용된 ID·제목만 선택합니다. */
-export function toApiV1GuidebookSummary(input: { id: string; title: string }): ApiV1GuidebookSummary {
+export function toApiV1GuidebookSummary(input: {
+  id: string;
+  title: string;
+}): ApiV1GuidebookSummary {
   return apiV1GuidebookSummarySchema.parse({ id: input.id, title: input.title });
 }
 
@@ -509,11 +522,13 @@ export type ApiV1AssignmentDetail = z.infer<typeof apiV1AssignmentDetailSchema>;
 export const apiV1AssignmentListResponseSchema = z
   .object({
     assignments: z.array(apiV1AssignmentSummarySchema).max(API_V1_MAX_PAGE_SIZE),
-    page: z.object({
-      page: z.number().int().min(1).max(10_000),
-      pageSize: z.number().int().min(1).max(API_V1_MAX_PAGE_SIZE),
-      hasNextPage: z.boolean(),
-    }).strict(),
+    page: z
+      .object({
+        page: z.number().int().min(1).max(10_000),
+        pageSize: z.number().int().min(1).max(API_V1_MAX_PAGE_SIZE),
+        hasNextPage: z.boolean(),
+      })
+      .strict(),
   })
   .strict();
 export type ApiV1AssignmentListResponse = z.infer<typeof apiV1AssignmentListResponseSchema>;
@@ -531,34 +546,48 @@ export const apiV1AssignmentSubmissionResponseSchema = z
     file: apiV1SubmissionFileMetadataSchema.nullable(),
   })
   .strict();
-export type ApiV1AssignmentSubmissionResponse = z.infer<typeof apiV1AssignmentSubmissionResponseSchema>;
+export type ApiV1AssignmentSubmissionResponse = z.infer<
+  typeof apiV1AssignmentSubmissionResponseSchema
+>;
 
 /** 제출 최종화는 식별자 세 개만 받고 파일 저장 위치나 사용자 ID를 입력받지 않습니다. */
 export const apiV1FinalizeSubmissionInputSchema = z
-  .object({ assignmentId: apiV1UuidSchema, uploadIntentId: apiV1UuidSchema, submissionKey: apiV1UuidSchema })
+  .object({
+    assignmentId: apiV1UuidSchema,
+    uploadIntentId: apiV1UuidSchema,
+    submissionKey: apiV1UuidSchema,
+  })
   .strict();
 export type ApiV1FinalizeSubmissionInput = z.infer<typeof apiV1FinalizeSubmissionInputSchema>;
 
 /** 최초 확정과 같은 키의 성공 복구는 동일한 HTTP 200 결과와 replayed로 구분합니다. */
 export const apiV1FinalizedSubmissionResponseSchema = z
   .object({
-    submission: z.object({
-      assignmentId: apiV1UuidSchema,
-      submissionId: apiV1UuidSchema,
-      submittedAt: apiV1TimestampSchema,
-      replayed: z.boolean(),
-      file: apiV1SubmissionFileMetadataSchema,
-    }).strict(),
+    submission: z
+      .object({
+        assignmentId: apiV1UuidSchema,
+        submissionId: apiV1UuidSchema,
+        submittedAt: apiV1TimestampSchema,
+        replayed: z.boolean(),
+        file: apiV1SubmissionFileMetadataSchema,
+      })
+      .strict(),
   })
   .strict();
-export type ApiV1FinalizedSubmissionResponse = z.infer<typeof apiV1FinalizedSubmissionResponseSchema>;
+export type ApiV1FinalizedSubmissionResponse = z.infer<
+  typeof apiV1FinalizedSubmissionResponseSchema
+>;
 
 /** 비어 있지 않은 안전한 PDF 원본명과 50MiB 이하 크기로 업로드 발급 입력을 제한합니다. */
 export const apiV1UploadIntentInputSchema = z
   .object({
     assignmentId: apiV1UuidSchema,
     requestId: apiV1UuidSchema,
-    originalName: z.string().trim().min(1).max(255)
+    originalName: z
+      .string()
+      .trim()
+      .min(1)
+      .max(255)
       .refine((value) => !/[\x00-\x1f\x7f/\\]/.test(value) && /\.pdf$/i.test(value)),
     sizeBytes: z.number().int().min(1).max(52_428_800),
     mimeType: z.literal("application/pdf"),
@@ -574,41 +603,299 @@ export type ApiV1UploadSelectionInput = z.infer<typeof apiV1UploadSelectionInput
 export const apiV1UploadIntentResponseSchema = z
   .object({
     uploadIntentId: apiV1UuidSchema,
-    pathname: z.string().regex(/^academic-uploads\/v1\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/document\.pdf$/),
+    pathname: z
+      .string()
+      .regex(
+        /^academic-uploads\/v1\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/document\.pdf$/,
+      ),
     expiresAt: apiV1TimestampSchema,
   })
   .strict()
-  .refine((value) => value.pathname === `academic-uploads/v1/${value.uploadIntentId.toLowerCase()}/document.pdf`);
+  .refine(
+    (value) =>
+      value.pathname === `academic-uploads/v1/${value.uploadIntentId.toLowerCase()}/document.pdf`,
+  );
 export type ApiV1UploadIntentResponse = z.infer<typeof apiV1UploadIntentResponseSchema>;
 
 /** 객체 검증은 제출 최종화와 구분하며 저장소 상세는 응답에 포함하지 않습니다. */
-export const apiV1UploadVerifiedResponseSchema = z.object({ state: z.literal("VERIFIED") }).strict();
+export const apiV1UploadVerifiedResponseSchema = z
+  .object({ state: z.literal("VERIFIED") })
+  .strict();
 export type ApiV1UploadVerifiedResponse = z.infer<typeof apiV1UploadVerifiedResponseSchema>;
 
 /** 취소는 원장 종료를 나타내며 실제 객체의 즉시 삭제를 의미하지 않습니다. */
-export const apiV1UploadCancelledResponseSchema = z.object({ state: z.literal("CANCELLED") }).strict();
+export const apiV1UploadCancelledResponseSchema = z
+  .object({ state: z.literal("CANCELLED") })
+  .strict();
 export type ApiV1UploadCancelledResponse = z.infer<typeof apiV1UploadCancelledResponseSchema>;
+
+/*
+ * #516 텍스트·발표자료 분리 제출(V2) API v1 계약입니다(추가 전용).
+ * - 기존 PDF 단일 제출 operation·DTO는 바꾸지 않고 새 operation과 새 DTO만 추가합니다.
+ * - 모든 V2 operation은 ACADEMIC_ENABLED·ACADEMIC_UPLOADS_ENABLED·ACADEMIC_SUBMISSION_ARTIFACTS_ENABLED가
+ *   모두 켜져 있을 때만 열리며, 꺼져 있으면 기능 존재를 드러내지 않도록 404(NOT_FOUND)입니다.
+ * - 형식·MIME·확장자 상수는 서버 형식 탐지 모듈(`assignment-uploads/formats/types.ts`)과 같아야 합니다.
+ *   계약 패키지는 앱 코드를 import하지 않으므로 값을 복제하고, 동치는 단위 테스트가 확인합니다.
+ */
+
+/** 과제 제출 형식: 기존 PDF 1개(LEGACY_SINGLE_PDF) 또는 텍스트·발표자료 분리(ARTIFACTS_V2) */
+export const API_V1_ASSIGNMENT_SUBMISSION_FORMATS = ["LEGACY_SINGLE_PDF", "ARTIFACTS_V2"] as const;
+/** V2 업로드 산출물 유형 */
+export const API_V1_ASSIGNMENT_ARTIFACT_TYPES = ["TEXT", "SLIDES"] as const;
+/** 제출 파일의 산출물 유형. 기존 PDF 단일 제출 파일은 LEGACY_PDF로 표시합니다. */
+export const API_V1_SUBMISSION_FILE_ARTIFACT_TYPES = ["LEGACY_PDF", "TEXT", "SLIDES"] as const;
+/** 서버가 구분하는 문서 형식 */
+export const API_V1_DOCUMENT_FORMATS = ["PDF", "HWP", "HWPX", "PPT", "PPTX"] as const;
+export type ApiV1DocumentFormat = (typeof API_V1_DOCUMENT_FORMATS)[number];
+/** 항목별 요구: 필수·선택·미사용 */
+export const API_V1_ARTIFACT_REQUIREMENTS = ["REQUIRED", "OPTIONAL", "DISABLED"] as const;
+
+/** 형식별 정규 MIME. 업로드 SDK 전송과 다운로드 메타는 이 값만 사용합니다. */
+export const API_V1_DOCUMENT_MIME_TYPES = {
+  PDF: "application/pdf",
+  HWP: "application/x-hwp",
+  HWPX: "application/hwp+zip",
+  PPT: "application/vnd.ms-powerpoint",
+  PPTX: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+} as const satisfies Record<ApiV1DocumentFormat, string>;
+
+/** 형식별 허용 확장자(소문자, 점 제외) */
+export const API_V1_DOCUMENT_EXTENSIONS = {
+  PDF: "pdf",
+  HWP: "hwp",
+  HWPX: "hwpx",
+  PPT: "ppt",
+  PPTX: "pptx",
+} as const satisfies Record<ApiV1DocumentFormat, string>;
+
+/** 산출물 유형별 허용 형식. 텍스트는 PDF·HWP·HWPX, 발표자료는 PDF·PPT·PPTX만 받습니다. */
+export const API_V1_ARTIFACT_DOCUMENT_FORMATS = {
+  TEXT: ["PDF", "HWP", "HWPX"],
+  SLIDES: ["PDF", "PPT", "PPTX"],
+} as const satisfies Record<
+  (typeof API_V1_ASSIGNMENT_ARTIFACT_TYPES)[number],
+  readonly ApiV1DocumentFormat[]
+>;
+
+/** 산출물 유형이 형식을 받는지 확인합니다. LEGACY_PDF는 PDF만 받습니다. */
+function artifactAcceptsFormat(
+  artifactType: (typeof API_V1_SUBMISSION_FILE_ARTIFACT_TYPES)[number],
+  fileFormat: ApiV1DocumentFormat,
+): boolean {
+  if (artifactType === "LEGACY_PDF") return fileFormat === "PDF";
+  return (
+    API_V1_ARTIFACT_DOCUMENT_FORMATS[artifactType] as readonly ApiV1DocumentFormat[]
+  ).includes(fileFormat);
+}
+
+/** 보호 다운로드 경로입니다. 저장 키·URL 대신 기존 인가 다운로드 operation의 상대 경로만 제공합니다. */
+export function toApiV1SubmissionFileDownloadPath(submissionId: string, fileId: string): string {
+  return `/api/v1/submissions/${submissionId.toLowerCase()}/files/${fileId.toLowerCase()}`;
+}
+
+const apiV1SubmissionFileDownloadPathPattern =
+  /^\/api\/v1\/submissions\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/files\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+
+/**
+ * 최종 제출 파일 하나의 메타데이터입니다. 저장 키·Blob URL·체크섬·계정 ID는 포함하지 않습니다.
+ * downloadPath는 같은 파일의 보호 다운로드 operation(`GET /api/v1/submissions/{id}/files/{fileId}`) 경로입니다.
+ */
+export const apiV1SubmissionArtifactFileSchema = z
+  .object({
+    fileId: apiV1UuidSchema,
+    artifactType: z.enum(API_V1_SUBMISSION_FILE_ARTIFACT_TYPES),
+    fileFormat: z.enum(API_V1_DOCUMENT_FORMATS),
+    originalName: z.string().min(1).max(255),
+    mimeType: z.string().min(1).max(255),
+    sizeBytes: z.number().int().min(1).max(52_428_800),
+    downloadPath: z.string().regex(apiV1SubmissionFileDownloadPathPattern),
+  })
+  .strict()
+  .refine(
+    (file) =>
+      file.mimeType === API_V1_DOCUMENT_MIME_TYPES[file.fileFormat] &&
+      artifactAcceptsFormat(file.artifactType, file.fileFormat) &&
+      file.downloadPath.endsWith(`/files/${file.fileId.toLowerCase()}`),
+  );
+export type ApiV1SubmissionArtifactFile = z.infer<typeof apiV1SubmissionArtifactFileSchema>;
+
+/** 파일 목록의 산출물 유형 중복과 합계 상한(100MiB), 다운로드 경로의 제출 ID 일치를 확인합니다. */
+function artifactFilesConsistent(
+  files: readonly ApiV1SubmissionArtifactFile[],
+  submissionId: string | null,
+): boolean {
+  const types = files.map((file) => file.artifactType);
+  return (
+    new Set(types).size === types.length &&
+    files.reduce((sum, file) => sum + file.sizeBytes, 0) <= 104_857_600 &&
+    (submissionId === null ||
+      files.every(
+        (file) =>
+          file.downloadPath === toApiV1SubmissionFileDownloadPath(submissionId, file.fileId),
+      ))
+  );
+}
+
+/**
+ * 본인 과제의 제출 형식·항목별 요구·최종 제출 파일 목록 응답입니다(`GET /api/v1/assignments/{id}/artifacts`).
+ * - LEGACY_SINGLE_PDF: 두 요구는 null, `file`은 기존 상세와 같은 PDF 메타, `files`는 그 PDF 하나(LEGACY_PDF) 또는 빈 배열입니다.
+ * - ARTIFACTS_V2: 두 요구가 지정되고 `file`은 항상 null, `files`는 제출 전 빈 배열·제출 후 항목별 1개(최대 2개)입니다.
+ * - 기존 `GET /api/v1/assignments/{id}`에서 `submission != null && file == null`이면 분리 제출일 수 있으므로,
+ *   클라이언트는 이 operation의 `files`로 제출물을 확인해야 하며 PDF 미제출·재제출 대상으로 취급하면 안 됩니다.
+ */
+export const apiV1AssignmentArtifactsResponseSchema = z
+  .object({
+    assignmentId: apiV1UuidSchema,
+    submissionFormat: z.enum(API_V1_ASSIGNMENT_SUBMISSION_FORMATS),
+    textRequirement: z.enum(API_V1_ARTIFACT_REQUIREMENTS).nullable(),
+    slidesRequirement: z.enum(API_V1_ARTIFACT_REQUIREMENTS).nullable(),
+    submission: apiV1SubmissionSummarySchema.nullable(),
+    file: apiV1SubmissionFileMetadataSchema.nullable(),
+    files: z.array(apiV1SubmissionArtifactFileSchema).max(2),
+  })
+  .strict()
+  .refine((value) => {
+    if (!artifactFilesConsistent(value.files, value.submission?.submissionId ?? null)) return false;
+    if (value.submission === null && (value.files.length > 0 || value.file !== null)) return false;
+    if (value.submissionFormat === "LEGACY_SINGLE_PDF") {
+      return (
+        value.textRequirement === null &&
+        value.slidesRequirement === null &&
+        value.files.length === (value.file ? 1 : 0) &&
+        value.files.every(
+          (file) => file.artifactType === "LEGACY_PDF" && file.fileId === value.file?.fileId,
+        )
+      );
+    }
+    return (
+      value.textRequirement !== null &&
+      value.slidesRequirement !== null &&
+      !(value.textRequirement === "DISABLED" && value.slidesRequirement === "DISABLED") &&
+      value.file === null &&
+      (value.submission === null) === (value.files.length === 0) &&
+      value.files.every((file) => file.artifactType !== "LEGACY_PDF")
+    );
+  });
+export type ApiV1AssignmentArtifactsResponse = z.infer<
+  typeof apiV1AssignmentArtifactsResponseSchema
+>;
+
+/**
+ * V2 업로드 의도 발급 입력입니다. 산출물 유형별 허용 형식, 확장자, 형식별 정규 MIME이 모두 선언 형식과 맞아야 합니다.
+ * 실제 내용은 업로드 뒤 서버 검증이 다시 판정하므로 이 검사는 사전 차단용입니다.
+ */
+export const apiV1ArtifactUploadIntentInputSchema = z
+  .object({
+    assignmentId: apiV1UuidSchema,
+    requestId: apiV1UuidSchema,
+    artifactType: z.enum(API_V1_ASSIGNMENT_ARTIFACT_TYPES),
+    fileFormat: z.enum(API_V1_DOCUMENT_FORMATS),
+    originalName: z
+      .string()
+      .trim()
+      .min(1)
+      .max(255)
+      .refine((value) => !/[\x00-\x1f\x7f/\\]/.test(value)),
+    sizeBytes: z.number().int().min(1).max(52_428_800),
+    mimeType: z.string().max(255),
+  })
+  .strict()
+  .refine((value) => {
+    const dot = value.originalName.lastIndexOf(".");
+    return (
+      artifactAcceptsFormat(value.artifactType, value.fileFormat) &&
+      dot > 0 &&
+      value.originalName.slice(dot + 1).toLowerCase() ===
+        API_V1_DOCUMENT_EXTENSIONS[value.fileFormat] &&
+      value.mimeType === API_V1_DOCUMENT_MIME_TYPES[value.fileFormat]
+    );
+  });
+export type ApiV1ArtifactUploadIntentInput = z.infer<typeof apiV1ArtifactUploadIntentInputSchema>;
+
+/** V2 발급 결과입니다. pathname은 의도 ID 아래 고정 이름 original이며 contentType으로만 SDK 업로드할 수 있습니다. */
+export const apiV1ArtifactUploadIntentResponseSchema = z
+  .object({
+    uploadIntentId: apiV1UuidSchema,
+    artifactType: z.enum(API_V1_ASSIGNMENT_ARTIFACT_TYPES),
+    fileFormat: z.enum(API_V1_DOCUMENT_FORMATS),
+    pathname: z
+      .string()
+      .regex(
+        /^academic-uploads\/v2\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/original$/,
+      ),
+    contentType: z.string().min(1).max(255),
+    expiresAt: apiV1TimestampSchema,
+  })
+  .strict()
+  .refine(
+    (value) =>
+      value.pathname === `academic-uploads/v2/${value.uploadIntentId.toLowerCase()}/original` &&
+      value.contentType === API_V1_DOCUMENT_MIME_TYPES[value.fileFormat] &&
+      artifactAcceptsFormat(value.artifactType, value.fileFormat),
+  );
+export type ApiV1ArtifactUploadIntentResponse = z.infer<
+  typeof apiV1ArtifactUploadIntentResponseSchema
+>;
+
+/** V2 최종 제출 입력입니다. 검증된 의도 1~2개(항목별 1개)를 같은 submissionKey로 한 번에 확정합니다. */
+export const apiV1FinalizeArtifactSubmissionInputSchema = z
+  .object({
+    assignmentId: apiV1UuidSchema,
+    uploadIntentIds: z.array(apiV1UuidSchema).min(1).max(2),
+    submissionKey: apiV1UuidSchema,
+  })
+  .strict();
+export type ApiV1FinalizeArtifactSubmissionInput = z.infer<
+  typeof apiV1FinalizeArtifactSubmissionInputSchema
+>;
+
+/** V2 최초 확정과 같은 키의 성공 복구는 같은 HTTP 200 결과와 replayed로 구분합니다. */
+export const apiV1FinalizedArtifactSubmissionResponseSchema = z
+  .object({
+    submission: z
+      .object({
+        assignmentId: apiV1UuidSchema,
+        submissionId: apiV1UuidSchema,
+        submittedAt: apiV1TimestampSchema,
+        replayed: z.boolean(),
+        files: z.array(apiV1SubmissionArtifactFileSchema).min(1).max(2),
+      })
+      .strict()
+      .refine(
+        (value) =>
+          value.files.every((file) => file.artifactType !== "LEGACY_PDF") &&
+          artifactFilesConsistent(value.files, value.submissionId),
+      ),
+  })
+  .strict();
+export type ApiV1FinalizedArtifactSubmissionResponse = z.infer<
+  typeof apiV1FinalizedArtifactSubmissionResponseSchema
+>;
 
 /**
  * 모바일 로그인 시 선택적으로 보내는 기기 표시 정보입니다.
  * Android·iOS 공용 클라이언트가 사용하며 플랫폼만 필수이고 버전·기기명은 빈 값과 추가 키를 거부합니다.
  */
-export const apiV1MobileDeviceSchema = z.object({
-  platform: z.enum(["ANDROID", "IOS"]),
-  appVersion: z.string().min(1).max(32).optional(),
-  deviceName: z.string().min(1).max(64).optional(),
-}).strict();
+export const apiV1MobileDeviceSchema = z
+  .object({
+    platform: z.enum(["ANDROID", "IOS"]),
+    appVersion: z.string().min(1).max(32).optional(),
+    deviceName: z.string().min(1).max(64).optional(),
+  })
+  .strict();
 export type ApiV1MobileDevice = z.infer<typeof apiV1MobileDeviceSchema>;
 
 /**
  * 이메일·비밀번호 모바일 로그인 요청의 유일한 입력 경계입니다.
  * 이메일은 앞뒤 공백 제거 후 3~320자 이메일 형식, 비밀번호는 변형 없이 1~256자이며 계정·역할 주입을 거부합니다.
  */
-export const apiV1MobileLoginInputSchema = z.object({
-  email: z.string().trim().min(3).max(320).email(),
-  password: z.string().min(1).max(256),
-  device: apiV1MobileDeviceSchema.optional(),
-}).strict();
+export const apiV1MobileLoginInputSchema = z
+  .object({
+    email: z.string().trim().min(3).max(320).email(),
+    password: z.string().min(1).max(256),
+    device: apiV1MobileDeviceSchema.optional(),
+  })
+  .strict();
 export type ApiV1MobileLoginInput = z.infer<typeof apiV1MobileLoginInputSchema>;
 
 /**
@@ -629,58 +916,72 @@ export type ApiV1MobileLogoutInput = z.infer<typeof apiV1MobileLogoutInputSchema
  * 로그인·갱신 성공 시 모바일 클라이언트가 교체 저장하는 엄격한 세션 DTO입니다.
  * 두 토큰은 불투명한 비어 있지 않은 문자열이고 만료 시각은 기존 UTC 밀리초 계약을 재사용합니다.
  */
-export const apiV1MobileSessionSchema = z.object({
-  tokenType: z.literal("Bearer"),
-  accessToken: z.string().min(1),
-  accessTokenExpiresAt: apiV1TimestampSchema,
-  refreshToken: z.string().min(1),
-  refreshTokenExpiresAt: apiV1TimestampSchema,
-}).strict();
+export const apiV1MobileSessionSchema = z
+  .object({
+    tokenType: z.literal("Bearer"),
+    accessToken: z.string().min(1),
+    accessTokenExpiresAt: apiV1TimestampSchema,
+    refreshToken: z.string().min(1),
+    refreshTokenExpiresAt: apiV1TimestampSchema,
+  })
+  .strict();
 export type ApiV1MobileSession = z.infer<typeof apiV1MobileSessionSchema>;
 
 /**
  * 모바일 로그인 성공 응답은 세션과 기존 본인 프로필의 공개 사용자 DTO만 제공합니다.
  * PENDING도 표현하지만 비밀번호 해시·세션 버전 등 내부 인증 필드는 기존 사용자 스키마로 차단합니다.
  */
-export const apiV1MobileLoginResponseSchema = z.object({
-  session: apiV1MobileSessionSchema,
-  user: apiV1MeResponseSchema.shape.user,
-}).strict();
+export const apiV1MobileLoginResponseSchema = z
+  .object({
+    session: apiV1MobileSessionSchema,
+    user: apiV1MeResponseSchema.shape.user,
+  })
+  .strict();
 export type ApiV1MobileLoginResponse = z.infer<typeof apiV1MobileLoginResponseSchema>;
 
 /**
  * 모바일 갱신 성공 응답은 회전된 세션만 반환합니다.
  * 프로필이나 이전 토큰을 덧붙이지 않아 클라이언트가 두 토큰을 함께 교체하도록 경계를 고정합니다.
  */
-export const apiV1MobileRefreshResponseSchema = z.object({ session: apiV1MobileSessionSchema }).strict();
+export const apiV1MobileRefreshResponseSchema = z
+  .object({ session: apiV1MobileSessionSchema })
+  .strict();
 export type ApiV1MobileRefreshResponse = z.infer<typeof apiV1MobileRefreshResponseSchema>;
 
 /**
  * 모바일 인증의 429 응답은 기존 RATE_LIMITED 코드와 1~900초 재시도 값을 사용합니다.
  * 로그인 IP·이메일·조합 제한의 15분 창을 표현하며 60초 상한인 학사 오류와 분리합니다.
  */
-export const apiV1MobileRateLimitedErrorSchema = z.object({
-  error: z.object({
-    code: z.literal("RATE_LIMITED"),
-    message: z.string().min(1),
-    requestId: apiV1UuidSchema,
-    retryAfterSeconds: z.number().int().min(1).max(900),
-  }).strict(),
-}).strict();
+export const apiV1MobileRateLimitedErrorSchema = z
+  .object({
+    error: z
+      .object({
+        code: z.literal("RATE_LIMITED"),
+        message: z.string().min(1),
+        requestId: apiV1UuidSchema,
+        retryAfterSeconds: z.number().int().min(1).max(900),
+      })
+      .strict(),
+  })
+  .strict();
 export type ApiV1MobileRateLimitedError = z.infer<typeof apiV1MobileRateLimitedErrorSchema>;
 
 /**
  * 자료실 파일·메타데이터 조회의 사용자별 빈도 제한(#444) 429 응답입니다.
  * 가장 긴 제한 창(1시간)에 맞춰 1~3600초 재시도 값을 항상 포함하며 `Retry-After` 헤더와 같은 값입니다.
  */
-export const apiV1ResourceRateLimitedErrorSchema = z.object({
-  error: z.object({
-    code: z.literal("RATE_LIMITED"),
-    message: z.string().min(1),
-    requestId: apiV1UuidSchema,
-    retryAfterSeconds: z.number().int().min(1).max(3600),
-  }).strict(),
-}).strict();
+export const apiV1ResourceRateLimitedErrorSchema = z
+  .object({
+    error: z
+      .object({
+        code: z.literal("RATE_LIMITED"),
+        message: z.string().min(1),
+        requestId: apiV1UuidSchema,
+        retryAfterSeconds: z.number().int().min(1).max(3600),
+      })
+      .strict(),
+  })
+  .strict();
 export type ApiV1ResourceRateLimitedError = z.infer<typeof apiV1ResourceRateLimitedErrorSchema>;
 
 /**
@@ -690,7 +991,12 @@ export type ApiV1ResourceRateLimitedError = z.infer<typeof apiV1ResourceRateLimi
 export const apiV1ResourceListQuerySchema = z
   .object({
     page: z.coerce.number().int().min(1).default(1),
-    pageSize: z.coerce.number().int().min(1).max(API_V1_MAX_PAGE_SIZE).default(API_V1_DEFAULT_PAGE_SIZE),
+    pageSize: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .max(API_V1_MAX_PAGE_SIZE)
+      .default(API_V1_DEFAULT_PAGE_SIZE),
   })
   .strict();
 export type ApiV1ResourceListQuery = z.infer<typeof apiV1ResourceListQuerySchema>;
@@ -730,7 +1036,9 @@ type ClassMaterialSummaryInput = {
 };
 
 /** 저장소 결과에서 강의자료 목록 DTO의 허용 필드만 선택합니다. */
-export function toApiV1ClassMaterialSummary(input: ClassMaterialSummaryInput): ApiV1ClassMaterialSummary {
+export function toApiV1ClassMaterialSummary(
+  input: ClassMaterialSummaryInput,
+): ApiV1ClassMaterialSummary {
   return apiV1ClassMaterialSummarySchema.parse({
     id: input.id,
     title: input.title,
@@ -754,7 +1062,9 @@ export type ApiV1ClassMaterialListResponse = z.infer<typeof apiV1ClassMaterialLi
 export const apiV1ClassMaterialDetailResponseSchema = z
   .object({ classMaterial: apiV1ClassMaterialDetailSchema })
   .strict();
-export type ApiV1ClassMaterialDetailResponse = z.infer<typeof apiV1ClassMaterialDetailResponseSchema>;
+export type ApiV1ClassMaterialDetailResponse = z.infer<
+  typeof apiV1ClassMaterialDetailResponseSchema
+>;
 
 /** 저장소 결과에서 강의자료 상세 DTO의 허용 필드만 선택합니다. */
 export function toApiV1ClassMaterialDetailResponse(
@@ -808,7 +1118,10 @@ export function toApiV1WeeklyTextSummary(input: WeeklyTextSummaryInput): ApiV1We
   return apiV1WeeklyTextSummarySchema.parse({
     id: input.id,
     title: input.title,
-    textType: typeof input.textType === "string" && input.textType.trim().length > 0 ? input.textType : null,
+    textType:
+      typeof input.textType === "string" && input.textType.trim().length > 0
+        ? input.textType
+        : null,
     cohort: input.cohort ? { id: input.cohort.id, name: input.cohort.name } : null,
     classDate: input.classDate,
     hasBody: input.hasBody,
@@ -839,7 +1152,8 @@ export function toApiV1WeeklyTextDetailResponse(
     weeklyText: {
       ...toApiV1WeeklyTextSummary(input),
       body: typeof input.body === "string" && input.body.length > 0 ? input.body : null,
-      fileName: typeof input.fileName === "string" && input.fileName.length > 0 ? input.fileName : null,
+      fileName:
+        typeof input.fileName === "string" && input.fileName.length > 0 ? input.fileName : null,
     },
   });
 }
