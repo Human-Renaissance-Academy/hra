@@ -24,6 +24,7 @@ Production·Preview·Development는 DB·공개/비공개 Blob·OAuth·세션 비
 | 이름 | 목적 | 적용 환경·격리 | 비밀값 | 필수 조건 | 기본·누락 동작 | 예시 |
 | --- | --- | --- | --- | --- | --- | --- |
 | `ACADEMIC_APPROVER_USER_ID` | 검증된 학사 운영 책임자 UUID; 값 공개 금지 | Development / Preview / Production; 환경별 독립 설정; Preview에 Production 자격정보·연결 상속 금지 | 아니요 | 학사 승인·운영 인가 및 적용 backfill | 누락·유효하지 않은 UUID면 승인자 인가 거부; 홈페이지 ADMIN으로 대체하지 않음 | 앱 예시 |
+| `ACADEMIC_ASSIGNMENT_REVIEW_ENABLED` | 과제 검토·피드백 작성과 학생 공개·검토자 제출 파일 열람(#162) | Development / Preview / Production; 환경별 독립 설정; Preview에 Production 자격정보·연결 상속 금지 | 아니요 | 학사 운영 정책 초안 P11·P12(#143) 운영 승인과 SQL 적용 후 ACADEMIC_ENABLED·ACADEMIC_FACULTY_REVIEW_ENABLED와 함께 true | 정확한 true가 아니면 검토·공개 화면 404, 변경·목록 DISABLED, 검토자 파일 다운로드 404, 학생 피드백 빈 목록; DB 조회 없음 | 앱 예시 |
 | `ACADEMIC_ATTENDANCE_ENABLED` | 학생별 출결 기록·정정 승인(#159) | Development / Preview / Production; 환경별 독립 설정; Preview에 Production 자격정보·연결 상속 금지 | 아니요 | 학사 운영 정책 초안(#143) 운영 승인과 SQL 적용 후 ACADEMIC_ENABLED·ACADEMIC_STAFF_ENABLED와 함께 true | 정확한 true가 아니면 출결 입력·정정·조회 모두 DISABLED; DB 조회 없음 | 앱 예시 |
 | `ACADEMIC_ENABLED` | 학사 사용자 기능 공개 | Development / Preview / Production; 환경별 독립 설정; Preview에 Production 자격정보·연결 상속 금지 | 아니요 | 학사 정책·테이블·함수 준비 후 true | 정확한 true가 아니면 사용자 학사 기능 차단/준비 안내; cleanup은 독립 | 앱 예시 |
 | `ACADEMIC_ENROLLMENT_WRITES_ENABLED` | 학적 개인정보 쓰기 별도 승인 | Development / Preview / Production; 환경별 독립 설정; Preview에 Production 자격정보·연결 상속 금지 | 아니요 | #142 보존·파기 정책과 운영 승인 후 true | 정확한 true가 아니면 쓰기 차단; 화면 공개와 별도 조건 | 앱 예시 |
