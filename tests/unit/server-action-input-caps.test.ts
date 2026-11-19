@@ -143,6 +143,14 @@ describe("긴 본문 필드 상한", () => {
     );
   });
 
+  it("주차별 텍스트 body는 앞뒤 공백을 제외한 길이로 판정한다", async () => {
+    const message = bodyMessage("본문");
+    const padded = `  ${"가".repeat(maxMarkdownBodyLength)}  `;
+    expect(await run(() => createWeeklyText(form({ title: "제목", body: padded })))).not.toContain(
+      message,
+    );
+  });
+
   it("FAQ answer", async () => {
     await expectBoundary(
       (n) => run(() => createFaqItem(form({ question: "질문", answer: "가".repeat(n) }))),

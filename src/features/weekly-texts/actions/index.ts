@@ -56,8 +56,9 @@ const weeklyTextFormSchema = z.object({
   body: z
     .string()
     // 본문은 선택 입력이지만 입력된 경우 마크다운 본문 상한(#539)을 넘을 수 없다.
-    .max(
-      maxMarkdownBodyLength,
+    // 다른 액션과 같이 앞뒤 공백을 제외한 길이로 판정한다(저장 값은 기존처럼 원문 유지).
+    .refine(
+      (value) => value.trim().length <= maxMarkdownBodyLength,
       `본문은 ${maxMarkdownBodyLength.toLocaleString("ko-KR")}자 이하여야 합니다.`,
     )
     .optional()
