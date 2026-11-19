@@ -213,7 +213,7 @@ src/app/(admin)/admin/[feature]/
 
 - **프로덕션**: Vercel (`https://hra-website-theta.vercel.app`)
 - **문서**: MkDocs GitHub Pages (`https://human-renaissance-academy.github.io/hra-platform/`)
-- **DB 변경**: `npm run db:push`는 개발·운영 DB 모두에서 비활성화되어 있으며 DB에 접속하지 않는다. `npx drizzle-kit export`는 SQL 생성만 수행한다. 신규 DB 준비와 기존 DB 변경은 [데이터베이스 변경 절차](docs/developer/database-change-procedure.md)에 따라 대상·SQL·선행 조건·카탈로그를 검토한 뒤 별도 적용한다. Production migration gate는 아직 미완료다(#280).
+- **DB 변경**: `npm run db:push`는 개발·운영 DB 모두에서 비활성화되어 있으며 DB에 접속하지 않는다. `npx drizzle-kit export`는 SQL 생성만 수행한다. 신규 DB 준비와 기존 DB 변경은 [데이터베이스 변경 절차](docs/developer/database-change-procedure.md)에 따라 대상·SQL·선행 조건·카탈로그를 검토한 뒤 별도 적용한다. 운영 DB 변경은 [DB 변경 배포 게이트](docs/developer/database-change-procedure.md#db-change-gate)(수동 순서)를 따르며 자동 차단 gate와 baseline은 미완료다(#280).
 - **빌드 확인**: `npm run build` (변경 후 반드시 실행)
 
 ## 11. 변경 위험에 따른 검증·독립 리뷰

@@ -207,13 +207,13 @@ node --test scripts/tests/ops-readonly-report.test.mjs   # 도구 자체의 안�
 
 **붙여 넣을 것:** 세 출력의 숫자·코드, 수동 확인 체크 결과. 자료 ID·파일명·URL·계정 이메일은 붙이지 않습니다.
 
-**쓰기 단계(이 절의 범위 밖):** 잔존이 있으면 [자료실 파일 접근 정책의 이전·배포 순서](../resource-file-access-policy.md#protected-migration-rollout)와 [운영 전환 완료 체크리스트](../resource-file-access-policy.md#migration-completion-checklist)의 순서대로 `--apply` → 앱 읽기·잔존 0 재확인 → `--delete-public`을 진행합니다. **세 단계는 각각 따로 승인받아 실행**하며, 한 번의 승인으로 다음 단계까지 진행하지 않습니다.
+**쓰기 단계(이 절의 범위 밖):** 잔존이 있으면 [자료실 파일 접근 정책의 이전·배포 순서](../resource-file-access-policy.md#protected-migration-rollout)와 [운영 전환 완료 체크리스트](../resource-file-access-policy.md#migration-completion-checklist)의 순서대로 `--apply` → 앱 읽기·잔존 0 재확인 → 신규 보호 자료의 비공개 업로드 확인(체크리스트 4번) → `--delete-public`을 진행합니다. **`--apply`·확인·`--delete-public` 단계는 각각 따로 승인받아 실행**하며, 한 번의 승인으로 다음 단계까지 진행하지 않습니다.
 
 **이전 공개 URL 재확인 시점:** `--delete-public` 직후 한 번, 그리고 **대기 기간(예: 24시간 이상) 뒤 다시 한 번** 비로그인 창에서 이전 공개 URL 접근이 실패하는지 확인합니다. 삭제 후에도 CDN·브라우저 캐시가 잠시 응답할 수 있다는 **보수적 가정**이며, 실제 캐시 유지 시간은 검증하지 않았습니다. 두 번째 확인이 실패(여전히 열림)이면 0절의 비공개 공유 규칙을 따릅니다.
 
 **해제하는 결정:** 공개 원본 잔존 0 확정 또는 이전 실행 승인, "익명/권한 없음 거부" 완료 조건 체크.
 
-## 4. #267 · #507 · #178 OAuth 로그인·계정 연결·이메일 정규화
+## 4. #267 · #507 · #178 OAuth 로그인·계정 연결·이메일 정규화 {#oauth-login-checks}
 
 **목적:** 실제 제공자(Google·Kakao)와 Credentials의 정상 로그인, 기존 바인딩 보존, 이메일 대소문자 충돌 여부를 운영에서 확인합니다.
 
