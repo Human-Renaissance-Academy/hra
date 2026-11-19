@@ -1,6 +1,6 @@
 # 학생별 출결 기록과 정정 승인 (#159, 기능 비활성)
 
-> 상태: **데이터 모델·서버 계약 구현, 격리 PostgreSQL 검증 / 화면 없음 / 운영 미적용·미활성.** 기준: 2026-11-19.
+> 상태: **데이터 모델·서버 계약·화면(#160) 구현, 격리 PostgreSQL 검증 / 운영 미적용·미활성.** 기준: 2026-11-19.
 > 정책 근거는 [학사 운영 정책 초안](../ACADEMIC-OPERATIONS-POLICY.md) P5~P10 권장안이며, 그 문서 4절의 운영 승인 전에는 `ACADEMIC_ATTENDANCE_ENABLED`를 켜지 않는다. 이 문서는 정책 승인이나 운영 적용 기록이 아니다.
 
 [#159](https://github.com/Human-Renaissance-Academy/hra-website/issues/159)는 기수별 어드바이저·조교([#165 운영 인력 배정](academic-staff-assignments.md))가 입력하는 학생별 출결을 기존 CLASS 수업일(`schedule_events`)과 G1 학적(`cohort_enrollments`)에 연결한다. 화면·Server Action은 [#160](https://github.com/Human-Renaissance-Academy/hra-website/issues/160)에서 다룬다.
@@ -87,5 +87,19 @@ node scripts/check-environment-contract.mjs
 ## 7. 남은 작업
 
 - [ ] #143 운영 승인(정책 초안 4절: 지각 기준, 인정결석 사유·확인 방식, 관리자 부재 시 대체 승인자 등)과 운영 DB 적용 절차·백업 확인
-- [ ] #160 운영 화면·Server Action, 학생 본인 조회 화면
+- [x] #160 운영 화면·Server Action, 학생 본인 조회 화면(8절, 기능 비활성)
 - [ ] 로드맵 §8의 E2E 역할 조합과 관측 이벤트(#157) 연결, 승인된 보존기간 파기 함수
+
+## 8. 화면과 Server Action (#160, 기능 비활성)
+
+세 화면 모두 회원 영역(`/member/**`)에 둔다. 홈페이지 `/admin`(ADMIN 전용)·`/admin/academics`(G1 지정 승인자 전용) 경계를 재사용하지 않으며, Proxy·`authorized` 콜백·회원 레이아웃의 로그인/승인 확인 위에서 **각 화면·액션이 서비스로 관리자 지정·기수 배정·본인 학적을 매 요청 다시 판정**한다. 기능 플래그가 꺼져 있으면 세 화면은 세션·DB 조회 없이 404이고, 마이페이지 메뉴도 DB 조회 없이 숨긴다.
+
+| 경로 | 대상 | 내용 |
+| --- | --- | --- |
+| `/member/academic-operations` | 유효한 학사 운영 관리자 지정(그 외 404) | 기수별 현재·예정 운영 인력, 배정·종료·교체(사유 개인정보 금지 안내), 대기 중 정정 승인·반려(자기 요청은 결정 버튼 없음), 최근 배정 감사 50건 |
+| `/member/attendance/staff` | 현재 유효 배정 운영 인력 | 배정 기수 → CLASS 수업일 → 출결표. 출석/지각/결석 버튼(버전 동반 저장, 충돌 시 안내 후 재조회), 미입력 일괄 출석, 입력 창 안내, 창 이후·인정결석 정정 요청, 다른 담당자 요청 결정 |
+| `/member/attendance` | 본인 학적이 연결된 계정 | 미입력 포함 본인 출결·상태별 요약, 정정 처리 상태(사유·운영 인력 신원 없음) |
+
+- Server Action(`staff/actions.ts`, `attendance/actions.ts`)은 FormData 변환·Web 세션 → 주체(`staff/web-principal.ts`)·서비스 호출·`revalidatePath`만 한다. 요청 ID는 클라이언트가 제출마다 새로 만든다.
+- 화면용 읽기(`selectStaffOverview`·`selectStaffAudit`·`selectMyStaffCohorts`·`selectClassSessions`·`selectPendingCorrectionsForManager`·`selectOwnAttendanceContext`·`selectAttendanceAccess`)는 새 SQL 함수 없이 저장소의 단일 SELECT로 두고, 같은 문 안에서 DB `now()` 기준 권한을 판정해 권한이 없으면 `null`(서비스가 `FORBIDDEN`)을 돌려준다. 확인 근거·종료 사유·이메일은 반환하지 않는다.
+- 검증: `tests/unit/academic-attendance-ui-actions.test.ts`(액션·화면 경계), `tests/unit/academic-attendance-grid.test.tsx`(출결표 충돌·기간·자기 승인 표시), `tests/unit/academic-attendance-ui-postgres.test.ts`(읽기 조회 격리 PostgreSQL, `HRA_TEST_PG_BIN` 필요). `tests/e2e/academic-attendance-ui.spec.ts`의 역할 흐름은 전용 QA 실행기(`HRA_ACADEMIC_ATTENDANCE_QA`)가 생길 때까지 건너뛴다.
