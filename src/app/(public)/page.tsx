@@ -6,11 +6,15 @@ import { StatsSection } from "./_components/stats-section";
 import { CalendarSection } from "./_components/calendar-section";
 import { AlumniCarousel } from "./_components/alumni-carousel";
 import { parseCalendarMonth } from "@/lib/query-params";
+import { defaultOpenGraphImages } from "@/lib/seo/share-image";
 
 export const metadata: Metadata = {
-  title: "HRA - Human Renaissance Academy",
+  // 루트 템플릿("%s | HRA")이 적용되면 "HRA - ... | HRA"로 브랜드가 중복되므로 절대 제목을 씁니다.
+  title: { absolute: "HRA - Human Renaissance Academy" },
+  // 페이지가 openGraph를 선언하면 루트의 이미지가 대체되므로 기본 공유 이미지를 명시합니다(#414).
   openGraph: {
     url: "/",
+    images: defaultOpenGraphImages,
   },
   // 사이트 기준 주소(metadataBase)와 합쳐 이 페이지의 대표 주소(canonical)가 됩니다.
   alternates: { canonical: "/" },
@@ -43,7 +47,8 @@ export default async function Home({ searchParams }: HomeProps) {
           <p className="text-lg leading-8 text-[#666666] max-w-3xl mt-4 text-center">
             HRA는 청년들이 더 깊이 사고하고, 더 넓게 실천하며, <br />
             공동체 안에서 성장하도록 돕는 교육 프로그램입니다. <br />
-            고전 읽기와 토론, 케이스 스터디를 통해 생각을 훈련하고, 배움을 삶과 사회로 연결합니다.<br />
+            고전 읽기와 토론, 케이스 스터디를 통해 생각을 훈련하고, 배움을 삶과 사회로 연결합니다.
+            <br />
             단순한 지식 습득을 넘어, 업무능력·성품·사명감을 함께 기르는 것을 목표로 합니다.
           </p>
         </div>
@@ -67,7 +72,9 @@ export default async function Home({ searchParams }: HomeProps) {
 
             <div className="absolute inset-0 p-8 flex flex-col justify-end transition-all duration-500">
               <h3 className="text-white font-bold tracking-tight transition-all duration-500 transform group-hover:-translate-y-4 md:group-hover:text-[32px] text-[32px] md:text-[40px] leading-[1.05] mb-4">
-                고전<br />읽기
+                고전
+                <br />
+                읽기
               </h3>
               <div className="mt-4 md:mt-0 md:h-0 md:opacity-0 overflow-hidden transition-all duration-500 md:group-hover:h-auto md:group-hover:opacity-100 md:group-hover:mt-4">
                 <p className="text-white/90 text-lg leading-8 font-medium border-t border-white/30 pt-4">
@@ -89,11 +96,14 @@ export default async function Home({ searchParams }: HomeProps) {
 
             <div className="absolute inset-0 p-8 flex flex-col justify-end transition-all duration-500">
               <h3 className="text-white font-bold tracking-tight transition-all duration-500 transform group-hover:-translate-y-4 md:group-hover:text-[32px] text-[32px] md:text-[40px] leading-[1.05] mb-4">
-                케이스<br />스터디
+                케이스
+                <br />
+                스터디
               </h3>
               <div className="mt-4 md:mt-0 md:h-0 md:opacity-0 overflow-hidden transition-all duration-500 md:group-hover:h-auto md:group-hover:opacity-100 md:group-hover:mt-4">
                 <p className="text-white/90 text-lg leading-8 font-medium border-t border-white/30 pt-4">
-                  실제 비즈니스 현장의 생생한 사례를 분석하며 문제 해결 능력과 전략적 사고를 기릅니다.
+                  실제 비즈니스 현장의 생생한 사례를 분석하며 문제 해결 능력과 전략적 사고를
+                  기릅니다.
                 </p>
               </div>
             </div>
@@ -126,9 +136,7 @@ export default async function Home({ searchParams }: HomeProps) {
       <section className="py-24 px-4 w-full bg-[#EFF6FF]">
         <div className="max-w-7xl mx-auto w-full">
           <div className="flex flex-col items-center text-center mb-16">
-            <h2 className="text-[40px] font-bold text-[#1a1a1a] tracking-tight">
-              HRA 핵심 가치
-            </h2>
+            <h2 className="text-[40px] font-bold text-[#1a1a1a] tracking-tight">HRA 핵심 가치</h2>
             <div className="w-12 h-1 bg-[var(--brand)] mx-auto mt-4 mb-4" />
             <p className="text-lg text-[#666666] mt-0 font-medium">
               3C 인재를 향한 세 가지 핵심 가치
@@ -152,7 +160,8 @@ export default async function Home({ searchParams }: HomeProps) {
                 </h4>
 
                 <p className="text-lg leading-8 text-[#666666] group-hover:text-white transition-colors duration-500 mt-auto">
-                  나를 넘어 사회를 향하는 마음.<br /> 주어진 일에 책임감을 가지고 끝까지 완수해내는 태도를 기릅니다.
+                  나를 넘어 사회를 향하는 마음.
+                  <br /> 주어진 일에 책임감을 가지고 끝까지 완수해내는 태도를 기릅니다.
                 </p>
               </div>
             </div>
@@ -173,7 +182,8 @@ export default async function Home({ searchParams }: HomeProps) {
                 </h4>
 
                 <p className="text-lg leading-8 text-[#666666] group-hover:text-white transition-colors duration-500 mt-auto">
-                  배움을 실천으로 이어가는 힘.<br /> 비판적 사고와 탁월한 문제 해결 능력으로 현장에서 가치를 창출합니다.
+                  배움을 실천으로 이어가는 힘.
+                  <br /> 비판적 사고와 탁월한 문제 해결 능력으로 현장에서 가치를 창출합니다.
                 </p>
               </div>
             </div>
@@ -194,7 +204,8 @@ export default async function Home({ searchParams }: HomeProps) {
                 </h4>
 
                 <p className="text-lg leading-8 text-[#666666] group-hover:text-white transition-colors duration-500 mt-auto">
-                  생각의 깊이와 마음의 넓이를 기르는 자세.<br /> 타인을 존중하고 공동체와 함께 성장하는 바른 인성을 갖춥니다.
+                  생각의 깊이와 마음의 넓이를 기르는 자세.
+                  <br /> 타인을 존중하고 공동체와 함께 성장하는 바른 인성을 갖춥니다.
                 </p>
               </div>
             </div>
