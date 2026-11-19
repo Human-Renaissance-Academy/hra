@@ -718,6 +718,56 @@ describe.skipIf(!bin)("텍스트·발표자료 분리 제출 V2 서비스 Postgr
       },
     );
 
+    it("검증 뒤 저장 객체가 바뀌면(ETag·내용) 최종화가 충돌·파일 오류로 거부하고 아무것도 확정하지 않는다", async () => {
+      const assignmentId = await v2("OPTIONAL", "OPTIONAL");
+      const intent = await upload(assignmentId, "TEXT", "PDF");
+      await verifyAssignmentArtifactUpload({ assignmentId, uploadIntentId: intent });
+      expect(run(`SELECT state FROM assignment_upload_intents WHERE id='${intent}';`)).toBe(
+        "VERIFIED",
+      );
+      const key = `academic-uploads/v2/${intent}/original`;
+      const original = blobs.get(key)!;
+      const before = counts();
+      // 1) 같은 크기의 다른 정상 PDF로 덮어쓴 경우: 기록된 ETag·체크섬과 달라 충돌이다.
+      const replaced = new Uint8Array(original.bytes);
+      replaced[12] = replaced[12] === 0x41 ? 0x42 : 0x41;
+      blobs.set(key, { ...original, bytes: replaced, etag: `${original.etag}-replaced` });
+      await expect(finalize(assignmentId, [intent])).rejects.toMatchObject({ code: "CONFLICT" });
+      expect(counts()).toBe(before);
+      // 2) 같은 크기의 형식 위반 내용으로 바뀐 경우: 형식 검증에서 먼저 거부한다.
+      blobs.set(key, {
+        ...original,
+        bytes: new Uint8Array(original.bytes.length).fill(0x20),
+        etag: `${original.etag}-broken`,
+      });
+      await expect(finalize(assignmentId, [intent])).rejects.toMatchObject({
+        code: "INVALID_FILE",
+      });
+      expect(counts()).toBe(before);
+      expect(run(`SELECT state FROM assignment_upload_intents WHERE id='${intent}';`)).toBe(
+        "VERIFIED",
+      );
+    });
+
+    it("다른 과제 대상의 의도는 서비스 계층에서 거부하고 Blob을 읽지 않는다", async () => {
+      const first = await v2("OPTIONAL", "OPTIONAL");
+      const second = await v2("OPTIONAL", "OPTIONAL");
+      const intent = await upload(first, "TEXT", "PDF");
+      const before = counts();
+      mocks.head.mockClear();
+      mocks.get.mockClear();
+      await expect(
+        verifyAssignmentArtifactUpload({ assignmentId: second, uploadIntentId: intent }),
+      ).rejects.toMatchObject({ code: "NOT_FOUND" });
+      await expect(finalize(second, [intent])).rejects.toMatchObject({ code: "NOT_FOUND" });
+      expect(mocks.head).not.toHaveBeenCalled();
+      expect(mocks.get).not.toHaveBeenCalled();
+      expect(counts()).toBe(before);
+      expect(run(`SELECT state FROM assignment_upload_intents WHERE id='${intent}';`)).toBe(
+        "INTENDED",
+      );
+    });
+
     it("두 파일 중 하나라도 실패하면 아무것도 확정하지 않는다", async () => {
       const assignmentId = await v2("REQUIRED", "REQUIRED");
       const text = await upload(assignmentId, "TEXT", "HWPX");

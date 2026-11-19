@@ -103,6 +103,49 @@ export async function createAssignmentArtifactUploadIntent(
 }
 
 /**
+ * 인스턴스(프로세스) 단위 원본 검증 동시 실행 상한입니다.
+ * 검증은 원본 전체(≤50MiB)를 메모리에 받으므로, Fluid compute처럼 한 인스턴스가 여러 요청을 함께 처리할 때
+ * 동시 검증 수를 제한해 원본 버퍼 합계를 최대 약 100MiB로 묶습니다. 자리가 없으면 대기열에서 기다리고,
+ * 정해진 시간 안에 자리가 나지 않으면 멈춰 있지 않고 재시도 가능한 고정 오류(UNAVAILABLE, 503)를 돌려줍니다.
+ */
+export const MAX_CONCURRENT_ARTIFACT_VERIFICATIONS = 2;
+export const ARTIFACT_VERIFICATION_QUEUE_TIMEOUT_MS = 10_000;
+let activeVerifications = 0;
+const verificationQueue: Array<() => void> = [];
+
+/** 자리 하나를 넘겨받거나 반납합니다. 대기자가 있으면 활성 수를 줄이지 않고 바로 넘깁니다. */
+function releaseVerificationSlot(): void {
+  const next = verificationQueue.shift();
+  if (next) next();
+  else activeVerifications -= 1;
+}
+
+/** 검증 자리를 얻은 뒤 작업을 실행하고, 성공·실패와 관계없이 정확히 한 번 반납합니다. */
+export async function withArtifactVerificationSlot<T>(run: () => Promise<T>): Promise<T> {
+  if (activeVerifications < MAX_CONCURRENT_ARTIFACT_VERIFICATIONS) {
+    activeVerifications += 1;
+  } else {
+    await new Promise<void>((resolve, reject) => {
+      const entry = () => {
+        clearTimeout(timer);
+        resolve();
+      };
+      const timer = setTimeout(() => {
+        const index = verificationQueue.indexOf(entry);
+        if (index >= 0) verificationQueue.splice(index, 1);
+        reject(new AcademicUploadError("UNAVAILABLE"));
+      }, ARTIFACT_VERIFICATION_QUEUE_TIMEOUT_MS);
+      verificationQueue.push(entry);
+    });
+  }
+  try {
+    return await run();
+  } finally {
+    releaseVerificationSlot();
+  }
+}
+
+/**
  * 업로드된 V2 원본을 서버가 직접 읽어 검증합니다. 최종 제출이 아니며 같은 의도의 재검증은 멱등입니다.
  * 1) 세션·대상·원장 확인 → 2) 메타(경로·정규 MIME·크기) 대조 → 3) 전체 스트림 수신·SHA-256
  * → 4) 형식 교차 검증 → 5) DB의 현재 권한·기한으로 VERIFIED 기록
@@ -131,81 +174,88 @@ export async function verifyAssignmentArtifactUpload(
     await reserveAssignmentUploadAttempt(target.userId, target.targetId, "external", artifact);
     const store = academicSubmissionStore();
     const mime = DOCUMENT_MIME_TYPES[record.file_format];
-    try {
-      const metadata = await head(record.storage_key, {
-        token: store.token,
-        abortSignal: AbortSignal.timeout(15_000),
-      });
-      if (
-        !matchesAcademicBlob(metadata.url, record.storage_key) ||
-        metadata.pathname !== record.storage_key ||
-        metadata.contentType !== mime ||
-        metadata.size !== record.expected_size ||
-        metadata.size < 1 ||
-        metadata.size > MAX_ASSIGNMENT_UPLOAD_BYTES
-      )
-        throw new AcademicUploadError("INVALID_FILE", undefined, "SELECTION");
-      const result = await get(record.storage_key, {
-        access: "private",
-        token: store.token,
-        useCache: false,
-        abortSignal: AbortSignal.timeout(60_000),
-      });
-      if (!result || result.statusCode !== 200) throw new AcademicUploadError("NOT_READY");
-      if (
-        result.blob.pathname !== record.storage_key ||
-        !matchesAcademicBlob(result.blob.url, record.storage_key) ||
-        result.blob.etag !== metadata.etag ||
-        result.blob.size !== metadata.size ||
-        result.blob.contentType !== mime
-      ) {
-        await result.stream.cancel();
-        throw new AcademicUploadError("INVALID_FILE", undefined, "SELECTION");
-      }
-      // 형식 탐지는 ZIP 중앙 디렉터리·CFB FAT처럼 파일 끝을 함께 읽어야 하므로 원본 전체(≤50MiB)를 메모리에 받습니다.
-      // 크기는 DB 원장의 예상 크기로 미리 할당하고, 넘치면 즉시 중단합니다.
-      const bytes = new Uint8Array(record.expected_size);
-      const reader = result.stream.getReader();
-      const hash = createHash("sha256");
-      let length = 0;
+    // 원본 버퍼를 잡는 구간만 인스턴스 동시 실행 상한 안에서 실행합니다.
+    await withArtifactVerificationSlot(async () => {
       try {
-        for (;;) {
-          const chunk = await reader.read();
-          if (chunk.done) break;
-          if (length + chunk.value.byteLength > record.expected_size)
-            throw new AcademicUploadError("INVALID_FILE", undefined, "SELECTION");
-          bytes.set(chunk.value, length);
-          length += chunk.value.byteLength;
-          hash.update(chunk.value);
-        }
-      } finally {
-        await reader.cancel();
-      }
-      if (length !== record.expected_size)
-        throw new AcademicUploadError("INVALID_FILE", undefined, "SELECTION");
-      const checked = validateDeclaredDocument({
-        bytes,
-        fileName: record.original_name,
-        declaredFormat: record.file_format,
-        contentType: result.blob.contentType,
-        artifactType: artifact,
-      });
-      if (!checked.ok) throw new AcademicUploadError("INVALID_FILE", undefined, checked.reason);
-      // 원본을 읽는 동안 권한·기한이 바뀌었어도 DB의 현재 값으로 거부한다.
-      await persistUploadVerificationV2(
-        record.intent_id,
-        target.userId,
-        hash.digest("hex"),
-        metadata.etag,
-      ).catch((error: unknown) => {
-        // DB의 upload_invalid_file(ETag·체크섬 형식)은 기존 PDF 문구 대신 V2 선택 확인 문구로 안내합니다.
-        if (error instanceof AcademicUploadError && error.code === "INVALID_FILE" && !error.reason)
+        const metadata = await head(record.storage_key, {
+          token: store.token,
+          abortSignal: AbortSignal.timeout(15_000),
+        });
+        if (
+          !matchesAcademicBlob(metadata.url, record.storage_key) ||
+          metadata.pathname !== record.storage_key ||
+          metadata.contentType !== mime ||
+          metadata.size !== record.expected_size ||
+          metadata.size < 1 ||
+          metadata.size > MAX_ASSIGNMENT_UPLOAD_BYTES
+        )
           throw new AcademicUploadError("INVALID_FILE", undefined, "SELECTION");
-        throw error;
-      });
-    } catch (error) {
-      if (error instanceof AcademicUploadError) throw error;
-      throw new AcademicUploadError("UNAVAILABLE");
-    }
+        const result = await get(record.storage_key, {
+          access: "private",
+          token: store.token,
+          useCache: false,
+          abortSignal: AbortSignal.timeout(60_000),
+        });
+        if (!result || result.statusCode !== 200) throw new AcademicUploadError("NOT_READY");
+        if (
+          result.blob.pathname !== record.storage_key ||
+          !matchesAcademicBlob(result.blob.url, record.storage_key) ||
+          result.blob.etag !== metadata.etag ||
+          result.blob.size !== metadata.size ||
+          result.blob.contentType !== mime
+        ) {
+          await result.stream.cancel();
+          throw new AcademicUploadError("INVALID_FILE", undefined, "SELECTION");
+        }
+        // 형식 탐지는 ZIP 중앙 디렉터리·CFB FAT처럼 파일 끝을 함께 읽어야 하므로 원본 전체(≤50MiB)를 메모리에 받습니다.
+        // 크기는 DB 원장의 예상 크기로 미리 할당하고, 넘치면 즉시 중단합니다. SHA-256은 복사와 함께 스트림으로 계산합니다.
+        const bytes = new Uint8Array(record.expected_size);
+        const reader = result.stream.getReader();
+        const hash = createHash("sha256");
+        let length = 0;
+        try {
+          for (;;) {
+            const chunk = await reader.read();
+            if (chunk.done) break;
+            if (length + chunk.value.byteLength > record.expected_size)
+              throw new AcademicUploadError("INVALID_FILE", undefined, "SELECTION");
+            bytes.set(chunk.value, length);
+            length += chunk.value.byteLength;
+            hash.update(chunk.value);
+          }
+        } finally {
+          await reader.cancel();
+        }
+        if (length !== record.expected_size)
+          throw new AcademicUploadError("INVALID_FILE", undefined, "SELECTION");
+        const checked = validateDeclaredDocument({
+          bytes,
+          fileName: record.original_name,
+          declaredFormat: record.file_format,
+          contentType: result.blob.contentType,
+          artifactType: artifact,
+        });
+        if (!checked.ok) throw new AcademicUploadError("INVALID_FILE", undefined, checked.reason);
+        // 원본을 읽는 동안 권한·기한이 바뀌었어도 DB의 현재 값으로 거부한다.
+        await persistUploadVerificationV2(
+          record.intent_id,
+          target.userId,
+          hash.digest("hex"),
+          metadata.etag,
+        ).catch((error: unknown) => {
+          // DB의 upload_invalid_file(ETag·체크섬 형식)은 기존 PDF 문구 대신 V2 선택 확인 문구로 안내합니다.
+          if (
+            error instanceof AcademicUploadError &&
+            error.code === "INVALID_FILE" &&
+            !error.reason
+          )
+            throw new AcademicUploadError("INVALID_FILE", undefined, "SELECTION");
+          throw error;
+        });
+      } catch (error) {
+        if (error instanceof AcademicUploadError) throw error;
+        throw new AcademicUploadError("UNAVAILABLE");
+      }
+    });
   });
 }

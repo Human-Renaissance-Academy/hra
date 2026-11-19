@@ -10,7 +10,8 @@
  * - 학생 화면(PR-F)·API v1(PR-G) 연결 전입니다. 기능은 ACADEMIC_SUBMISSION_ARTIFACTS_ENABLED로 기본 비활성입니다.
  *
  * 주의:
- * - 두 원본(각 50MiB 이하)은 병렬로 검증해 Function 실행 시간 안에 끝나도록 합니다. 최대 메모리는 약 100MiB입니다.
+ * - 두 원본(각 50MiB 이하)은 순서대로 검증해 요청당 원본 버퍼를 50MiB 이하로 둡니다. 인스턴스 전체 동시 검증은
+ *   `withArtifactVerificationSlot`이 2개로 제한합니다. 2×50MiB 읽기 시간과 maxDuration의 관계는 PR-H에서 측정합니다.
  * - 검증 실패는 입력 순서상 첫 실패의 고정 오류를 그대로 전달합니다(파일명·경로 없음).
  */
 import "server-only";
@@ -54,18 +55,13 @@ export async function finalizeAssignmentArtifactSubmission(
   ) {
     throw new SubmissionFinalizationError("INCOMPLETE");
   }
-  const results = await Promise.allSettled(
-    request.uploadIntentIds.map((uploadIntentId) =>
-      verifyAssignmentArtifactUpload(
-        { assignmentId: request.assignmentId, uploadIntentId },
-        observation?.fork("UPLOAD_VERIFY", "UPLOAD_INTENT"),
-      ),
-    ),
-  );
-  const failure = results.find(
-    (result): result is PromiseRejectedResult => result.status === "rejected",
-  );
-  if (failure) throw failure.reason;
+  // 한 요청 안에서는 원본을 하나씩 검증해 요청당 원본 버퍼를 최대 50MiB로 제한합니다(첫 실패에서 중단).
+  for (const uploadIntentId of request.uploadIntentIds) {
+    await verifyAssignmentArtifactUpload(
+      { assignmentId: request.assignmentId, uploadIntentId },
+      observation?.fork("UPLOAD_VERIFY", "UPLOAD_INTENT"),
+    );
+  }
   // 외부 객체를 읽는 동안 세션·배정이 달라졌으면 새로운 권한으로 이어 제출하지 않습니다.
   const current = await requireAssignmentTarget({ assignmentId: request.assignmentId });
   if (current.userId !== target.userId || current.targetId !== target.targetId)

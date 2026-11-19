@@ -270,6 +270,38 @@ describe.skipIf(!bin)("텍스트·발표자료 분리 제출 마이그레이션 
     run(artifactsSql);
   });
 
+  it("과제 변경 함수가 없으면 전체 롤백하고 구조를 바꾸지 않는다", () => {
+    run("CREATE DATABASE hra_artifacts_no_mutate;");
+    try {
+      installV1("hra_artifacts_no_mutate");
+      runIn(
+        "hra_artifacts_no_mutate",
+        "DROP FUNCTION mutate_academic_assignment(text,uuid,uuid,uuid,uuid,jsonb);",
+      );
+      const shape = `SELECT md5(jsonb_build_array(
+        (SELECT count(*) FROM pg_type WHERE typname IN ('assignment_submission_format','assignment_artifact_requirement','assignment_artifact_type','assignment_file_format')),
+        (SELECT jsonb_agg(attname ORDER BY attrelid::regclass::text,attnum) FROM pg_attribute
+          WHERE attrelid IN ('assignments'::regclass,'assignment_upload_intents'::regclass,'assignment_submissions'::regclass,
+            'assignment_submission_files'::regclass,'academic_upload_authorizations'::regclass) AND attnum>0 AND NOT attisdropped),
+        (SELECT jsonb_agg(conname ORDER BY conname) FROM pg_constraint WHERE connamespace='public'::regnamespace),
+        (SELECT string_agg(pg_get_functiondef(p.oid),'' ORDER BY p.oid::regprocedure::text) FROM pg_proc p
+          WHERE p.pronamespace='public'::regnamespace AND p.prokind='f'))::text);`;
+      const before = runIn("hra_artifacts_no_mutate", shape);
+      expect(() => runIn("hra_artifacts_no_mutate", artifactsSql)).toThrow(
+        /과제 변경 함수\(migrate-academic-assignment-actions\.sql\)를 먼저 적용해야 합니다/,
+      );
+      expect(runIn("hra_artifacts_no_mutate", shape)).toBe(before);
+      expect(
+        runIn(
+          "hra_artifacts_no_mutate",
+          "SELECT NOT EXISTS(SELECT 1 FROM pg_proc WHERE proname LIKE '%\\_v2') AND to_regtype('public.assignment_file_format') IS NULL;",
+        ),
+      ).toBe("t");
+    } finally {
+      run("DROP DATABASE hra_artifacts_no_mutate;");
+    }
+  });
+
   it("v1 제약이 변형되었거나 일부만 적용된 구조는 아무것도 바꾸지 않고 거부한다", () => {
     run("CREATE DATABASE hra_artifacts_drift;");
     try {
