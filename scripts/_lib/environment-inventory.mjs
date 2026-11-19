@@ -211,6 +211,15 @@ export const environmentInventory = {
       active(),
     ),
     variable(
+      "ACADEMIC_ATTENDANCE_ENABLED",
+      "application",
+      "학생별 출결 기록·정정 승인(#159)",
+      false,
+      "학사 운영 정책 초안(#143) 운영 승인과 SQL 적용 후 ACADEMIC_ENABLED·ACADEMIC_STAFF_ENABLED와 함께 true",
+      "정확한 true가 아니면 출결 입력·정정·조회 모두 DISABLED; DB 조회 없음",
+      active("false"),
+    ),
+    variable(
       "ACADEMIC_ENABLED",
       "application",
       "학사 사용자 기능 공개",

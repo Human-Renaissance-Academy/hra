@@ -199,6 +199,16 @@
       "predecessors": []
     },
     {
+      "path": "scripts/migrate-academic-attendance.sql",
+      "role": "versioned_candidate",
+      "sha256": "29104a860c4766673cbf5f5fc75632a736cbc4a04c70b25f22b6796d4b529696",
+      "id": "g2-attendance",
+      "predecessors": [
+        "g1-students",
+        "g2-staff-assignments"
+      ]
+    },
+    {
       "path": "scripts/migrate-academic-students.sql",
       "role": "versioned_candidate",
       "sha256": "2ca8845821ccf17c5f5268c1975ec025837e5e1f268e4ffd39d7bf191dd1c378",
