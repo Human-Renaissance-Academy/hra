@@ -6,8 +6,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
-  auth: vi.fn(), profile: vi.fn(), get: vi.fn(),
-  guidebook: vi.fn(), material: vi.fn(), weekly: vi.fn(),
+  auth: vi.fn(),
+  profile: vi.fn(),
+  get: vi.fn(),
+  guidebook: vi.fn(),
+  material: vi.fn(),
+  weekly: vi.fn(),
 }));
 vi.mock("server-only", () => ({}));
 // 사용자별 자료 조회 빈도 제한(#444)은 이 파일의 관심사가 아니므로 항상 허용합니다. 제한 동작은 resource-read-limit 테스트가 검증합니다.
@@ -16,14 +20,20 @@ vi.mock("@/lib/rate-limit", () => ({
 }));
 vi.mock("@/lib/auth", () => ({ auth: mocks.auth }));
 vi.mock("@/features/users/me/repository", () => ({ findUserProfileById: mocks.profile }));
-vi.mock("@/features/guidebooks/file-download/repository", () => ({ findGuidebookFile: mocks.guidebook }));
+vi.mock("@/features/guidebooks/file-download/repository", () => ({
+  findGuidebookFile: mocks.guidebook,
+}));
 vi.mock("@/features/class-materials/member/repository", () => ({
   findClassMaterialFileForReader: mocks.material,
-  countClassMaterialsForReader: vi.fn(), listClassMaterialsForReader: vi.fn(), findClassMaterialForReader: vi.fn(),
+  countClassMaterialsForReader: vi.fn(),
+  listClassMaterialsForReader: vi.fn(),
+  findClassMaterialForReader: vi.fn(),
 }));
 vi.mock("@/features/weekly-texts/member/repository", () => ({
   findWeeklyTextFile: mocks.weekly,
-  countWeeklyTexts: vi.fn(), listWeeklyTexts: vi.fn(), findWeeklyText: vi.fn(),
+  countWeeklyTexts: vi.fn(),
+  listWeeklyTexts: vi.fn(),
+  findWeeklyText: vi.fn(),
 }));
 vi.mock("@vercel/blob", () => ({ get: mocks.get }));
 
@@ -38,20 +48,41 @@ const cohortA = "30000000-0000-4000-8000-00000000000a";
 const host = "resourceqa.private.blob.vercel-storage.com";
 const url = `https://${host}/resource-uploads/qa/material.pdf`;
 const token = "fixture-private-token";
-const profile = { id: userId, name: "합성", email: null, role: "MEMBER", cohortId: cohortA, image: null };
+const profile = {
+  id: userId,
+  name: "합성",
+  email: null,
+  role: "MEMBER",
+  cohortId: cohortA,
+  image: null,
+};
 
 const routes = [
   { name: "가이드북", path: "guidebooks", handler: guidebookFile, repository: mocks.guidebook },
-  { name: "강의자료", path: "class-materials", handler: classMaterialFile, repository: mocks.material },
-  { name: "주차별 텍스트", path: "weekly-texts", handler: weeklyTextFile, repository: mocks.weekly },
+  {
+    name: "강의자료",
+    path: "class-materials",
+    handler: classMaterialFile,
+    repository: mocks.material,
+  },
+  {
+    name: "주차별 텍스트",
+    path: "weekly-texts",
+    handler: weeklyTextFile,
+    repository: mocks.weekly,
+  },
 ] as const;
 
 const context = (value = id) => ({ params: Promise.resolve({ id: value }) });
 const request = (path: string, query = "", init?: RequestInit) =>
   new Request(`https://qa.invalid/api/v1/resources/${path}/${id}/file${query}`, init);
-const pdfStream = () => new ReadableStream<Uint8Array>({
-  start(controller) { controller.enqueue(new TextEncoder().encode("PDF")); controller.close(); },
-});
+const pdfStream = () =>
+  new ReadableStream<Uint8Array>({
+    start(controller) {
+      controller.enqueue(new TextEncoder().encode("PDF"));
+      controller.close();
+    },
+  });
 
 beforeEach(() => {
   vi.resetAllMocks();
@@ -59,37 +90,56 @@ beforeEach(() => {
   vi.stubEnv("RESOURCE_PRIVATE_READ_WRITE_TOKEN", token);
   mocks.auth.mockResolvedValue({ user: { id: userId, role: "MEMBER" } });
   mocks.profile.mockResolvedValue(profile);
-  for (const route of routes) route.repository.mockResolvedValue({ fileUrl: url, fileName: '한글/안내\r\n".pdf' });
-  mocks.get.mockImplementation(async () => ({ statusCode: 200, blob: { contentType: "application/pdf" }, stream: pdfStream() }));
+  for (const route of routes)
+    route.repository.mockResolvedValue({ fileUrl: url, fileName: '한글/안내\r\n".pdf' });
+  mocks.get.mockImplementation(async () => ({
+    statusCode: 200,
+    blob: { contentType: "application/pdf" },
+    stream: pdfStream(),
+  }));
   vi.spyOn(console, "error").mockImplementation(() => undefined);
 });
-afterEach(() => { vi.unstubAllEnvs(); vi.restoreAllMocks(); });
+afterEach(() => {
+  vi.unstubAllEnvs();
+  vi.restoreAllMocks();
+});
 
 describe.each(routes)("$name 파일 API", ({ path, handler, repository }) => {
-  it.each(["MEMBER", "FACULTY", "ADMIN"] as const)("%s는 현재 역할 확인 뒤 서버가 읽은 첨부 스트림만 받는다", async (role) => {
-    // Given: 현재 DB 행과 세션 역할이 같은 승인 회원입니다.
-    mocks.auth.mockResolvedValue({ user: { id: userId, role } });
-    mocks.profile.mockResolvedValue({ ...profile, role });
-    // When
-    const response = await handler(request(path), context());
-    // Then
-    expect(response.status).toBe(200);
-    expect(await response.text()).toBe("PDF");
-    expect(response.headers.get("cache-control")).toBe("private, no-store");
-    expect(response.headers.get("vary")).toBe("Cookie, Authorization");
-    expect(response.headers.get("content-type")).toBe("application/pdf");
-    expect(response.headers.get("content-disposition")).toMatch(/^attachment; filename="[^\r\n/]*"; filename\*=UTF-8''/);
-    expect(response.headers.get("content-security-policy")).toBe("sandbox; default-src 'none'");
-    expect(response.headers.get("x-content-type-options")).toBe("nosniff");
-    expect(response.headers.get("x-request-id")).toMatch(/^[0-9a-f-]{36}$/);
-    expect(response.headers.get("location")).toBeNull();
-    const headers = JSON.stringify([...response.headers]);
-    expect(headers).not.toContain(host);
-    expect(headers).not.toContain(token);
-    expect(mocks.get).toHaveBeenCalledWith(url, expect.objectContaining({
-      access: "private", token, useCache: false, storeId: "resourceqa",
-    }));
-  });
+  it.each(["MEMBER", "FACULTY", "ADMIN"] as const)(
+    "%s는 현재 역할 확인 뒤 서버가 읽은 첨부 스트림만 받는다",
+    async (role) => {
+      // Given: 현재 DB 행과 세션 역할이 같은 승인 회원입니다.
+      mocks.auth.mockResolvedValue({ user: { id: userId, role } });
+      mocks.profile.mockResolvedValue({ ...profile, role });
+      // When
+      const response = await handler(request(path), context());
+      // Then
+      expect(response.status).toBe(200);
+      expect(await response.text()).toBe("PDF");
+      expect(response.headers.get("cache-control")).toBe("private, no-store");
+      expect(response.headers.get("vary")).toBe("Cookie, Authorization");
+      expect(response.headers.get("content-type")).toBe("application/pdf");
+      expect(response.headers.get("content-disposition")).toMatch(
+        /^attachment; filename="[^\r\n/]*"; filename\*=UTF-8''/,
+      );
+      expect(response.headers.get("content-security-policy")).toBe("sandbox; default-src 'none'");
+      expect(response.headers.get("x-content-type-options")).toBe("nosniff");
+      expect(response.headers.get("x-request-id")).toMatch(/^[0-9a-f-]{36}$/);
+      expect(response.headers.get("location")).toBeNull();
+      const headers = JSON.stringify([...response.headers]);
+      expect(headers).not.toContain(host);
+      expect(headers).not.toContain(token);
+      expect(mocks.get).toHaveBeenCalledWith(
+        url,
+        expect.objectContaining({
+          access: "private",
+          token,
+          useCache: false,
+          storeId: "resourceqa",
+        }),
+      );
+    },
+  );
 
   it.each([
     { name: "잘못된 UUID", status: 400, code: "INVALID_INPUT" },
@@ -111,13 +161,21 @@ describe.each(routes)("$name 파일 API", ({ path, handler, repository }) => {
       mocks.auth.mockResolvedValue({ user: { id: userId, role: "PENDING" } });
       mocks.profile.mockResolvedValue({ ...profile, role: "PENDING" });
     }
-    if (scenario.name === "역할 변경") mocks.profile.mockResolvedValue({ ...profile, role: "PENDING" });
+    if (scenario.name === "역할 변경")
+      mocks.profile.mockResolvedValue({ ...profile, role: "PENDING" });
     if (scenario.name === "계정 삭제") mocks.profile.mockResolvedValue(null);
     if (scenario.name === "없는 자료") repository.mockResolvedValue(null);
-    if (scenario.name === "빈 파일 URL") repository.mockResolvedValue({ fileUrl: "", fileName: null });
-    if (scenario.name === "외부 저장소") repository.mockResolvedValue({ fileUrl: "https://attacker.invalid/file.pdf", fileName: null });
-    if (scenario.name === "공급자 304") mocks.get.mockResolvedValue({ statusCode: 304, stream: null, blob: null });
-    if (scenario.name === "공급자 장애") mocks.get.mockRejectedValue(new Error(`private ${url} ${token}`));
+    if (scenario.name === "빈 파일 URL")
+      repository.mockResolvedValue({ fileUrl: "", fileName: null });
+    if (scenario.name === "외부 저장소")
+      repository.mockResolvedValue({
+        fileUrl: "https://attacker.invalid/file.pdf",
+        fileName: null,
+      });
+    if (scenario.name === "공급자 304")
+      mocks.get.mockResolvedValue({ statusCode: 304, stream: null, blob: null });
+    if (scenario.name === "공급자 장애")
+      mocks.get.mockRejectedValue(new Error(`private ${url} ${token}`));
     if (scenario.name === "토큰 누락") vi.stubEnv("RESOURCE_PRIVATE_READ_WRITE_TOKEN", "");
     // When
     const response = await handler(
@@ -136,7 +194,9 @@ describe.each(routes)("$name 파일 API", ({ path, handler, repository }) => {
     expect(response.headers.get("cache-control")).toBe("private, no-store");
     expect(response.headers.get("content-security-policy")).toBe("sandbox; default-src 'none'");
     // 입력·인증·역할 실패는 파일 행 조회와 Blob 읽기 전에 끝납니다.
-    if (["잘못된 UUID", "query", "익명", "PENDING", "역할 변경", "계정 삭제"].includes(scenario.name)) {
+    if (
+      ["잘못된 UUID", "query", "익명", "PENDING", "역할 변경", "계정 삭제"].includes(scenario.name)
+    ) {
       expect(repository).not.toHaveBeenCalled();
       expect(mocks.get).not.toHaveBeenCalled();
     }
@@ -147,9 +207,16 @@ describe.each(routes)("$name 파일 API", ({ path, handler, repository }) => {
   it("응답 본문 취소는 공급자 스트림까지 전파한다", async () => {
     // Given
     const cancel = vi.fn();
-    mocks.get.mockResolvedValue({ statusCode: 200, blob: { contentType: "application/pdf" }, stream: new ReadableStream({
-      pull() { return new Promise<void>(() => undefined); }, cancel,
-    }) });
+    mocks.get.mockResolvedValue({
+      statusCode: 200,
+      blob: { contentType: "application/pdf" },
+      stream: new ReadableStream({
+        pull() {
+          return new Promise<void>(() => undefined);
+        },
+        cancel,
+      }),
+    });
     const response = await handler(request(path), context());
     // When
     await response.body?.cancel();
@@ -162,7 +229,11 @@ describe.each(routes)("$name 파일 API", ({ path, handler, repository }) => {
     const entered = Promise.withResolvers<AbortSignal>();
     mocks.get.mockImplementation((_url, options: { abortSignal: AbortSignal }) => {
       entered.resolve(options.abortSignal);
-      return new Promise((_resolve, reject) => options.abortSignal.addEventListener("abort", () => reject(options.abortSignal.reason), { once: true }));
+      return new Promise((_resolve, reject) =>
+        options.abortSignal.addEventListener("abort", () => reject(options.abortSignal.reason), {
+          once: true,
+        }),
+      );
     });
     const controller = new AbortController();
     const pending = handler(request(path, "", { signal: controller.signal }), context());
@@ -178,8 +249,11 @@ describe.each(routes)("$name 파일 API", ({ path, handler, repository }) => {
   it("응답 구성 실패도 공급자 스트림을 취소하고 503으로 끝난다", async () => {
     // Given: 헤더로 쓸 수 없는 저장 MIME입니다.
     const cancel = vi.fn();
-    mocks.get.mockResolvedValue({ statusCode: 200, blob: { contentType: "application/pdf\r\nX-Injected: 1" },
-      stream: new ReadableStream({ cancel }) });
+    mocks.get.mockResolvedValue({
+      statusCode: 200,
+      blob: { contentType: "application/pdf\r\nX-Injected: 1" },
+      stream: new ReadableStream({ cancel }),
+    });
     // When
     const response = await handler(request(path), context());
     // Then
@@ -207,9 +281,15 @@ describe.each(routes)("$name 파일 API", ({ path, handler, repository }) => {
 
   it("시작 뒤 공급자 오류는 원문 없는 고정 스트림 오류로 끝난다", async () => {
     // Given
-    mocks.get.mockResolvedValue({ statusCode: 200, blob: { contentType: "application/pdf" }, stream: new ReadableStream({
-      pull() { throw new Error(url); },
-    }) });
+    mocks.get.mockResolvedValue({
+      statusCode: 200,
+      blob: { contentType: "application/pdf" },
+      stream: new ReadableStream({
+        pull() {
+          throw new Error(url);
+        },
+      }),
+    });
     const response = await handler(request(path), context());
     // When
     const reading = response.text();
@@ -223,8 +303,13 @@ describe.each(routes)("$name 파일 API", ({ path, handler, repository }) => {
     // When
     const rule = rules?.find((item) => item.source === `/api/v1/resources/${path}/:id/file`);
     // Then
-    expect(rule?.headers).toContainEqual({ key: "Content-Security-Policy", value: "sandbox; default-src 'none'" });
-    expect(rules?.indexOf(rule!)).toBeGreaterThan(rules?.findIndex((item) => item.source === "/api/:path*") ?? -1);
+    expect(rule?.headers).toContainEqual({
+      key: "Content-Security-Policy",
+      value: "sandbox; default-src 'none'",
+    });
+    expect(rules?.indexOf(rule!)).toBeGreaterThan(
+      rules?.findIndex((item) => item.source === "/api/:path*") ?? -1,
+    );
   });
 });
 
@@ -240,13 +325,16 @@ describe("파일 인가 조회 입력", () => {
     expect(mocks.get).not.toHaveBeenCalled();
   });
 
-  it("주차별 텍스트 파일은 다른 기수 회원도 공동 자료 정책으로 받는다", async () => {
-    // Given: 요청자는 cohortA 소속이며 저장소는 기수 조건 없이 ID로만 찾습니다.
+  it("주차별 텍스트 파일은 현재 계정 주체를 저장소의 기수 범위 조회(#441)에 넘긴다", async () => {
+    // Given: 요청자는 cohortA 소속이며 기수 범위는 저장소 SQL 조건이 강제합니다(실제 SQL은 weekly-text-cohort-scope-postgres).
     // When
     const response = await weeklyTextFile(request("weekly-texts"), context());
     // Then
     expect(response.status).toBe(200);
-    expect(mocks.weekly).toHaveBeenCalledWith(id);
+    expect(mocks.weekly).toHaveBeenCalledWith(
+      expect.objectContaining({ id: userId, role: "MEMBER" }),
+      id,
+    );
     await response.body?.cancel();
   });
 });

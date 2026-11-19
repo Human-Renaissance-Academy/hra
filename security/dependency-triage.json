@@ -4,7 +4,7 @@
   "manifestBinding": {
     "algorithm": "sha256",
     "input": "package-json.raw-bytes-v1",
-    "digest": "f54b09a671cb4b145f594067ae2b85d966412cd85938b1df0fddd3f815e94dd5"
+    "digest": "c9829bbd83ae1d89054782b250bfcb06e4d49260a6e25f4c540d3b272ab7f0bf"
   },
   "lockBinding": {
     "algorithm": "sha256",

@@ -179,7 +179,7 @@ const DIRECT_CHECK_COMMANDS = Object.values(CHECK_COMMANDS).flat();
  */
 const REVIEWED_PIPELINE_DIGESTS = {
   "ci.yml:scope": "aca77f0afc12dc899bfb04730a18ef0cd3cc7e468d1bcb9d065745721f5b11ab",
-  "ci.yml:ci": "8b83bc1da3bc6b368d0b02a4623e85381933e6b9c3c8486cce8e34e390aabaa2",
+  "ci.yml:ci": "93861acea51ba1eb3e6330295037cd8cc26d82aa6322819945c372193e6a7bd3",
   "process-format.yml:pull-request":
     "ae70c42a9c814c1df9e9c238b87353f08b462cc50160cfa6b485820e83a263f1",
   "process-format.yml:contracts":
