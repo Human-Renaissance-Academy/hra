@@ -50,6 +50,30 @@
       ]
     },
     {
+      "ref": "scripts/migrate-academic-assignment-reviews.sql",
+      "phase": "academic",
+      "fresh": {
+        "disposition": "unresolved",
+        "required": true,
+        "reason": "G3 과제 검토·피드백 이력과 지정 검토자 제출 파일 열람 감사의 격리 검증 후보이며 #143 정책 P11·P12 운영 승인과 fresh bundle 편입 검토 전에는 설치를 확정하지 않는다."
+      },
+      "objects": ["academic-assignment-review-tables", "academic-assignment-review-functions", "academic-assignment-review-triggers"],
+      "requires": ["web-base"],
+      "checks": [
+        "소유 PostgreSQL에서 지정 검토자 한정·자기 제출물 거부·관리자 전용 공개(작성자 공개 금지)·버전 경합과 재적용 멱등성을 확인한다.",
+        "이름만 같은 다른 표·제약·인덱스·트리거를 수용하지 않고 전체 롤백하며 PUBLIC 함수 실행 권한이 없는지 확인한다."
+      ],
+      "evidence": [
+        { "file": "scripts/migrate-academic-assignment-reviews.sql", "line": 1, "note": "G1 제출, #165 학사 운영 관리자, #161 검토 권한 판정에 의존하는 G3 추가형 표·함수·트리거의 검토 후보 원문이다. 운영 적용 이력이 아니다." },
+        { "file": "tests/unit/academic-assignment-reviews-postgres.test.ts", "line": 1, "note": "소유 PostgreSQL의 인가·자기 검토 금지·공개 분리·버전 경합·이력·파일 열람 감사 회귀이며 전체 신규 설치를 증명하지 않는다." }
+      ],
+      "unresolved": [
+        "#143 운영 승인·운영 대상 catalog·권한·백업/복구와 #280 gate는 미완료다.",
+        "G1 g1Order·schema export·fresh bundle에 자동 편입하거나 운영 manifest를 적용됨으로 기록하지 않는다.",
+        "피드백 1년 보존 후 파기 함수는 별도 승인 대상이다."
+      ]
+    },
+    {
       "ref": "scripts/migrate-academic-faculty-reviewers.sql",
       "phase": "academic",
       "fresh": {
@@ -1913,6 +1937,45 @@
       "requiredForFresh": true
     },
     {
+      "id": "academic-assignment-review-tables",
+      "kind": "table-set",
+      "names": ["public.academic_assignment_reviews", "public.academic_assignment_review_events", "public.academic_assignment_review_file_reads"],
+      "owner": "scripts/migrate-academic-assignment-reviews.sql",
+      "definitions": [
+        { "source": "scripts/migrate-academic-assignment-reviews.sql", "relationship": "primary", "reason": "과제 검토 현재 행·추가 전용 버전 이력·검토자 파일 열람 감사 표의 검토 후보 정의이다." }
+      ],
+      "requires": ["web-base"],
+      "checks": ["소유 PostgreSQL에서 재적용·구조 불일치 롤백과 검토 저장 버전 경합 회귀를 확인한다."],
+      "unresolved": ["운영 catalog 관측과 승인된 upgrade·fresh bundle 편입은 #143·#280 후속 검토 대상이다."],
+      "requiredForFresh": true
+    },
+    {
+      "id": "academic-assignment-review-functions",
+      "kind": "function-set",
+      "names": ["public.guard_academic_assignment_review", "public.assert_academic_assignment_review_history", "public.guard_academic_assignment_review_events", "public.require_academic_submission_reviewer", "public.append_academic_assignment_review_event", "public.save_academic_assignment_review", "public.submit_academic_assignment_review", "public.publish_academic_assignment_feedback", "public.retract_academic_assignment_feedback", "public.list_academic_review_submissions", "public.list_academic_feedback_for_publication", "public.list_published_academic_feedback", "public.authorize_academic_review_file_read"],
+      "owner": "scripts/migrate-academic-assignment-reviews.sql",
+      "definitions": [
+        { "source": "scripts/migrate-academic-assignment-reviews.sql", "relationship": "primary", "reason": "검토 저장·제출·공개·공개 취소·목록·검토자 파일 열람 허가 SQL 함수의 검토 후보 정의이다." }
+      ],
+      "requires": ["web-base"],
+      "checks": ["소유 PostgreSQL에서 재적용·구조 불일치 롤백과 검토 저장 버전 경합 회귀를 확인한다."],
+      "unresolved": ["운영 catalog 관측과 승인된 upgrade·fresh bundle 편입은 #143·#280 후속 검토 대상이다."],
+      "requiredForFresh": true
+    },
+    {
+      "id": "academic-assignment-review-triggers",
+      "kind": "trigger-set",
+      "names": ["public.academic_assignment_reviews.academic_assignment_reviews_guard", "public.academic_assignment_reviews.academic_assignment_reviews_history", "public.academic_assignment_reviews.academic_assignment_reviews_truncate_guard", "public.academic_assignment_review_events.academic_assignment_review_events_guard", "public.academic_assignment_review_events.academic_assignment_review_events_truncate_guard", "public.academic_assignment_review_file_reads.academic_assignment_review_file_reads_guard", "public.academic_assignment_review_file_reads.academic_assignment_review_file_reads_truncate_guard"],
+      "owner": "scripts/migrate-academic-assignment-reviews.sql",
+      "definitions": [
+        { "source": "scripts/migrate-academic-assignment-reviews.sql", "relationship": "primary", "reason": "검토 행 버전 순서·이력 동반·이력/감사 추가 전용을 강제하는 트리거의 검토 후보 정의이다." }
+      ],
+      "requires": ["web-base"],
+      "checks": ["소유 PostgreSQL에서 재적용·구조 불일치 롤백과 검토 저장 버전 경합 회귀를 확인한다."],
+      "unresolved": ["운영 catalog 관측과 승인된 upgrade·fresh bundle 편입은 #143·#280 후속 검토 대상이다."],
+      "requiredForFresh": true
+    },
+    {
       "id": "academic-faculty-review-tables",
       "kind": "table-set",
       "names": ["public.academic_faculty_account_links", "public.academic_class_reviewer_designations", "public.academic_faculty_review_events"],
@@ -3601,6 +3664,7 @@
           "ref": "scripts/migrate-507-email-identity-unique.sql",
           "reason": "기존 통합 fixture는 #507 검토 인덱스를 적용하지 않는다. 전용 auth 격리 경합 검증과 별개로 fresh bundle·운영 편입은 미해결이다."
         },
+        { "ref": "scripts/migrate-academic-assignment-reviews.sql", "reason": "G3 과제 검토·피드백 후보는 이 fixture 범위 밖이며 전용 격리 회귀로 검증한다. fresh bundle·운영 편입은 미해결이다." },
         { "ref": "scripts/migrate-academic-faculty-reviewers.sql", "reason": "G2 교수 과제 검토 권한 후보는 이 fixture 범위 밖이며 전용 격리 회귀로 검증한다. fresh bundle·운영 편입은 미해결이다." },
         { "ref": "scripts/migrate-academic-staff-assignments.sql", "reason": "G2 운영 인력 배정 후보는 이 fixture 범위 밖이며 전용 격리 회귀로 검증한다. fresh bundle·운영 편입은 미해결이다." },
         { "ref": "scripts/migrate-academic-attendance.sql", "reason": "G2 출결 후보는 이 fixture 범위 밖이며 전용 격리 회귀로 검증한다. fresh bundle·운영 편입은 미해결이다." },
@@ -3799,6 +3863,7 @@
           "ref": "scripts/migrate-507-email-identity-unique.sql",
           "reason": "기존 통합 fixture는 #507 검토 인덱스를 적용하지 않는다. 전용 auth 격리 경합 검증과 별개로 fresh bundle·운영 편입은 미해결이다."
         },
+        { "ref": "scripts/migrate-academic-assignment-reviews.sql", "reason": "G3 과제 검토·피드백 후보는 이 fixture 범위 밖이며 전용 격리 회귀로 검증한다. fresh bundle·운영 편입은 미해결이다." },
         { "ref": "scripts/migrate-academic-faculty-reviewers.sql", "reason": "G2 교수 과제 검토 권한 후보는 이 fixture 범위 밖이며 전용 격리 회귀로 검증한다. fresh bundle·운영 편입은 미해결이다." },
         { "ref": "scripts/migrate-academic-staff-assignments.sql", "reason": "G2 운영 인력 배정 후보는 이 fixture 범위 밖이며 전용 격리 회귀로 검증한다. fresh bundle·운영 편입은 미해결이다." },
         { "ref": "scripts/migrate-academic-attendance.sql", "reason": "G2 출결 후보는 이 fixture 범위 밖이며 전용 격리 회귀로 검증한다. fresh bundle·운영 편입은 미해결이다." },
