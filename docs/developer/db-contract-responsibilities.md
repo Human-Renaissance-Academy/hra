@@ -47,7 +47,7 @@
 
 - 계약 `sources[].objects`와 `objects[].definitions[].source`는 서로의 역참조입니다. 한쪽만 고치면 `INSTALL_SOURCE_DEFINITION_MISSING` 또는 `INSTALL_DEFINITION_SOURCE_MISSING`이 납니다.
 - 계약 `sources[].requires`(객체 ID)는 소스 간 선행 관계를 객체 소유자로 간접 표현하고, inventory `predecessors`(후보 ID)는 같은 관계를 직접 표현합니다. 검증기는 두 그래프를 합쳐 순환(`INSTALL_SOURCE_CYCLE`)만 검사하며 **두 표현이 같은 순서를 뜻하는지는 검사하지 않습니다.** 예: `scripts/migrate-287-rate-limit-reservation-index.sql`은 inventory에서 `id: "287-reservation-index"`, `predecessors: []`이지만 계약에서는 `requires: ["rate-events"]`(객체 ID)로 선행 조건을 기록해 서로 다른 어휘를 씁니다.
-- `g1Order`(inventory 9개)는 소스 모듈의 `academicG1Migrations` 리터럴과 **정확히 같아야** 하고(`G1_ORDER_MISMATCH`), 계약 fixture의 `inventory-order` 단계가 이를 다시 참조합니다.
+- `g1Order`(inventory 10개)는 소스 모듈의 `academicG1Migrations` 리터럴과 **정확히 같아야** 하고(`G1_ORDER_MISMATCH`), 계약 fixture의 `inventory-order` 단계가 이를 다시 참조합니다.
 - 계약 `evidence[].file`/`line`은 소스 파일의 줄 번호를 복제합니다. 줄이 밀려도 파일이 추적되고 줄 수 안이면 통과하므로(`INSTALL_EVIDENCE_LOCATION`은 범위만 검사) **의미 일치는 리뷰어 몫**입니다.
 
 ### 2.4 스크립트 목록
