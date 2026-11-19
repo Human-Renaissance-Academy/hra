@@ -1,6 +1,7 @@
 /**
  * 승인된 회원에게 자료실 파일을 같은 출처로 스트리밍합니다.
  * 응답의 Content-Disposition에 DB의 원본 파일명을 넣어 한글 이름으로 저장합니다.
+ * 주차별 텍스트 첨부·사진은 MEMBER 본인 기수만 SQL 조건으로 조회하며(#441) 범위 밖은 없는 파일과 같은 404입니다.
  * 승인 회원 확인 뒤 API v1 자료 경로와 같은 사용자별 조회 예산(#444)을 예약하며,
  * 초과는 429와 `Retry-After`, 제한 저장소 장애는 자료를 제공하지 않는 503(fail-closed)입니다.
  */
@@ -13,6 +14,7 @@ import {
   ResourceReadLimitUnavailableError,
   ResourceReadRateLimitError,
 } from "@/features/resources/read-limit";
+import { weeklyTextReadFilter } from "@/features/weekly-texts/access";
 import { db } from "@/lib/db";
 import {
   classLogImages,
@@ -146,13 +148,16 @@ export async function GET(request: Request, { params }: Context): Promise<Respon
     [file] = await db
       .select({ fileUrl: weeklyTexts.fileUrl, fileName: weeklyTexts.fileName })
       .from(weeklyTexts)
-      .where(eq(weeklyTexts.id, parsedId.data))
+      // 기수 열람 범위(#441)를 조회 조건에서 강제해 다른 기수 첨부는 없는 파일과 같게 처리합니다.
+      .where(and(eq(weeklyTexts.id, parsedId.data), weeklyTextReadFilter(session.user)))
       .limit(1);
   } else if (kind === "weekly-text-images") {
     const [row] = await db
       .select({ fileUrl: weeklyTextImages.url })
       .from(weeklyTextImages)
-      .where(eq(weeklyTextImages.id, parsedId.data))
+      // 사진은 소속 텍스트의 기수 열람 범위(#441)를 그대로 따릅니다.
+      .innerJoin(weeklyTexts, eq(weeklyTextImages.weeklyTextId, weeklyTexts.id))
+      .where(and(eq(weeklyTextImages.id, parsedId.data), weeklyTextReadFilter(session.user)))
       .limit(1);
     file = row ? { ...row, fileName: null } : undefined;
     image = true;

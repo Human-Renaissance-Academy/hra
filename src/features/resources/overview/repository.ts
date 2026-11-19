@@ -6,9 +6,18 @@ import "server-only";
 
 import { asc, desc, eq, sql } from "drizzle-orm";
 import { classMaterialReadFilter } from "@/features/class-materials/access";
+import { weeklyTextReadFilter } from "@/features/weekly-texts/access";
 import { db } from "@/lib/db";
 import { cohortNumberDesc } from "@/lib/db/cohort-order";
-import { classMaterials, classLogs, cohorts, guidebooks, reportTemplates, users, weeklyTexts } from "@/lib/db/schema";
+import {
+  classMaterials,
+  classLogs,
+  cohorts,
+  guidebooks,
+  reportTemplates,
+  users,
+  weeklyTexts,
+} from "@/lib/db/schema";
 
 export type ApprovedResourceRole = "ADMIN" | "FACULTY" | "MEMBER";
 
@@ -59,58 +68,66 @@ export async function loadResourcesOverviewRows(verified: {
 }): Promise<ResourcesOverviewRows> {
   const [cohortRows, logs, textRows, materials, books, templates] = await Promise.all([
     // 숫자가 없는 기수명도 안전하게 뒤로 보내는 기존 공용 정렬을 사용합니다.
-    db.select({ id: cohorts.id, name: cohorts.name })
+    db
+      .select({ id: cohorts.id, name: cohorts.name })
       .from(cohorts)
       .orderBy(cohortNumberDesc(cohorts.name)),
-    db.select({
-      id: classLogs.id,
-      title: classLogs.title,
-      classDate: classLogs.classDate,
-      createdAt: classLogs.createdAt,
-      authorName: users.name,
-      cohortId: classLogs.cohortId,
-    })
+    db
+      .select({
+        id: classLogs.id,
+        title: classLogs.title,
+        classDate: classLogs.classDate,
+        createdAt: classLogs.createdAt,
+        authorName: users.name,
+        cohortId: classLogs.cohortId,
+      })
       .from(classLogs)
       .leftJoin(users, eq(classLogs.authorId, users.id))
       .orderBy(desc(classLogs.classDate), desc(classLogs.createdAt)),
     // 본문·파일 URL은 조회 결과에 실어 보내지 않고 기존 truthy 분기만 DB에서 계산합니다.
-    db.select({
-      id: weeklyTexts.id,
-      title: weeklyTexts.title,
-      hasBody: sql<boolean>`coalesce(${weeklyTexts.body} <> '', false)`,
-      hasFile: sql<boolean>`coalesce(${weeklyTexts.fileUrl} <> '', false)`,
-      classDate: weeklyTexts.classDate,
-      createdAt: weeklyTexts.createdAt,
-      cohortId: weeklyTexts.cohortId,
-      textType: weeklyTexts.textType,
-    })
+    db
+      .select({
+        id: weeklyTexts.id,
+        title: weeklyTexts.title,
+        hasBody: sql<boolean>`coalesce(${weeklyTexts.body} <> '', false)`,
+        hasFile: sql<boolean>`coalesce(${weeklyTexts.fileUrl} <> '', false)`,
+        classDate: weeklyTexts.classDate,
+        createdAt: weeklyTexts.createdAt,
+        cohortId: weeklyTexts.cohortId,
+        textType: weeklyTexts.textType,
+      })
       .from(weeklyTexts)
+      // 주차별 텍스트는 MEMBER 본인 기수만 SQL WHERE에서 거릅니다(#441).
+      .where(weeklyTextReadFilter({ id: verified.id, role: verified.role }))
       .orderBy(sql`${weeklyTexts.classDate} DESC NULLS LAST`, desc(weeklyTexts.createdAt)),
-    db.select({
-      id: classMaterials.id,
-      title: classMaterials.title,
-      classDate: classMaterials.classDate,
-      createdAt: classMaterials.createdAt,
-      audience: classMaterials.audience,
-      weekNumber: classMaterials.weekNumber,
-      lectureTitle: classMaterials.lectureTitle,
-      uploaderName: users.name,
-    })
+    db
+      .select({
+        id: classMaterials.id,
+        title: classMaterials.title,
+        classDate: classMaterials.classDate,
+        createdAt: classMaterials.createdAt,
+        audience: classMaterials.audience,
+        weekNumber: classMaterials.weekNumber,
+        lectureTitle: classMaterials.lectureTitle,
+        uploaderName: users.name,
+      })
       .from(classMaterials)
       .leftJoin(users, eq(classMaterials.uploadedById, users.id))
       // 인가를 조회 후 필터가 아닌 SQL WHERE에서 강제합니다.
       .where(classMaterialReadFilter({ id: verified.id, role: verified.role }))
       .orderBy(sql`${classMaterials.classDate} DESC NULLS LAST`, desc(classMaterials.createdAt)),
-    db.select({ id: guidebooks.id, title: guidebooks.title, createdAt: guidebooks.createdAt })
+    db
+      .select({ id: guidebooks.id, title: guidebooks.title, createdAt: guidebooks.createdAt })
       .from(guidebooks)
       .orderBy(desc(guidebooks.createdAt)),
-    db.select({
-      id: reportTemplates.id,
-      slug: reportTemplates.slug,
-      title: reportTemplates.title,
-      category: reportTemplates.category,
-      createdAt: reportTemplates.createdAt,
-    })
+    db
+      .select({
+        id: reportTemplates.id,
+        slug: reportTemplates.slug,
+        title: reportTemplates.title,
+        category: reportTemplates.category,
+        createdAt: reportTemplates.createdAt,
+      })
       .from(reportTemplates)
       .where(eq(reportTemplates.published, true))
       .orderBy(asc(reportTemplates.order), asc(reportTemplates.createdAt)),

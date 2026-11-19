@@ -42,6 +42,8 @@ export interface CfbStreamInput {
   data: Uint8Array;
   /** true면 내용 없는 저장소(storage) 엔트리로 씁니다(BodyText·Scripts 등). */
   storage?: boolean;
+  /** 저장소 엔트리의 직계 자식(예: HWP `Scripts` 안의 `DefaultJScript`). 저장소일 때만 의미가 있습니다. */
+  children?: CfbStreamInput[];
 }
 
 /** 작성된 CFB와 변형 테스트용 섹터 배치 정보 */
@@ -57,7 +59,25 @@ export interface CfbFixture {
  * - 4096바이트 미만 스트림은 미니 스트림에, 이상은 일반 섹터에 저장합니다.
  * - 디렉터리 트리는 루트 child → 1번, 각 엔트리 right → 다음 엔트리로 단순 연결합니다.
  */
-export function buildCfb(streams: CfbStreamInput[]): CfbFixture {
+export function buildCfb(topLevel: CfbStreamInput[]): CfbFixture {
+  // 저장소의 자식을 포함해 디렉터리 엔트리 순서(최상위 먼저, 이어서 자식)로 펼칩니다.
+  // 엔트리 번호 = 배열 인덱스 + 1, 형제는 right로 단순 연결하고 저장소는 첫 자식을 child로 가집니다.
+  const streams: CfbStreamInput[] = [...topLevel];
+  const childLinks = new Map<number, { child: number; right: number }>();
+  const topRight = (index: number) => (index + 1 < topLevel.length ? index + 2 : NO_STREAM);
+  topLevel.forEach((stream, index) => {
+    childLinks.set(index, { child: NO_STREAM, right: topRight(index) });
+    const children = stream.children ?? [];
+    children.forEach((child, at) => {
+      const childIndex = streams.length;
+      streams.push(child);
+      childLinks.set(childIndex, {
+        child: NO_STREAM,
+        right: at + 1 < children.length ? childIndex + 2 : NO_STREAM,
+      });
+      if (at === 0) childLinks.get(index)!.child = childIndex + 1;
+    });
+  });
   const sectors: Uint8Array[] = [];
   const fat: number[] = [];
   // 데이터를 512바이트 섹터로 나눠 FAT 체인을 만들고 시작 섹터 번호를 돌려줍니다.
@@ -141,7 +161,7 @@ export function buildCfb(streams: CfbStreamInput[]): CfbFixture {
     0,
     "Root Entry",
     5,
-    streams.length > 0 ? 1 : NO_STREAM,
+    topLevel.length > 0 ? 1 : NO_STREAM,
     NO_STREAM,
     rootSectors.length > 0 ? rootSectors[0] : END_OF_CHAIN,
     miniStream.length,
@@ -151,8 +171,8 @@ export function buildCfb(streams: CfbStreamInput[]): CfbFixture {
       index + 1,
       stream.name,
       stream.storage ? 1 : 2,
-      NO_STREAM,
-      index + 1 < streams.length ? index + 2 : NO_STREAM,
+      childLinks.get(index)?.child ?? NO_STREAM,
+      childLinks.get(index)?.right ?? NO_STREAM,
       stream.storage ? 0 : (starts.get(index) ?? END_OF_CHAIN),
       stream.storage ? 0 : stream.data.length,
     );
