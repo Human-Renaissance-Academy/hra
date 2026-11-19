@@ -22,6 +22,31 @@ export interface StudentAssignmentSummary {
 export interface StudentAssignmentDetail extends StudentAssignmentSummary {
   instructions: string;
   file: { fileId: string; originalName: string; mimeType: string; sizeBytes: number } | null;
+  /**
+   * #516 텍스트·발표자료 분리 제출(V2) 과제에만 있습니다. 분리 제출 기능 gate가 꺼져 있거나
+   * 기존 PDF 단일 제출 과제이면 키 자체가 없고 위 `file`로 기존 화면을 그대로 사용합니다.
+   */
+  artifacts?: StudentAssignmentArtifacts;
+}
+
+export type StudentArtifactType = "TEXT" | "SLIDES";
+export type StudentArtifactRequirement = "REQUIRED" | "OPTIONAL" | "DISABLED";
+
+// V2 최종 제출 파일 메타. 저장 키·체크섬은 포함하지 않으며 다운로드는 기존 서버 인가 경로를 사용합니다.
+export interface StudentArtifactFile {
+  fileId: string;
+  artifactType: StudentArtifactType;
+  fileFormat: "PDF" | "HWP" | "HWPX" | "PPT" | "PPTX";
+  originalName: string;
+  mimeType: string;
+  sizeBytes: number;
+}
+
+export interface StudentAssignmentArtifacts {
+  textRequirement: StudentArtifactRequirement;
+  slidesRequirement: StudentArtifactRequirement;
+  // 최종 제출 전에는 빈 배열, 제출 후에는 1~2개(항목별 1개)입니다.
+  files: StudentArtifactFile[];
 }
 
 export interface StudentAssignmentPage {

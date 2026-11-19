@@ -10,6 +10,7 @@ import { listMyPublishedFeedback } from "@/features/academics/assignment-reviews
 import { getWebAcademicPrincipal } from "@/features/academics/staff/web-principal";
 import { logServerError } from "@/lib/errors";
 import { FileSubmissionForm } from "../_components/file-submission-form";
+import { ArtifactSubmissionForm } from "../_components/artifact-submission-form";
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "과제 상세" };
 
@@ -61,7 +62,12 @@ export default async function MyAssignmentPage({ params }: { params: Promise<{ i
       >
         {assignment.instructions || "추가 안내가 없습니다."}
       </section>
-      <FileSubmissionForm assignment={assignment} open={open} />
+      {/* #516: 분리 제출 gate가 켜진 V2 과제에만 artifacts가 있다. 그 밖에는 기존 PDF 단일 제출 화면을 그대로 쓴다. */}
+      {assignment.artifacts ? (
+        <ArtifactSubmissionForm assignment={assignment} open={open} />
+      ) : (
+        <FileSubmissionForm assignment={assignment} open={open} />
+      )}
       {feedbackFailed && (
         <p role="alert">피드백을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.</p>
       )}
