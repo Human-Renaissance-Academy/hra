@@ -1,8 +1,8 @@
 -- #280 소유 로컬 fresh 후보: 운영 적용·실제 과거 적용 이력이 아닙니다.
 -- 원본 참조: scripts/migrate-academic-submission-artifacts.sql
--- 검토 원본 SHA256: e61ae9a61574e95c006bed6f6e24167cb6be915b93aabb95d87a7f2067372b12
--- reviewedDelta: 3행 BEGIN; → 제외; 6행 SET LOCAL statement_timeout = '60s'; → 제외; 910행 COMMIT; → 제외
--- 원본→후보 보존 행: 1-2→11-12; 4-5→13-14; 7-909→15-917
+-- 검토 원본 SHA256: be7cc23f91867b1039d7d6fe5c2a71948028ac18ae61f7b5e67d314df610c24f
+-- reviewedDelta: 3행 BEGIN; → 제외; 6행 SET LOCAL statement_timeout = '60s'; → 제외; 940행 COMMIT; → 제외
+-- 원본→후보 보존 행: 1-2→11-12; 4-5→13-14; 7-939→15-947
 -- 사유: 파일 transaction은 S2가 소유하며 설치 statement timeout은 더 강한 engine 한도를 적용합니다.
 -- 보존: 내부 BEGIN/END·search_path·advisory lock·함수 본문/proconfig·ACL·FK/trigger·임시 expected 객체.
 -- namespaceDelta: 없음. app DDL은 기존 public 명시, TEMP/INDEX는 PostgreSQL의 원래 namespace 규칙을 보존합니다.
@@ -376,6 +376,35 @@ END;
 $shape$;
 DROP SCHEMA hra_artifacts_expected CASCADE;
 
+-- 이 SQL은 기존 트리거가 호출하는 함수 본문만 바꾼다. 트리거가 빠졌거나 비활성·다른 함수·지연 설정이면 V2 보호가 없으므로 거부한다.
+DO $triggers$
+DECLARE expected record;
+BEGIN
+  FOR expected IN SELECT * FROM (VALUES
+    ('public.assignments','academic_assignment_guard','public.guard_academic_assignment()',false),
+    ('public.assignments','academic_assignment_snapshot','public.snapshot_academic_assignment()',false),
+    ('public.assignment_upload_intents','academic_upload_intent_guard','public.guard_academic_upload_intent()',false),
+    ('public.assignment_upload_intents','academic_upload_consumed_complete','public.assert_academic_submission_complete()',true),
+    ('public.assignment_submissions','academic_final_submission_guard','public.guard_academic_final_submission()',false),
+    ('public.assignment_submissions','academic_upload_authorization_final_guard','public.guard_authorized_academic_submission()',false),
+    ('public.assignment_submissions','academic_submission_complete','public.assert_academic_submission_complete()',true),
+    ('public.assignment_submission_files','academic_final_file_guard','public.guard_academic_final_submission()',false),
+    ('public.assignment_submission_files','academic_submission_file_complete','public.assert_academic_submission_complete()',true)
+  ) v(table_name,trigger_name,function_signature,deferred) LOOP
+    IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgrelid=expected.table_name::regclass AND tgname=expected.trigger_name
+      AND NOT tgisinternal AND tgenabled='O' AND tgfoid=to_regprocedure(expected.function_signature)
+      AND tgdeferrable=expected.deferred AND tginitdeferred=expected.deferred) THEN
+      RAISE EXCEPTION '제출 산출물 보호 트리거 불일치: %',expected.trigger_name;
+    END IF;
+  END LOOP;
+  IF EXISTS (SELECT 1 FROM pg_trigger WHERE NOT tgisinternal AND tgenabled<>'O'
+    AND tgrelid IN ('public.assignments'::regclass,'public.assignment_upload_intents'::regclass,'public.assignment_submissions'::regclass,
+      'public.assignment_submission_files'::regclass,'public.academic_upload_authorizations'::regclass)) THEN
+    RAISE EXCEPTION '제출 산출물 표에 비활성 트리거가 있습니다.';
+  END IF;
+END;
+$triggers$;
+
 -- 3) 트리거 함수의 V2 분기. 잠금 순서는 G1과 같이 대상 → 계정 → 학생/학적 → 과제 → 업로드 의도 → 발급 원장이다.
 -- 의도 생성 시 과제 형식과 산출물 유형을 대조한다. LEGACY 과제에는 LEGACY_PDF만, V2 과제에는 미사용이 아닌 TEXT/SLIDES만 허용한다.
 CREATE OR REPLACE FUNCTION public.guard_academic_upload_intent() RETURNS trigger
@@ -459,6 +488,7 @@ $final$;
 
 -- 지연 검사(COMMIT/SET CONSTRAINTS)에서 제출·파일·소비 의도의 완결성을 형식별로 확인한다.
 -- V2는 파일 1~2개, 유형별 1개, 과제의 필수·미사용 규칙, 제출 합계 100MiB(104,857,600바이트), 검증된 발급 원장을 요구한다.
+-- V2 제출 행은 단일 의도를 참조하지 않아 INSERT guard가 의도 만료를 볼 수 없으므로, 각 의도가 확정 제출 시각보다 늦게 만료되는지도 여기서 확인한다.
 CREATE OR REPLACE FUNCTION public.assert_academic_submission_complete() RETURNS trigger
 LANGUAGE plpgsql SET search_path=pg_catalog,public AS $complete$
 DECLARE final_id uuid; final_row public.assignment_submissions; definition public.assignments;
@@ -495,7 +525,7 @@ BEGIN
     coalesce(bool_or(f.artifact_type='SLIDES'),false),
     count(*) FILTER (WHERE f.artifact_type NOT IN ('TEXT','SLIDES') OR NOT EXISTS (
       SELECT 1 FROM public.assignment_upload_intents i JOIN public.academic_upload_authorizations au ON au.intent_id=i.id
-      WHERE i.storage_key=f.storage_key AND i.state='CONSUMED'
+      WHERE i.storage_key=f.storage_key AND i.state='CONSUMED' AND i.expires_at>final_row.submitted_at
         AND i.assignment_target_id=final_row.assignment_target_id AND i.user_id=final_row.submitted_by_user_id
         AND ROW(i.original_name,i.mime_type,i.size_bytes,i.checksum,i.artifact_type,i.file_format)
           IS NOT DISTINCT FROM ROW(f.original_name,f.mime_type,f.size_bytes,f.checksum,f.artifact_type,f.file_format)

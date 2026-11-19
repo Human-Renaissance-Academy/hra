@@ -212,7 +212,7 @@ export async function assertFreshReferenceObjects(session) {
 }
 
 /** owner/ACL/SECURITY/search_path/index/trigger/RLS를 원문을 반환하지 않는 boolean으로 확인한다. */
-async function assertCommon(session) {
+async function assertCommon(session, installed) {
   const row = (
     await session.query(`SELECT
     current_user='hra_migration_operator' AND NOT (SELECT rolsuper FROM pg_catalog.pg_roles WHERE rolname=current_user) AS non_super,
@@ -253,18 +253,20 @@ async function assertCommon(session) {
       "FRESH_PUBLIC_EXECUTE_EXPOSED",
     );
   }
+  // 해당 원문을 설치한 prefix부터는 이름이 같은 정의가 정확히 1개 있어야 하며, 그 전에는 없어야 한다.
+  const artifactsInstalled = installed.has("scripts/migrate-academic-submission-artifacts.sql");
   for (const name of revokedFunctionNames) {
-    ensure(
-      (
-        await session.query(
-          `SELECT NOT EXISTS(SELECT 1 FROM pg_catalog.pg_proc p,
+    const row = (
+      await session.query(
+        `SELECT (SELECT count(*)::integer FROM pg_catalog.pg_proc p WHERE p.pronamespace='public'::regnamespace AND p.proname=$1) AS total,
+      NOT EXISTS(SELECT 1 FROM pg_catalog.pg_proc p,
       LATERAL pg_catalog.aclexplode(COALESCE(p.proacl,pg_catalog.acldefault('f',p.proowner))) a
       WHERE p.pronamespace='public'::regnamespace AND p.proname=$1 AND a.grantee=0 AND a.privilege_type='EXECUTE') AS ok`,
-          [name],
-        )
-      ).rows[0].ok,
-      "FRESH_PUBLIC_EXECUTE_EXPOSED",
-    );
+        [name],
+      )
+    ).rows[0];
+    ensure(row.total === (artifactsInstalled ? 1 : 0), "FRESH_EXPECTED_OBJECT_MISSING");
+    ensure(row.ok, "FRESH_PUBLIC_EXECUTE_EXPOSED");
   }
 }
 
@@ -502,7 +504,7 @@ export async function createFreshReference(options = {}) {
       );
       installed.add(step.path);
       checks.objects += await assertObjects(session, prepared.installation, installed);
-      await assertCommon(session);
+      await assertCommon(session, installed);
       checks.behaviors += await assertStepBehavior(session, step.id);
       const before = await collectLocalCatalog(session);
       await session.query("BEGIN");

@@ -25,6 +25,9 @@ const legacyKey = "60000000-0000-4000-8000-000000000001";
 const checksum = "a".repeat(64);
 const MiB = 1024 * 1024;
 // 기존 G1 SQL을 v1 상태로 먼저 적용한다. 새 SQL은 반드시 이 뒤에 적용한다.
+// 이 시험은 새 SQL이 직접 의존하는 G1 원문 5개(학생·과제·제출·업로드 원장·최종화)만 미리 적용한다.
+// 나머지(enrollment-links·roster·assignment-actions·submission-file-reads)를 포함한 G1 전체 10개 순서는
+// tests/unit/academic-g1-fixture.test.ts의 G1 fixture와 tests/integration/db-fresh-*.test.mjs의 신규 설치 reference·bundle이 검증한다.
 const v1Files = [
   "students",
   "assignments",
@@ -496,6 +499,48 @@ describe.skipIf(!bin)("텍스트·발표자료 분리 제출 마이그레이션 
         ),
       ),
     ).toMatchObject({ replayed: false, file: { mimeType: "application/pdf", sizeBytes: 100 } });
+  });
+
+  it("직접 DML로도 만료된 V2 업로드 의도를 소비한 제출은 커밋할 수 없다", () => {
+    // 업로드 의도·파일 메타를 그대로 복사해 제출·파일·소비를 한 트랜잭션으로 직접 기록한다.
+    const directSubmit = (target: string, intent: string) =>
+      run(`BEGIN;
+      INSERT INTO assignment_submissions(id,assignment_target_id,submitted_by_user_id,submission_key,submission_format)
+        VALUES('${randomUUID()}','${target}','${user}','${randomUUID()}','ARTIFACTS_V2');
+      INSERT INTO assignment_submission_files(submission_id,storage_key,original_name,mime_type,size_bytes,checksum,artifact_type,file_format)
+        SELECT s.id,i.storage_key,i.original_name,i.mime_type,i.size_bytes,i.checksum,i.artifact_type,i.file_format
+        FROM assignment_upload_intents i JOIN assignment_submissions s ON s.assignment_target_id=i.assignment_target_id
+        WHERE i.id='${intent}';
+      UPDATE assignment_upload_intents SET state='CONSUMED' WHERE id='${intent}';
+      COMMIT;`);
+    // 대조군: 유효한 의도는 같은 직접 DML로 커밋된다(만료만이 거부 사유임을 확인).
+    const valid = createV2("OPTIONAL", "OPTIONAL");
+    directSubmit(valid.target, uploadV2(valid.target, "TEXT", "PDF", "유효.pdf"));
+    expect(
+      run(
+        `SELECT count(*) FROM assignment_submissions WHERE assignment_target_id='${valid.target}';`,
+      ),
+    ).toBe("1");
+
+    const expired = createV2("OPTIONAL", "OPTIONAL");
+    const intent = uploadV2(expired.target, "TEXT", "PDF", "만료.pdf");
+    // 의도의 시각은 guard가 불변으로 막으므로 시험에서만 트리거를 잠시 끄고 과거로 옮긴다.
+    run(`ALTER TABLE assignment_upload_intents DISABLE TRIGGER academic_upload_intent_guard;
+      UPDATE assignment_upload_intents SET created_at=clock_timestamp()-interval '30 minutes',
+        verified_at=clock_timestamp()-interval '20 minutes',expires_at=clock_timestamp()-interval '10 minutes' WHERE id='${intent}';
+      ALTER TABLE assignment_upload_intents ENABLE TRIGGER academic_upload_intent_guard;`);
+    expect(() => directSubmit(expired.target, intent)).toThrow(
+      /텍스트·발표자료 최종 제출의 파일·소비 의도/,
+    );
+    expect(
+      run(
+        `SELECT count(*) FROM assignment_submissions WHERE assignment_target_id='${expired.target}';`,
+      ),
+    ).toBe("0");
+    expect(run(`SELECT state FROM assignment_upload_intents WHERE id='${intent}';`)).toBe(
+      "VERIFIED",
+    );
+    expect(() => completeV2(expired.target, [intent])).toThrow(/SUB03/);
   });
 
   it("직접 INSERT로 파일 없는 V2 제출이나 미검증 파일을 커밋할 수 없다", () => {

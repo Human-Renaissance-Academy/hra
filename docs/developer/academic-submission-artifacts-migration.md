@@ -47,11 +47,13 @@
 
 ## 트리거와 함수
 
+이 SQL은 기존 트리거가 호출하는 함수 본문만 바꾼다. 그래서 적용 후 5개 표의 보호 트리거 9개가 기대한 함수·지연 설정으로 존재하고 활성(`tgenabled='O'`)인지 확인하며, 하나라도 빠졌거나 비활성이면 전체 롤백한다. V2 제출 행은 단일 의도를 참조하지 않아 INSERT guard가 의도 만료를 볼 수 없으므로, 지연 완결성 검사가 직접 DML로 만료된 의도를 소비하는 경우를 거부한다.
+
 | 함수 | 변경 |
 | --- | --- |
 | `guard_academic_upload_intent` | 의도 생성 시 LEGACY 과제에는 `LEGACY_PDF`만, V2 과제에는 미사용이 아닌 `TEXT`/`SLIDES`만 허용한다. 유형·형식은 불변이다. |
 | `guard_academic_final_submission` | 최종 제출 형식이 과제 형식과 같아야 한다. LEGACY는 기존처럼 검증된 단일 의도를 요구한다. |
-| `assert_academic_submission_complete` (지연) | LEGACY는 기존 단일 파일 검사에 유형 일치를 더한다. V2는 파일 1~2개, 유형별 1개, 필수 충족·미사용 없음, 합계 104,857,600바이트(100MiB) 이하, 각 파일이 같은 대상·계정의 소비된 의도와 검증된 발급 원장(ETag 있음, 취소·정리 아님)에 대응해야 커밋된다. |
+| `assert_academic_submission_complete` (지연) | LEGACY는 기존 단일 파일 검사에 유형 일치를 더한다. V2는 파일 1~2개, 유형별 1개, 필수 충족·미사용 없음, 합계 104,857,600바이트(100MiB) 이하, 각 파일이 같은 대상·계정의 소비된 의도(확정 제출 시각보다 늦게 만료)와 검증된 발급 원장(ETag 있음, 취소·정리 아님)에 대응해야 커밋된다. |
 | v1 `issue_…`·`verify_authorized_…`·`finalize_…` | V2 과제·의도에서 `upload_conflict`로 거부한다. LEGACY 동작은 같다. |
 | v1 `complete_academic_assignment_submission` | V2 과제에서 `SUB01`로 거부한다. 반환 DTO와 기존 오류 코드는 같다. |
 
@@ -78,6 +80,16 @@
 신규 설치는 Drizzle export(v1 구조) → G1 범위 SQL(v1 구조 대조) → 이 SQL 순서다. Drizzle 표 정의에 새 컬럼을 먼저 선언하면 export가 v2 구조를 만들어 G1 SQL의 v1 대조가 실패한다. 그래서 새 컬럼·enum의 정본은 이 SQL이며, `src/lib/db/academic-submission-artifacts.ts`는 enum 값과 상한을 TypeScript 상수로만 미러링한다(`schema.ts`에서 재수출하지 않음). export 소유로 옮길지는 후속에서 결정한다.
 
 신규 설치 후보 `scripts/db/candidates/db-fresh/g1-submission-artifacts.sql`은 원문에서 최외곽 `BEGIN`/`COMMIT`과 `statement_timeout` 행만 뺀 사본이다. 원문·후보 해시와 선행 관계는 `scripts/db/source-inventory.json`, 객체 대응은 `scripts/db/installation-contract.json`이 소유한다. `freshReady`·`productionReady`는 계속 `false`다.
+
+## PR-D(서비스·리포지토리 V2) 연결 전 해결할 항목
+
+이 SQL만으로는 V2를 켤 수 없다. 앱이 V2 함수를 호출하기 전에 다음을 함께 바꿔야 한다.
+
+- `src/lib/db/academic-submissions.ts`의 `uploadIntentId`는 `.notNull()`이지만 DB에서는 V2 행에 NULL이다. TypeScript 타입이 실제와 다르며, `upload_intent_id`로 업로드 의도를 inner join하는 조회는 V2 제출을 결과에서 조용히 빠뜨릴 수 있다. 조회를 파일 저장 키 기준으로 바꾸거나 형식별로 분기한다.
+- 과제 생성·수정 함수 `mutate_academic_assignment`의 CREATE/UPDATE_DRAFT payload에 `submission_format`·`text_requirement`·`slides_requirement` 키가 없다. 지금은 관리자 화면에서 V2 과제를 만들 수 없고 DB 기본값 LEGACY로만 생성된다(PR-E와 함께 확장).
+- 다운로드 저장 키 정규식(`src/features/academics/submission-files/service.ts`)과 정리 작업의 경로 비교(`src/features/academics/assignment-uploads/cleanup.ts`의 `academicUploadPath`)는 `academic-uploads/v1/{id}/document.pdf`만 허용한다. `academic-uploads/v2/{id}/original`도 지원해야 V2 파일을 내려받거나 미사용 객체를 정리할 수 있다.
+- v1 최종화 wrapper가 V2 과제에서 내는 `SUB01`은 현재 앱 매핑상 일반 충돌(409)로 보인다. 사용자에게 "새 제출 경로를 사용해야 함"을 구분해 안내하려면 메시지 또는 별도 코드로 매핑한다. 새 `SUB06`·`SUB07`의 HTTP 대응도 추가한다.
+- 같은 멱등 키를 다른 대상에 동시에 쓰면 두 트랜잭션이 서로 다른 대상 행을 잠가 직렬화되지 않으므로, 나중 쪽은 `SUB01`이 아니라 `assignment_submissions_key_unique`의 `23505`로 실패할 수 있다. 앱은 이를 충돌로 매핑하되(현재 `23505`→`CONFLICT`) V2 경로에서도 같은 매핑을 유지한다.
 
 ## 남은 위험과 미확인
 

@@ -123,7 +123,7 @@
     {
       "path": "scripts/db/candidates/db-fresh/g1-submission-artifacts.sql",
       "role": "fresh_candidate",
-      "sha256": "ce96fe4ed3d7eed3474dd2c461c3348d349acebc5cdcfc935d1416f4507670f1",
+      "sha256": "bb4d4b49258d7ba1904064a8061eb20d4258526830c206999445d52a9008b216",
       "id": "fresh-g1-submission-artifacts",
       "predecessors": ["fresh-g1-submission-file-reads"]
     },
@@ -208,7 +208,7 @@
     {
       "path": "scripts/migrate-academic-submission-artifacts.sql",
       "role": "versioned_candidate",
-      "sha256": "e61ae9a61574e95c006bed6f6e24167cb6be915b93aabb95d87a7f2067372b12",
+      "sha256": "be7cc23f91867b1039d7d6fe5c2a71948028ac18ae61f7b5e67d314df610c24f",
       "id": "g1-submission-artifacts",
       "predecessors": [
         "g1-submission-file-reads"

@@ -1740,12 +1740,12 @@
         },
         {
           "file": "scripts/migrate-academic-submission-artifacts.sql",
-          "line": 373,
+          "line": 402,
           "note": "형식별 의도 생성·최종 제출·지연 완결성 트리거 함수의 V2 분기."
         },
         {
           "file": "scripts/migrate-academic-submission-artifacts.sql",
-          "line": 680,
+          "line": 710,
           "note": "V2 전용 발급·검증·최종화 함수와 PUBLIC 실행 권한 회수."
         },
         {
