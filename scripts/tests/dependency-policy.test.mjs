@@ -72,8 +72,8 @@ const audit = {
 };
 test("현재 정확한 집합은 package 수와 advisory 수를 구분한다", () => {
   assert.deepEqual(verifyReviewedFixture(audit, lock, policy, "2026-11-17"), {
-    affectedPackages: 28,
-    advisoryEntries: 3,
+    affectedPackages: 15,
+    advisoryEntries: 2,
     p1: 0,
   });
 });
@@ -103,10 +103,10 @@ for (const [name, change] of [
     change(input);
     assert.throws(() => verifyReviewedFixture(audit, lock, input, "2026-11-17"), /DEPENDENCY_/);
   });
-// 가장 이른 재검토 기한(2026-11-25) 다음 날부터는 실제 원장 전체가 만료로 차단된다.
+// 가장 이른 재검토 기한(2026-11-26) 다음 날부터는 실제 원장 전체가 만료로 차단된다.
 test("검토 기한 만료 차단", () =>
   assert.throws(
-    () => verifyReviewedFixture(audit, lock, policy, "2026-11-26"),
+    () => verifyReviewedFixture(audit, lock, policy, "2026-11-27"),
     /DEPENDENCY_TRIAGE_INVALID/,
   ));
 test("lock 설치 버전 변경 차단", () => {
@@ -264,20 +264,20 @@ test("손상된 원장은 원문 없이 실패 차단한다", () => {
   assert.deepEqual(dependencyDiagnosticLines(error), ["DEPENDENCY_TRIAGE_CHANGED"]);
 });
 
-test("v3 검토 정본은 44개 명시 판단과 4개 공유 사용 맥락을 유지한다", () => {
+test("v3 검토 정본은 20개 명시 판단과 3개 공유 사용 맥락을 유지한다", () => {
   assert.equal(policy.schemaVersion, 3);
-  assert.equal(policy.assessments.length, 44);
-  assert.equal(policy.contexts.length, 4);
-  assert.equal(new Set(policy.assessments.map((item) => item.contextId)).size, 4);
+  assert.equal(policy.assessments.length, 20);
+  assert.equal(policy.contexts.length, 3);
+  assert.equal(new Set(policy.assessments.map((item) => item.contextId)).size, 3);
   assert.deepEqual(
     policy.contexts
       .map((context) => policy.assessments.filter((item) => item.contextId === context.id).length)
       .sort((a, b) => a - b),
-    [3, 4, 13, 24],
+    [3, 4, 13],
   );
   assert.deepEqual(verifyReviewedFixture(audit, lock, policy, "2026-11-17"), {
-    affectedPackages: 28,
-    advisoryEntries: 3,
+    affectedPackages: 15,
+    advisoryEntries: 2,
     p1: 0,
   });
 });
@@ -356,8 +356,8 @@ test("패치된 YAML 설치본은 임시 평가·공유 맥락 없이 확인한�
     [],
   );
   assert.deepEqual(verifyReviewedFixture(audit, lock, policy, "2026-11-17"), {
-    affectedPackages: 28,
-    advisoryEntries: 3,
+    affectedPackages: 15,
+    advisoryEntries: 2,
     p1: 0,
   });
 });
@@ -387,39 +387,37 @@ test("수정본으로 해소한 권고는 제거하고 남은 평가는 위험�
     "tooling-minimatch-glob": "2026-11-05",
   };
   // drizzle-kit 설치 노드만 추가 재검토했으며 제거된 eslint-config-next 항목은 복원하지 않는다.
+  // 2026-11-18 철회된 picomatch 권고(GHSA-fc5q-39xc-vjpf)의 평가·맥락은 남기지 않는다.
   assert.ok(
-    policy.assessments
-      .filter((item) => item.contextId !== "tooling-picomatch-extglob")
-      .every(
-        (item) =>
-          item.reviewedOn ===
-          (item.key === "drizzle-kit:@esbuild-kit/esm-loader"
-            ? "2026-11-06"
-            : (reviewedOn[item.contextId] ?? "2026-11-03")),
-      ),
+    policy.assessments.every(
+      (item) =>
+        item.reviewedOn ===
+        (item.key === "drizzle-kit:@esbuild-kit/esm-loader"
+          ? "2026-11-06"
+          : (reviewedOn[item.contextId] ?? "2026-11-03")),
+    ),
   );
   // dev=false이거나 수정본이 있는데 적용되지 못한 사용면은 2주, dev=false CLI DoS는 3주, 개발 도구 전용은 4주다.
   const deadlines = {
     "shadcn-ts-morph-glob": "2026-11-26",
     "build-esbuild": "2026-12-03",
     "tooling-minimatch-glob": "2026-12-03",
-    "tooling-picomatch-extglob": "2026-11-25",
   };
   assert.deepEqual(Object.keys(deadlines).sort(), policy.contexts.map((item) => item.id).sort());
   assert.ok(policy.assessments.every((item) => item.reviewBy === deadlines[item.contextId]));
-  // 새 권고를 검토한 UTC 날짜에도 통과하고, 새 최단 기한 다음 날부터는 다시 차단한다.
+  // 최단 기한(2026-11-26) 당일까지 통과하고, 그 다음 날부터는 다시 차단한다.
   assert.deepEqual(verifyReviewedFixture(audit, lock, policy, "2026-11-17"), {
-    affectedPackages: 28,
-    advisoryEntries: 3,
+    affectedPackages: 15,
+    advisoryEntries: 2,
     p1: 0,
   });
-  assert.deepEqual(verifyReviewedFixture(audit, lock, policy, "2026-11-25"), {
-    affectedPackages: 28,
-    advisoryEntries: 3,
+  assert.deepEqual(verifyReviewedFixture(audit, lock, policy, "2026-11-26"), {
+    affectedPackages: 15,
+    advisoryEntries: 2,
     p1: 0,
   });
   assert.throws(
-    () => verifyReviewedFixture(audit, lock, policy, "2026-11-26"),
+    () => verifyReviewedFixture(audit, lock, policy, "2026-11-27"),
     /DEPENDENCY_TRIAGE_INVALID/,
   );
 });
@@ -470,14 +468,13 @@ test("shadcn CLI 경로는 개발 의존성으로만 설치되어 개발 도구 
     policy.packages.find((item) => item.name === "shadcn").nodes.map((node) => node.development),
     [true],
   );
+  // 2026-11-18 picomatch 권고(GHSA-fc5q-39xc-vjpf)도 철회되어 registry의 전이 링크가 다시 사라졌습니다.
   assert.deepEqual(
-    policy.packages.filter((item) => item.name === "deepmerge"),
+    policy.packages.filter((item) => ["deepmerge", "@shadcn/registry"].includes(item.name)),
     [],
   );
-  // registry는 철회된 deepmerge 대신 새 picomatch 전이 링크로 다시 보고됩니다.
-  assert.deepEqual(policy.packages.find((item) => item.name === "@shadcn/registry").via, [
-    { dependency: "@dotenvx/dotenvx" },
-    { dependency: "fast-glob" },
+  assert.deepEqual(policy.packages.find((item) => item.name === "shadcn").via, [
+    { dependency: "ts-morph" },
   ]);
 });
 
@@ -525,8 +522,8 @@ test("YAML 예외를 제거해도 다른 평가의 만료는 계속 차단한다
   const input = structuredClone(policy);
   input.assessments[0].reviewBy = "2026-11-17";
   assert.deepEqual(verifyReviewedFixture(audit, lock, input, "2026-11-17"), {
-    affectedPackages: 28,
-    advisoryEntries: 3,
+    affectedPackages: 15,
+    advisoryEntries: 2,
     p1: 0,
   });
   assert.throws(
@@ -555,11 +552,15 @@ test("Blob SDK는 cli-config의 Zod 취약 버전을 수정본으로만 해석�
   assert.equal(lock.packages["node_modules/zod"]?.version, "4.6.7");
 });
 
-test("Next ESLint의 새 picomatch 링크와 제거된 예전 링크를 구분한다", () => {
+// picomatch 권고 철회로 Next ESLint 경로는 다시 원장에서 빠지며, 재등장은 그대로 차단합니다.
+test("더는 취약하지 않은 Next ESLint 경로는 원장에서 빠지고 재등장은 차단한다", () => {
   assert.equal(lock.packages["node_modules/eslint-config-next"].version, "16.4.5");
-  assert.deepEqual(policy.packages.find((item) => item.name === "eslint-config-next").via, [
-    { dependency: "@next/eslint-plugin-next" },
-  ]);
+  assert.equal(
+    policy.packages.some((item) =>
+      ["eslint-config-next", "@next/eslint-plugin-next"].includes(item.name),
+    ),
+    false,
+  );
   assert.equal(
     policy.assessments.some((item) => item.key === "eslint-config-next:typescript-eslint"),
     false,
@@ -635,7 +636,7 @@ const mobileAudit = {
     ]),
   ),
 };
-const mobileResult = { affectedPackages: 82, advisoryEntries: 3, p1: 0 };
+const mobileResult = { affectedPackages: 28, advisoryEntries: 2, p1: 0 };
 
 // npm의 상위 패키지 meta range는 새 upstream 릴리스만으로 바뀔 수 있다.
 // 실제 위험 평가에 쓰는 severity, via의 advisory range/ID/source와 lock nodes의 정확 일치는 유지한다.
@@ -706,13 +707,15 @@ test("Expo 58 패치의 호환 버전과 Zod high audit 제거를 정확히 검�
     assert.equal(mobileLock.packages["node_modules/" + name].version, version);
   }
   assert.equal(mobileLock.packages["node_modules/@expo/cli"].version, "58.1.19");
-  assert.equal(mobilePolicy.packages.find((item) => item.name === "@expo/cli").severity, "high");
+  // 2026-11-18 picomatch high 권고 철회로 @expo/cli의 보고 등급은 다시 moderate입니다.
+  assert.equal(
+    mobilePolicy.packages.find((item) => item.name === "@expo/cli").severity,
+    "moderate",
+  );
   assert.deepEqual(
-    mobilePolicy.packages.filter((item) => item.name === "zod"),
+    mobilePolicy.packages.filter((item) => ["zod", "picomatch"].includes(item.name)),
     [],
   );
-  // 새 high leaf의 존재는 이전 Zod 패치의 되돌림이 아니며 미검토 high는 별도 정확 집합 검사로 차단합니다.
-  assert.equal(mobilePolicy.packages.find((item) => item.name === "picomatch").severity, "high");
   assert.equal(
     mobilePolicy.packages.some((item) => item.severity === "critical"),
     false,
@@ -773,17 +776,7 @@ test("모바일 감사에서 사라진 린트 경로와 CLI 링크는 원장에�
   }
   assert.deepEqual(
     mobilePolicy.packages.find((item) => item.name === "expo").via.map((item) => item.dependency),
-    [
-      "@expo/cli",
-      "@expo/config-plugins",
-      "@expo/config",
-      "@expo/fingerprint",
-      "@expo/local-build-cache-provider",
-      "@expo/metro-config",
-      "@expo/metro",
-      "babel-preset-expo",
-      "expo-modules-core",
-    ],
+    ["@expo/fingerprint"],
   );
   assert.deepEqual(
     mobilePolicy.packages
@@ -812,7 +805,6 @@ test("모바일 평가는 사용면 위험별 기한을 두고 가장 이른 기
     "expo-cli-config-glob": "2026-11-25",
     "jest-test-runner": "2026-11-25",
     "eslint-lint-tooling": "2026-12-02",
-    "mobile-picomatch-host-tools": "2026-11-25",
   };
   const rechecked = (item) =>
     item.contextId === "eslint-lint-tooling" || item.key === "minimatch:1244623";
@@ -828,24 +820,18 @@ test("모바일 평가는 사용면 위험별 기한을 두고 가장 이른 기
     mobilePolicy.contexts.map((item) => item.id).sort(),
     Object.keys(deadlines).sort(),
   );
-  assert.equal(mobilePolicy.assessments.length, 223);
-  assert.equal(
-    mobilePolicy.assessments.filter((item) => item.contextId !== "mobile-picomatch-host-tools")
-      .length,
-    52,
-  );
+  // 철회된 picomatch 권고(GHSA-fc5q-39xc-vjpf)의 171개 전이 평가와 전용 맥락은 남기지 않는다.
+  assert.equal(mobilePolicy.assessments.length, 52);
   assert.ok(
-    mobilePolicy.assessments
-      .filter((item) => item.contextId !== "mobile-picomatch-host-tools")
-      .every(
-        (item) =>
-          item.reviewedOn ===
-            (updatedSdk.has(item.key)
-              ? "2026-11-08"
-              : rechecked(item)
-                ? "2026-11-05"
-                : "2026-11-04") && item.reviewBy === deadlines[item.contextId],
-      ),
+    mobilePolicy.assessments.every(
+      (item) =>
+        item.reviewedOn ===
+          (updatedSdk.has(item.key)
+            ? "2026-11-08"
+            : rechecked(item)
+              ? "2026-11-05"
+              : "2026-11-04") && item.reviewBy === deadlines[item.contextId],
+    ),
   );
   assert.deepEqual(
     mobilePolicy.assessments.filter(
@@ -938,48 +924,56 @@ test("모바일 lock의 새 권고·외부 피드 resolved는 차단한다", () 
   );
 });
 
-// 새 high 권고의 명시 검토는 기존 평가의 날짜·기한을 연장하지 않으며 P1 차단도 유지합니다.
-test("picomatch 새 leaf와 호스트 도구 전이 평가를 정확히 검토한다", () => {
-  for (const [current, response, currentLock, contextId, count, nodeCount] of [
-    [policy, audit, lock, "tooling-picomatch-extglob", 24, 5],
-    [mobilePolicy, mobileAudit, mobileLock, "mobile-picomatch-host-tools", 171, 26],
+// picomatch GHSA-fc5q-39xc-vjpf는 2026-11-18T15:38:56Z 공식 철회됐습니다. 설치 버전은 그대로이며
+// 철회를 버전 수정이나 위험 해소로 설명하지 않습니다. 같은 권고가 다시 보고되면 정확 집합 검사로 차단합니다.
+test("철회된 picomatch 권고의 평가·맥락은 남기지 않고 재등장은 차단한다", () => {
+  for (const [current, response, currentLock, contextId] of [
+    [policy, audit, lock, "tooling-picomatch-extglob"],
+    [mobilePolicy, mobileAudit, mobileLock, "mobile-picomatch-host-tools"],
   ]) {
-    const leaf = current.packages.find((item) => item.name === "picomatch");
-    assert.deepEqual(leaf.via, [
-      {
-        source: 1247710,
-        id: "GHSA-fc5q-39xc-vjpf",
-        severity: "high",
-        range: "<=4.0.7",
-        title: "picomatch vulnerable to ReDoS through single-branch repeated extglobs",
-      },
-    ]);
-    assert.equal(leaf.nodes.length, nodeCount);
-    const added = current.assessments.filter((item) => item.contextId === contextId);
-    assert.equal(added.length, count);
-    assert.ok(
-      added.every(
-        (item) =>
-          item.reviewedOn === "2026-11-17" &&
-          item.reviewBy === "2026-11-25" &&
-          item.priority === "P2" &&
-          item.owner === "repo-maintainers",
-      ),
+    assert.deepEqual(
+      current.packages.filter((item) => item.name === "picomatch"),
+      [],
     );
-    const p1 = structuredClone(current);
-    p1.assessments.find((item) => item.key === "picomatch:1247710").priority = "P1";
+    assert.deepEqual(
+      current.assessments.filter(
+        (item) => item.contextId === contextId || item.key.endsWith(":picomatch"),
+      ),
+      [],
+    );
+    assert.deepEqual(
+      current.contexts.filter((item) => item.id === contextId),
+      [],
+    );
+    const reappeared = structuredClone(response);
+    reappeared.vulnerabilities.picomatch = {
+      name: "picomatch",
+      severity: "high",
+      range: "<=4.0.7",
+      nodes: ["node_modules/picomatch"],
+      via: [
+        {
+          source: 1247710,
+          url: "https://github.com/advisories/GHSA-fc5q-39xc-vjpf",
+          severity: "high",
+          range: "<=4.0.7",
+          title: "synthetic reappearance",
+        },
+      ],
+    };
     assert.throws(
-      () => verifyReviewedFixture(response, currentLock, p1, "2026-11-17"),
-      /DEPENDENCY_TRIAGE_INVALID/,
+      () => verifyReviewedFixture(reappeared, currentLock, current, "2026-11-17"),
+      /DEPENDENCY_TRIAGE_CHANGED/,
     );
   }
 });
 
-// 과거 실제 두 표현도 입력 binding·identity·qualified closure 뒤에만 정본 평가를 사용합니다.
+// 이미 도달 가능한 전이 패키지로의 중복 링크는 입력 binding·identity·qualified closure 뒤에만 정본 평가를 사용합니다.
+// (예전 metro 계열 표현은 picomatch 권고 철회로 원장에서 빠져 남은 jest 경로로 같은 성질을 확인합니다.)
 test("정본에서 복원한 합성 mobile 표현은 qualified closure 뒤 정본 평가를 공유한다", () => {
   const included = structuredClone(mobileAudit);
-  included.vulnerabilities["@react-native/community-cli-plugin"].via.push("metro");
-  included.vulnerabilities["@react-native/metro-config"].via.push("metro-config");
+  included.vulnerabilities["jest-runner"].via.push("jest-snapshot");
+  included.vulnerabilities.jest.via.push("jest-config");
   assert.deepEqual(
     verifyReviewedFixture(included, mobileLock, mobilePolicy, "2026-11-17"),
     mobileResult,

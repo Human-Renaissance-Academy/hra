@@ -27,7 +27,7 @@ node --test scripts/tests/secret-scan.test.mjs scripts/tests/dependency-policy.t
 
 실행기는 credential 환경을 전달하지 않고, 소유 임시 디렉터리의 package/lock 복사본과 비어 있는 npm 설정으로 `npm audit --json --package-lock-only --ignore-scripts`를 실행한다. registry는 `https://registry.npmjs.org`로 고정한다. exit 1의 발견과 통신/구문 오류를 구분하며 raw npm 오류는 출력하지 않는다. 설치 파일을 수정하거나 자동 업데이트하지 않는다.
 
-현행 schema v3 정본은 루트 `security/dependency-triage.json`과 모바일 `security/mobile-dependency-triage.json`이다. 현재 검토 정본은 root **28 package·44평가·4맥락**, mobile **82·223·4**이며 이는 새 registry 감사 성공을 뜻하지 않는다. 현재267개 평가/8개 맥락과 그 안의 원래72개 평가/6개 맥락의 값·담당자·날짜는 전환 때 바꾸지 않는다. 원장은 schema/mode와 검토된 전체 manifest/lock의 SHA256 binding header만 추가한다. 결과는 같은 CLI의 실제 종료값과 함께 확인한다.
+현행 schema v3 정본은 루트 `security/dependency-triage.json`과 모바일 `security/mobile-dependency-triage.json`이다. 현재 검토 정본은 root **15 package·20평가·3맥락**, mobile **28·52·3**이며 이는 새 registry 감사 성공을 뜻하지 않는다. v3 전환 당시267개 평가/8개 맥락과 그 안의 원래72개 평가/6개 맥락의 값·담당자·날짜는 전환 때 바꾸지 않는다. 원장은 schema/mode와 검토된 전체 manifest/lock의 SHA256 binding header만 추가한다. 결과는 같은 CLI의 실제 종료값과 함께 확인한다.
 
 ### v3 입력 binding과 qualified reporting identity
 
@@ -48,6 +48,8 @@ CLI는 첫 audit 전에 양 target의 source package/lock/policy bytes를 captur
 `package-lock.json`의 모든 `resolved`는 `https://registry.npmjs.org/`로 시작해야 한다(워크스페이스 link 제외). 개인 `~/.npmrc`나 사내 미러가 만든 외부 피드 주소가 섞이면 `DEPENDENCY_LOCK_REGISTRY_INVALID`와 설치 경로만 출력하고 차단한다(#432). 외부 주소 자체는 로그에 남기지 않는다.
 
 ### 루트 원장 변경 이력
+
+UTC 2026-11-19에는 lockfile 변경 없이 main과 모든 PR의 두 대상이 `DEPENDENCY_TRIAGE_CHANGED`로 실패했다. [picomatch extglob ReDoS 권고](https://github.com/advisories/GHSA-fc5q-39xc-vjpf)(source `1247710`)가 2026-11-18T15:38:56Z 공식 철회되어 npm audit에서 picomatch와 이를 통해서만 영향받던 전이 패키지가 빠졌기 때문이다. 빈 캐시 audit에 `dependencySnapshot()`을 적용해 두 원장의 `packages`를 다시 생성했고, 새 권고·새 패키지는 없었다. 루트는 `picomatch:1247710`을 포함한 `tooling-picomatch-extglob` 평가 **24건**과 그 context를 제거했다(28패키지·3 object-advisory·44평가·4context → 15·2·20·3). 모바일은 `mobile-picomatch-host-tools` 평가 **171건**과 그 context를 제거했다(82·3·223·4 → 28·2·52·3). 남은 패키지는 picomatch 링크만 빠져 보고 등급이 high에서 moderate로 내려갔다. lockfile·`package.json`·남은 평가의 검토일·기한·판단문은 바꾸지 않았다. picomatch 2.3.2·4.0.4·4.0.7 설치본은 그대로이며 철회를 버전 수정이나 위험 해소로 설명하지 않는다.
 
 UTC 2026-11-05에는 실제 audit가 `DEPENDENCY_TRIAGE_CHANGED`로 바뀐 원인을 확인했다. GitHub가 [minimatch globParts 증폭 권고](https://github.com/advisories/GHSA-g3hv-75wg-m249)를 2026-11-04T16:50Z에 정정해 영향 범위가 `<11.0.1`에서 `>=7.0.0 <11.0.1`로 좁혀졌고, npm audit source도 `1244012`에서 `1244623`으로 바뀌었다. 첫 수정 버전은 여전히 `11.0.1`이며 10.x 최신 `10.2.6`도 영향 범위다. 이에 루트 minimatch `3.1.5`와 이를 통해서만 영향받던 `eslint`·`@eslint/config-array`·`@eslint/eslintrc`·`@eslint-community/eslint-utils`·`@next/eslint-plugin-next`·`eslint-plugin-import`·`eslint-plugin-jsx-a11y`·`eslint-plugin-react` 8개 패키지와 이 경로의 전이 링크가 audit에서 빠졌다. 원장에서 해당 평가 **22건**과 `minimatch:1244012`를 제거하고 `minimatch:1244623` 1건을 추가했다(26패키지·3 object-advisory·48평가·4context → 18·3·26·4). lockfile과 `package.json`은 바꾸지 않았다. 남은 `@typescript-eslint/typescript-estree`·`hanspell` 내부 10.2.5 경로의 `tooling-minimatch-glob` 평가 15건은 실제 registry로 다시 확인해 검토일을 `2026-11-05`로 갱신하고, 개발 도구 전용 4주를 넘지 않는 기존 기한 **2026-12-03**을 유지했다. `shadcn-ts-morph-glob` 3건은 경로·무패치 상태가 그대로이고 판단문을 바꾸지 않아 검토일과 기한(2026-11-26)을 그대로 뒀다. 다른 context도 바꾸지 않았다.
 
@@ -88,7 +90,7 @@ UTC 2026-11-05에는 실제 audit가 `DEPENDENCY_TRIAGE_CHANGED`로 바뀐 원�
 
 새 advisory/source·현재 direct5·package/node/version/development/severity·package별 qualified leaf 변화, 누락/잘못된 reference, P1/미분류/만료는 실패한다. 새 manifest/lock 관계는 node/leaf가 같아도 reviewed raw-byte binding에서 차단한다. 진단은 정제한 package/GHSA/source와 고정 구조 위치·개수·해시만 추가하며 원문 title/range/version값이나 private key를 출력하지 않는다. 기존20건+MORE 제한을 유지한다. npm meta package의 파생 `range` 값만 identity에서 제외하는 기존 #465 의미는 같고 nonempty shape는 계속 검사한다. raw topology가 달라도 자동 허용하는 것이 아니라 앞 절의 모든 v3 조건을 먼저 증명해야 한다. 변화나 상위 range만으로 취약점이 해소됐다고 주장하지 않는다.
 
-현재 P2는 독립 source 사용면 검토이며 high 항목 전체 면제가 아니다. picomatch GHSA-fc5q-39xc-vjpf는 2026-11-17 검토 기준 정식 비영향 패치가 없어 기존 호스트 DoS·mobile coverage 한계를 포함해11/25까지 한시 검토된 상태다. 원래 root11/26·12/03, mobile11/25·12/02를 포함한 모든 평가 날짜는 그대로다. hash/schema 전환은 재검토일·기한을 갱신하거나 연장하지 않는다. 확인된 P1은 차단하며 별도 위험 수용 권한을 에이전트가 만들어 통과시키지 않는다.
+현재 P2는 독립 source 사용면 검토이며 high 항목 전체 면제가 아니다. picomatch GHSA-fc5q-39xc-vjpf는 2026-11-17에 11/25까지 한시 검토했으나 2026-11-18T15:38:56Z 공식 철회되어 현행 원장에 없다(아래 변경 이력). 원래 root11/26·12/03, mobile11/25·12/02를 포함한 남은 모든 평가 날짜는 그대로다. hash/schema 전환은 재검토일·기한을 갱신하거나 연장하지 않는다. 확인된 P1은 차단하며 별도 위험 수용 권한을 에이전트가 만들어 통과시키지 않는다.
 
 공식 근거: [npm audit 동작](https://docs.npmjs.com/cli/v11/commands/npm-audit/), 각 원장 항목의 GHSA ID. 원장의 source 번호와 범위는 registry 관측 시점 자료이므로 upstream advisory 변경은 재검토를 유발한다.
 

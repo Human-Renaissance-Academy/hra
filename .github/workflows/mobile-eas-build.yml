@@ -28,7 +28,7 @@ jobs:
     # PR HEAD를 운영 빌드에 투입하지 않습니다.
     if: github.ref == 'refs/heads/main'
     name: ${{ inputs.platform }} · ${{ inputs.profile }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 90
     environment: mobile-${{ inputs.profile }}
     defaults:

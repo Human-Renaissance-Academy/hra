@@ -594,8 +594,8 @@ for (const [reason, mutate] of [
       replace(
         files,
         "ci.yml",
-        "    runs-on: ubuntu-latest",
-        "    runs-on: ubuntu-latest\n    permissions:\n      contents: write",
+        "    runs-on: ubuntu-24.04",
+        "    runs-on: ubuntu-24.04\n    permissions:\n      contents: write",
       ),
   ],
   [
@@ -744,7 +744,7 @@ const executionMutations = reviewedExecutionJobs.flatMap(({ file, job }) => [
     file,
     job,
     "runs-on",
-    ["ubuntu-latest"],
+    ["ubuntu-24.04"],
     "execution boundary",
   ],
   [
@@ -790,11 +790,11 @@ const cliMutations = [
   ]),
 ];
 
-test("검토한 여섯 job은 ubuntu-latest이며 container/services/defaults가 없다", () => {
+test("검토한 여섯 job은 ubuntu-24.04이며 container/services/defaults가 없다", () => {
   const files = baseline();
   for (const { file, job } of reviewedExecutionJobs) {
     const current = parseWorkflow(files[file]).jobs[job];
-    assert.equal(current["runs-on"], "ubuntu-latest");
+    assert.equal(current["runs-on"], "ubuntu-24.04");
     for (const field of ["container", "services", "defaults"])
       assert.equal(current[field], undefined);
   }
