@@ -193,6 +193,8 @@
 
 **구현 상태(#161, 2026-11-19) — 기능 비활성·운영 미적용:** 위 교수 검토 제안은 [교수 계정 연결과 수업별 과제 검토 권한](developer/academic-faculty-reviewers.md)으로 구현했다. 교수 프로필↔계정의 검증된 기간 연결 `academic_faculty_account_links`(교수·계정마다 동시 유효 1건), 수업(일정 전체 또는 세션)별 검토자 지정 `academic_class_reviewer_designations`, 추가 전용 감사 `academic_faculty_review_events`를 두고, 연결·지정은 학사 운영 관리자만 한다. 판정은 DB 현재 시각 기준의 `can_review_assignment(user, assignment)`·서비스 `canReviewAssignment(principal, assignmentId)`이며 `schedule_sessions.facultyId`·`FACULTY`·`ADMIN` 역할을 근거로 쓰지 않고 출결 권한과 서로 참조하지 않는다. 제출물 열람·피드백(#162)과 화면은 아직 없다.
 
+**구현 상태(#162, 2026-11-19) — 기능 비활성·운영 미적용:** 과제 검토·피드백은 [과제 검토·피드백 이력과 담당 검토자 평가 화면](developer/academic-assignment-reviews.md)으로 구현했다. 제출물·검토자별 현재 행 `academic_assignment_reviews`(`DRAFT`·`SUBMITTED`, `PRIVATE`·`PUBLISHED_TO_STUDENT`, 낙관적 `version`), 버전별 내용·행위자·사유의 추가 전용 이력 `academic_assignment_review_events`, 검토자 파일 열람 감사 `academic_assignment_review_file_reads`를 두고, 검토는 `can_review_assignment`와 자기 제출물 거부를 같은 트랜잭션에서 확인하며 학생 공개는 작성자가 아닌 학사 운영 관리자만 한다. 숫자 성적·순위는 없다.
+
 관련 작업: [#165 수업 Advisor 배정 및 권한](https://github.com/Human-Renaissance-Academy/hra-website/issues/165), [#159 출결 모델](https://github.com/Human-Renaissance-Academy/hra-website/issues/159), [#160 출결 UI](https://github.com/Human-Renaissance-Academy/hra-website/issues/160).
 
 - `attendance_records(enrollment_id, schedule_event_id, state, recorded_by_user_id, updated_at)` 제안: `UNIQUE(enrollment_id, schedule_event_id)`. 실제 기록 행 부재(`UNMARKED`/미입력에 해당)와 명시적 `ABSENT`/결석은 다르다. 학생의 기수는 수업 기수와 일치해야 한다. `recorded_by_user_id`가 교수의 `facultyId`와 같다고 추정하지 않는다.
