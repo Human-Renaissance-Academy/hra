@@ -19,8 +19,9 @@
 `prod-db-readonly-report`의 안전 경계:
 
 - 트랜잭션을 `READ ONLY`로 열고 DB에서 `transaction_read_only=on`을 다시 확인한 뒤에만 집계합니다. 확인하지 못하면 종료 코드 4로 끝납니다.
-- 접속 역할이 쓰기 가능(슈퍼유저·DB/스키마 CREATE·public 테이블 쓰기 권한 등)이면 **기본 거부**(종료 코드 3, `WRITE_CAPABLE_ROLE`)합니다. Neon 기본 소유자 역할은 쓰기 가능하므로 대부분 이 결과가 먼저 나옵니다. 아래 두 방법 중 하나를 선택합니다.
-  1. 권장: Neon에 SELECT 전용 로그인 역할을 따로 만들어 그 URL을 사용합니다. 역할 생성은 운영 DB의 권한 변경이므로 운영자가 직접 판단·승인합니다. 예: `CREATE ROLE hra_ops_ro LOGIN PASSWORD '...'; GRANT CONNECT ON DATABASE <db> TO hra_ops_ro; GRANT USAGE ON SCHEMA public TO hra_ops_ro; GRANT SELECT ON ALL TABLES IN SCHEMA public TO hra_ops_ro;`
+- 접속 역할이 쓰기 가능(슈퍼유저·역할/DB 생성·RLS 우회·DB CREATE, `public`·`drizzle`·`hra_migrations` 스키마의 CREATE·소유권, 해당 스키마 테이블의 쓰기 권한이나 소유권)이면 **기본 거부**(종료 코드 3, `WRITE_CAPABLE_ROLE`)합니다. Neon 기본 소유자 역할은 쓰기 가능하므로 대부분 이 결과가 먼저 나옵니다. 아래 두 방법 중 하나를 선택합니다.
+  1. 권장: Neon에 SELECT 전용 로그인 역할을 따로 만들어 그 URL을 사용합니다. 역할 생성은 운영 DB의 권한 변경이므로 운영자가 직접 판단·승인합니다. 예: `CREATE ROLE hra_ops_ro LOGIN PASSWORD '...'; GRANT CONNECT ON DATABASE <db> TO hra_ops_ro; GRANT USAGE ON SCHEMA public TO hra_ops_ro; GRANT SELECT ON ALL TABLES IN SCHEMA public TO hra_ops_ro; ALTER ROLE hra_ops_ro SET default_transaction_read_only = on;` 마지막 문장은 이 역할의 모든 세션을 기본 읽기 전용으로 만드는 이중 방어입니다. 점검을 마치면 `ALTER ROLE hra_ops_ro NOLOGIN;`으로 로그인을 막고, 다음 점검 때만 다시 `LOGIN`으로 엽니다.
+     - 이 역할도 `users.password_hash` 같은 민감 열을 **읽을 수 있습니다.** 읽기 전용 URL은 운영 비밀번호와 같은 등급의 비밀값으로 취급하고 공유·저장소 기록을 하지 않습니다.
   2. 소유자 역할 URL을 그대로 쓰려면 `--allow-rw-role`을 붙입니다. 역할 검사만 통과시키며 **트랜잭션은 여전히 READ ONLY**입니다. 결과의 `readOnly.roleCanWrite=true`가 그대로 기록됩니다.
 - 문장별 제한은 `statement_timeout=15s`, `lock_timeout=2s`입니다. 세션 수준 설정은 바꾸지 않습니다(연결 풀 오염 방지).
 - 출력 직전 검사에서 이메일·URL·호스트처럼 허용 형식 밖의 문자열이 있으면 출력 자체를 막고 `REDACTION_BLOCKED`로 끝납니다. DB 오류는 SQLSTATE 코드만 남깁니다.
@@ -31,6 +32,20 @@
 - DB URL·토큰을 명령줄에 직접 쓰지 않습니다. 저장소 밖의 권한 600 파일에 두고 `$(cat 파일)`로 넘깁니다. 예: `~/.config/hra/prod-ro.url`.
 - Claude Code 대화창에서 실행하려면 맨 앞에 `! `를 붙입니다(운영자 셸에서 실행되고 출력이 대화에 남습니다). 명령 문자열은 대화에 남으므로 비밀값 자체가 아니라 파일 경로만 포함해야 합니다. 직접 터미널에서 실행하고 결과 JSON만 붙여 넣어도 됩니다.
 - 붙여 넣는 결과에는 이메일·이름·실제 호스트·파일 URL·토큰·DB URL이 없어야 합니다. 이 문서의 도구 출력은 그 조건을 만족하도록 만들어졌지만, 기존 도구나 수동 확인 결과는 붙이기 전에 직접 확인합니다.
+- 결과 파일은 고정 경로(`/tmp/...`) 대신 `out="$(mktemp)"`로 만들어 다른 사용자와 겹치거나 남지 않게 하고, 확인 후 `rm -f "$out"`으로 지웁니다.
+- Vercel 토큰은 명령줄 인자(`Bearer ...`)에 넣지 않습니다. `Authorization: Bearer <토큰>` 한 줄을 담은 헤더 파일을 권한 600으로 만들고 `curl -H @파일`로 읽게 합니다. 명령줄 인자는 같은 머신의 프로세스 목록에 보일 수 있습니다.
+
+### 악용 가능한 상태가 보이면 공개하지 않기
+
+결과에 아래 값이 하나라도 있으면 **원 결과를 공개 이슈·PR·댓글에 붙이지 않습니다.** [AGENTS.md](https://github.com/Human-Renaissance-Academy/hra-website/blob/main/AGENTS.md) §13에 따라 GitHub 비공개 보안 권고(Security Advisory) 또는 운영자 간 비공개 채널로만 공유하고, 공개 이슈에는 `비공개 검토 중`이라는 사실만 남깁니다. 숫자만 있어도 공격 대상(예: 관리자 계정 충돌, 공개 상태의 보호 파일)을 알려 줄 수 있기 때문입니다.
+
+| 출력                                                                                           | 악용 가능한 상태                          |
+| ---------------------------------------------------------------------------------------------- | ----------------------------------------- |
+| `emailIdentity.collision_groups_with_admin > 0`                                                | 관리자 계정이 대소문자 충돌 그룹에 포함됨 |
+| `vercel-env-scope-report`의 `SCOPE_FAIL` 또는 `SHARED_SECRET_ACROSS_TARGETS`(비밀값 이름 포함) | 운영 비밀값이 비운영 배포에 공유됨        |
+| `protectedBlobRefs.*.public_blob > 0`                                                          | 보호 자료 참조가 공개 저장소를 가리킴     |
+| `blob-protected-prefix-report`의 `PUBLIC_PROTECTED_OBJECTS_FOUND`                              | 공개 저장소에 보호 자료 객체가 남음       |
+| 4.2·3절 수동 확인에서 익명·권한 없음 접근 성공                                                 | 인가 우회                                 |
 
 ### 준비
 
@@ -43,7 +58,7 @@ node --test scripts/tests/ops-readonly-report.test.mjs   # 도구 자체의 안�
 ### DB 보고서 한 번 실행 (여러 이슈 공통)
 
 ```bash
-! DATABASE_URL="$(cat ~/.config/hra/prod-ro.url)" node scripts/ops/prod-db-readonly-report.mjs > /tmp/hra-db-report.json; echo "exit=$?"; cat /tmp/hra-db-report.json
+! out="$(mktemp)"; DATABASE_URL="$(cat ~/.config/hra/prod-ro.url)" node scripts/ops/prod-db-readonly-report.mjs > "$out"; echo "exit=$?"; cat "$out"; rm -f "$out"
 ```
 
 소유자 역할을 쓰는 경우에만 끝에 `--allow-rw-role`을 붙입니다. 필요한 환경변수 이름: `DATABASE_URL`.
@@ -123,7 +138,9 @@ node --test scripts/tests/ops-readonly-report.test.mjs   # 도구 자체의 안�
 **명령:**
 
 ```bash
-! curl -fsS -H "Authorization: Bearer $(cat ~/.config/hra/vercel.token)" "https://api.vercel.com/v10/projects/<프로젝트 이름>/env?teamId=<팀 ID>" | node scripts/ops/vercel-env-scope-report.mjs
+# 최초 1회(직접 터미널에서): 헤더 파일 준비. 토큰은 화면 입력으로만 받습니다.
+# umask 077; printf 'Authorization: Bearer %s\n' "$(read -rs t; printf %s "$t")" > ~/.config/hra/vercel.header
+! curl -fsS -H @"$HOME/.config/hra/vercel.header" "https://api.vercel.com/v10/projects/<프로젝트 이름>/env?teamId=<팀 ID>" | node scripts/ops/vercel-env-scope-report.mjs
 ```
 
 - `decrypt=true`를 붙이지 않습니다. 스크립트는 입력의 `value` 계열 필드를 읽지 않고 버리지만, 복호화된 값이 파이프를 지나가지 않게 합니다.
@@ -163,6 +180,7 @@ node --test scripts/tests/ops-readonly-report.test.mjs   # 도구 자체의 안�
 ```bash
 # 1) DB 보고서의 protectedBlobRefs.* 섹션(종류별 공개/비공개/기타 개수)을 확인
 # 2) 기존 이전 도구의 기본 dry-run(인자 없음 = 조회만). --apply/--delete-public 은 절대 붙이지 않음
+# 기존 도구는 읽기 전용 트랜잭션을 걸지 않으므로 반드시 읽기 전용 역할 URL로만 실행합니다(소유자 URL 금지).
 ! DATABASE_URL="$(cat ~/.config/hra/prod-ro.url)" RESOURCE_PRIVATE_BLOB_HOST="$(cat ~/.config/hra/private-blob.host)" node scripts/migrate-protected-resource-blobs.mjs
 # 3) 공개 저장소의 보호 접두사 잔존 개수
 ! BLOB_READ_WRITE_TOKEN="$(cat ~/.config/hra/public-blob.token)" node scripts/ops/blob-protected-prefix-report.mjs
@@ -174,9 +192,9 @@ node --test scripts/tests/ops-readonly-report.test.mjs   # 도구 자체의 안�
 
 - DB 보고서 `protectedBlobRefs.<종류>`: `total`, `public_blob`, `private_blob`, `unparseable`, `distinct_public_hosts`, `distinct_private_hosts`(호스트 값은 출력하지 않음).
 - 기존 dry-run: `보호 자료 참조: 공개 N개, 비공개 N개, 확인 필요 N개` 한 줄과 완료 문구.
-- 접두사 보고서: `{ ok, code, total, truncated, prefixes: { "class-materials/": { objects, bytes }, ... } }`.
+- 접두사 보고서: `{ ok, code, storeVerified, total, truncated, prefixes: { "class-materials/": { objects, bytes }, ... } }`. 표본 객체와 조회 객체의 URL 호스트가 공개 저장소 형식이 아니면 `WRONG_STORE`(다른 저장소의 토큰), 저장소가 완전히 비어 확인할 수 없으면 `STORE_EMPTY_UNVERIFIED`로 실패합니다. 호스트 값은 출력하지 않습니다.
 
-**판정:** 통과는 모든 종류의 `public_blob=0`, `unparseable=0`, `distinct_private_hosts`가 1 이하, 기존 dry-run의 공개·확인 필요 0, 접두사 보고서 `NO_PUBLIC_PROTECTED_OBJECTS`입니다. 하나라도 0이 아니면 이전 대상이 남은 것이며 [#268](https://github.com/Human-Renaissance-Academy/hra-website/issues/268) 절차(`--apply` → 검증 → `--delete-public`)를 별도 승인 후 진행합니다. `TRUNCATED`는 조회 상한(접두사당 50페이지)에 걸린 것이므로 개수를 확정하지 않습니다.
+**판정:** 통과는 모든 종류의 `public_blob=0`, `unparseable=0`, `distinct_private_hosts`가 1 이하, 기존 dry-run의 공개·확인 필요 0, 접두사 보고서 `NO_PUBLIC_PROTECTED_OBJECTS`입니다. 하나라도 0이 아니면 이전 대상이 남은 것이며 [#268](https://github.com/Human-Renaissance-Academy/hra-website/issues/268) 절차(`--apply` → 검증 → `--delete-public`)를 별도 승인 후 진행합니다. `TRUNCATED`는 조회 상한(접두사당 50페이지)에 걸린 것이므로 개수를 확정하지 않습니다. `WRONG_STORE`·`STORE_EMPTY_UNVERIFIED`는 토큰을 확인한 뒤 다시 실행합니다. 공개 잔존이 있으면 0절의 비공개 공유 규칙을 따릅니다.
 
 **권한별 다운로드 확인(수동, 합성·승인된 계정만):**
 
@@ -264,7 +282,7 @@ DB 보고서의 다음 섹션을 확인합니다.
 **명령(공개 응답 재확인):**
 
 ```bash
-! npm run verify:production-smoke -- --sha "$(git rev-parse HEAD)" --sha-kind main --output /tmp/hra-smoke.json; cat /tmp/hra-smoke.json
+! out="$(mktemp)"; npm run verify:production-smoke -- --sha "$(git rev-parse HEAD)" --sha-kind main --output "$out"; cat "$out"; rm -f "$out"
 ```
 
 **수동 체크리스트:**
@@ -311,6 +329,8 @@ DB 보고서의 다음 섹션을 확인합니다.
 ---
 
 ## 결과를 받은 뒤
+
+먼저 0절의 "악용 가능한 상태" 표에 해당하는 값이 있는지 확인합니다. 해당하면 원 결과는 비공개 보안 권고·비공개 채널에서만 다루고, 공개 이슈에는 `비공개 검토 중`만 남깁니다.
 
 검토자는 붙여 넣은 결과에 개인정보·비밀값이 없는지 먼저 확인하고, 이슈 댓글에는 숫자와 판정만 요약합니다. 이 문서의 도구는 운영 DB·Blob·설정을 바꾸지 않으며, 결과가 곧 적용 승인이나 완료 증거가 되지 않습니다. 적용·삭제·설정 변경은 각 이슈와 [DB 변경 절차](../developer/database-change-procedure.md)의 별도 승인으로 진행합니다.
 

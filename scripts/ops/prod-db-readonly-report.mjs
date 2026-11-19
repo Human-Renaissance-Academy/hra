@@ -49,15 +49,18 @@ export const CONTROL_STATEMENTS = [
 ];
 
 // 접속 역할의 쓰기 가능성. 문자열 안의 권한 이름은 조회 인자일 뿐 실행 문장이 아니다.
+// 앱 스키마(public)뿐 아니라 적용 이력 후보 스키마(drizzle, hra_migrations)도 함께 본다.
+// 객체 소유자는 권한 부여 없이도 DDL·쓰기가 가능하므로 owned_relations 도 쓰기 가능으로 판정한다.
 export const ROLE_QUERY = `SELECT r.rolsuper AS superuser, r.rolcreaterole AS create_role, r.rolcreatedb AS create_db,
   r.rolbypassrls AS bypass_rls,
   has_database_privilege(current_database(), 'CREATE') AS database_create,
-  coalesce(has_schema_privilege(to_regnamespace('public'), 'CREATE'), false) AS public_schema_create,
+  EXISTS (SELECT 1 FROM pg_namespace n WHERE n.nspname IN ('public', 'drizzle', 'hra_migrations')
+    AND (has_schema_privilege(n.oid, 'CREATE') OR pg_has_role(n.nspowner, 'USAGE'))) AS schema_create,
   (SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
-    WHERE n.nspname = 'public' AND c.relkind IN ('r', 'p')
+    WHERE n.nspname IN ('public', 'drizzle', 'hra_migrations') AND c.relkind IN ('r', 'p')
       AND has_table_privilege(c.oid, 'INSERT, UPDATE, DELETE, TRUNCATE'))::int AS writable_tables,
   (SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
-    WHERE n.nspname = 'public' AND pg_has_role(c.relowner, 'USAGE'))::int AS owned_relations,
+    WHERE n.nspname IN ('public', 'drizzle', 'hra_migrations') AND pg_has_role(c.relowner, 'USAGE'))::int AS owned_relations,
   current_setting('server_version_num')::int AS server_version_num,
   pg_is_in_recovery() AS in_recovery
 FROM pg_roles r WHERE r.rolname = current_user`;
@@ -441,8 +444,9 @@ export function roleCanWrite(role) {
       role.create_db ||
       role.bypass_rls ||
       role.database_create ||
-      role.public_schema_create ||
-      (count(role.writable_tables) ?? 1) > 0,
+      role.schema_create ||
+      (count(role.writable_tables) ?? 1) > 0 ||
+      (count(role.owned_relations) ?? 1) > 0,
   );
 }
 

@@ -17,6 +17,7 @@ import {
   QUERIES,
   RELATIONS_QUERY,
   ROLE_QUERY,
+  FK_CANDIDATES,
   VERIFY_READ_ONLY,
   catalogExpectations,
   parseArguments,
@@ -38,7 +39,7 @@ const readOnlyRole = {
   create_db: false,
   bypass_rls: false,
   database_create: false,
-  public_schema_create: false,
+  schema_create: false,
   writable_tables: 0,
   owned_relations: 0,
   server_version_num: 170000,
@@ -47,6 +48,7 @@ const readOnlyRole = {
 const allTables = [...new Set(QUERIES.flatMap((query) => query.requires))];
 const leakEmail = "Leak.Person@example.com";
 const leakUrl = "https://secretstore.public.blob.vercel-storage.com/class-materials/x.pdf";
+const publicSampleUrl = "https://samplestore.public.blob.vercel-storage.com/posters/p.png";
 
 /** 문장을 기록하는 pg 호환 mock. responders 로 특정 문장의 결과·오류를 바꾼다. */
 function mockClient({
@@ -159,12 +161,67 @@ test("쓰기 가능 역할은 기본 거부하고 허용 플래그가 있어도 
     "create_db",
     "bypass_rls",
     "database_create",
-    "public_schema_create",
+    "schema_create",
   ]) {
     assert.equal(roleCanWrite({ ...readOnlyRole, [flag]: true }), true, flag);
   }
   assert.equal(roleCanWrite(readOnlyRole), false);
   assert.equal(roleCanWrite({ ...readOnlyRole, writable_tables: null }), true);
+  // 객체 소유자는 GRANT 없이도 DDL·쓰기가 가능하므로 쓰기 가능으로 본다.
+  assert.equal(roleCanWrite({ ...readOnlyRole, owned_relations: 3 }), true);
+  assert.equal(roleCanWrite({ ...readOnlyRole, owned_relations: null }), true);
+  // 역할 질의는 public 외 이력 스키마도 함께 본다.
+  assert.match(ROLE_QUERY, /'public', 'drizzle', 'hra_migrations'/);
+});
+
+test("섹션 data 의 문자열 값은 고정 집합·저장소 상수 이름·hex 지문뿐이다", async () => {
+  // 모든 열·모든 행에 DB 원문처럼 보이는 문자열을 넣어도 출력 문자열은 상수에서만 나와야 한다.
+  const hostile = { rows: [] };
+  for (let index = 0; index < 4; index += 1) {
+    hostile.rows.push(
+      Object.fromEntries(
+        [
+          "kind",
+          "name",
+          "fingerprint",
+          "provider",
+          "role",
+          "state",
+          "table",
+          "column",
+          "ord",
+          "users",
+          "intents",
+          "present",
+          "x",
+        ].map((key) => [key, leakEmail]),
+      ),
+    );
+  }
+  hostile.rows.push({ kind: "relation", name: leakUrl, present: true, fingerprint: leakUrl });
+  const client = mockClient({
+    responders: Object.fromEntries(QUERIES.map((query) => [query.text, () => hostile])),
+  });
+  const { report } = await runReport({ client, contract, manifest });
+  const { objects } = catalogExpectations(contract);
+  const allowed = new Set([
+    ...objects.map((object) => object.id),
+    ...objects.flatMap((object) => object.entries.map((entry) => entry.name)),
+    ...FK_CANDIDATES.flat(),
+  ]);
+  const strings = [];
+  const walk = (value) => {
+    if (typeof value === "string") strings.push(value);
+    else if (Array.isArray(value)) value.forEach(walk);
+    else if (value && typeof value === "object") Object.values(value).forEach(walk);
+  };
+  for (const section of Object.values(report.sections)) walk(section.data);
+  assert.ok(strings.length > 0);
+  for (const value of strings) {
+    assert.ok(allowed.has(value) || /^[0-9a-f]{64}$/.test(value), "상수 밖 문자열이 출력됨");
+  }
+  assert.ok(!JSON.stringify(report).includes("example.com"));
+  assert.ok(!JSON.stringify(report).includes("vercel-storage"));
 });
 
 test("출력에는 이메일·URL·호스트·DB 원문 문자열이 실리지 않는다", async () => {
@@ -288,6 +345,12 @@ test("공개 Blob 접두사 보고서는 이전 스크립트와 같은 접두사
       };
     if (options.prefix === "guidebooks/")
       return { blobs: [{ url: leakUrl, pathname: "guidebooks/b.pdf", size: 5 }], hasMore: false };
+    // 접두사 없는 표본 조회: 공개 저장소의 비보호 객체 1개.
+    if (options.prefix === undefined)
+      return {
+        blobs: [{ url: publicSampleUrl, pathname: "posters/p.png", size: 1 }],
+        hasMore: true,
+      };
     return { blobs: [], hasMore: false };
   };
   const result = await countPublicPrefixes(list, "token");
@@ -299,6 +362,36 @@ test("공개 Blob 접두사 보고서는 이전 스크립트와 같은 접두사
       !JSON.stringify(result).includes(".pdf"),
   );
   assert.ok(calls.every((options) => options.token === "token"));
+  assert.equal(result.storeVerified, true);
+  // 보호 접두사 0개 + 공개 저장소 표본 확인 → 통과.
+  const clean = await countPublicPrefixes(
+    async (options) =>
+      options.prefix === undefined
+        ? { blobs: [{ url: publicSampleUrl, size: 1 }], hasMore: false }
+        : { blobs: [], hasMore: false },
+    "t",
+  );
+  assert.equal(clean.ok, true);
+  assert.equal(clean.code, "NO_PUBLIC_PROTECTED_OBJECTS");
+  // 완전히 빈 저장소는 토큰의 저장소를 확인할 수 없으므로 통과로 보지 않는다.
   const empty = await countPublicPrefixes(async () => ({ blobs: [], hasMore: false }), "t");
-  assert.equal(empty.ok, true);
+  assert.equal(empty.ok, false);
+  assert.equal(empty.code, "STORE_EMPTY_UNVERIFIED");
+  // 비공개 저장소 토큰을 잘못 넣으면 개수 대신 WRONG_STORE 로 실패하고 호스트를 출력하지 않는다.
+  const privateUrl = "https://secretprivate.private.blob.vercel-storage.com/x/a.pdf";
+  const wrong = await countPublicPrefixes(
+    async () => ({ blobs: [{ url: privateUrl, size: 1 }], hasMore: false }),
+    "t",
+  );
+  assert.equal(wrong.ok, false);
+  assert.equal(wrong.code, "WRONG_STORE");
+  assert.ok(!JSON.stringify(wrong).includes("secretprivate"));
+  const odd = await countPublicPrefixes(
+    async () => ({
+      blobs: [{ url: "https://evil.example/x.public.blob.vercel-storage.com", size: 1 }],
+      hasMore: false,
+    }),
+    "t",
+  );
+  assert.equal(odd.code, "WRONG_STORE");
 });
