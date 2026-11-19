@@ -500,6 +500,106 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/assignments/{id}/artifacts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 본인 과제 제출 형식·파일 목록 조회
+         * @description 모바일 Bearer access token 또는 Auth.js Web 세션 쿠키로 매 요청 현재 권한을 검증합니다. Authorization 헤더가 있으면 쿠키보다 우선하며 유효하지 않은 Authorization은 쿠키로 대체하지 않고 401입니다. 사용자 ID·역할·저장 키를 권한 증명으로 입력받지 않습니다. query key는 허용하지 않습니다. ACADEMIC_ENABLED·ACADEMIC_UPLOADS_ENABLED·ACADEMIC_SUBMISSION_ARTIFACTS_ENABLED가 모두 true일 때만 제공하며, 하나라도 꺼져 있으면 입력 검사 전에 404입니다. MEMBER 본인에게 공개된 과제의 제출 형식(PDF 1개 또는 텍스트·발표자료 분리), 항목별 필수·선택·미사용, 최종 제출 파일 목록과 보호 다운로드 경로만 반환합니다. 기존 PDF 과제는 file을 유지하고 같은 파일을 files의 LEGACY_PDF 항목으로도 제공합니다. 분리 제출 과제는 기존 상세의 file이 null이므로 이 operation의 files로 제출물을 확인해야 합니다. 타인 대상·초안은 같은 404입니다.
+         */
+        get: operations["getMyAssignmentArtifacts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/uploads/artifact-intents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 본인 분리 제출 항목 업로드 의도 발급
+         * @description 모바일 Bearer access token 또는 Auth.js Web 세션 쿠키로 매 요청 현재 권한을 검증합니다. Authorization 헤더가 있으면 쿠키보다 우선하며 유효하지 않은 Authorization은 쿠키로 대체하지 않고 401입니다. 사용자 ID·역할·저장 키를 권한 증명으로 입력받지 않습니다. query key는 허용하지 않습니다. 쿠키 요청은 동일 출처 Origin이 필수이고 검증된 Bearer 요청은 Origin 검사를 생략하며, application/json이 필수이고 실제 JSON 본문을 16KiB로 제한합니다. ACADEMIC_ENABLED·ACADEMIC_UPLOADS_ENABLED·ACADEMIC_SUBMISSION_ARTIFACTS_ENABLED가 모두 true일 때만 제공하며, 하나라도 꺼져 있으면 입력 검사 전에 404입니다. 분리 제출 과제의 텍스트 또는 발표자료 항목마다 50MiB 이하 파일 하나를 요청합니다. 미사용 항목·과제 형식 불일치·선언 형식 오류는 400, 같은 항목의 진행 중 업로드·이미 제출한 과제는 409입니다. 원본 파일 URL·토큰 대신 발급 ID·불투명 pathname·정규 contentType·UTC 만료 시각만 반환합니다. 파일명은 저장 키로 사용하지 않습니다.
+         */
+        post: operations["createMyAssignmentArtifactUploadIntent"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/uploads/artifact-intents/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * 본인 분리 제출 항목 업로드 취소
+         * @description 모바일 Bearer access token 또는 Auth.js Web 세션 쿠키로 매 요청 현재 권한을 검증합니다. Authorization 헤더가 있으면 쿠키보다 우선하며 유효하지 않은 Authorization은 쿠키로 대체하지 않고 401입니다. 사용자 ID·역할·저장 키를 권한 증명으로 입력받지 않습니다. query key는 허용하지 않습니다. 쿠키 요청은 동일 출처 Origin이 필수이고 검증된 Bearer 요청은 Origin 검사를 생략하며, application/json이 필수이고 실제 JSON 본문을 16KiB로 제한합니다. ACADEMIC_ENABLED·ACADEMIC_UPLOADS_ENABLED·ACADEMIC_SUBMISSION_ARTIFACTS_ENABLED가 모두 true일 때만 제공하며, 하나라도 꺼져 있으면 입력 검사 전에 404입니다. 현재 본인 대상·발급 소유권을 다시 확인하고 원장을 종료합니다. CANCELLED는 실제 객체의 즉시 삭제를 뜻하지 않습니다.
+         */
+        delete: operations["cancelMyAssignmentArtifactUploadIntent"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/uploads/artifact-intents/{id}/verify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 본인 분리 제출 항목 업로드 검증
+         * @description 모바일 Bearer access token 또는 Auth.js Web 세션 쿠키로 매 요청 현재 권한을 검증합니다. Authorization 헤더가 있으면 쿠키보다 우선하며 유효하지 않은 Authorization은 쿠키로 대체하지 않고 401입니다. 사용자 ID·역할·저장 키를 권한 증명으로 입력받지 않습니다. query key는 허용하지 않습니다. 쿠키 요청은 동일 출처 Origin이 필수이고 검증된 Bearer 요청은 Origin 검사를 생략하며, application/json이 필수이고 실제 JSON 본문을 16KiB로 제한합니다. ACADEMIC_ENABLED·ACADEMIC_UPLOADS_ENABLED·ACADEMIC_SUBMISSION_ARTIFACTS_ENABLED가 모두 true일 때만 제공하며, 하나라도 꺼져 있으면 입력 검사 전에 404입니다. 서버가 비공개 원본의 크기·정규 MIME·SHA256과 실제 문서 형식(확장자·선언 형식·항목별 허용 형식, 암호화·매크로·형식 위장·손상 거부)을 검증하고 원장에 기록합니다. 거부 사유는 400 INVALID_INPUT 하나로 응답합니다. 분리 제출 의도가 아니면 404입니다. VERIFIED는 최종 제출 완료가 아닙니다.
+         */
+        post: operations["verifyMyAssignmentArtifactUpload"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/submissions/artifacts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 본인 분리 제출 과제 제출 확정
+         * @description 모바일 Bearer access token 또는 Auth.js Web 세션 쿠키로 매 요청 현재 권한을 검증합니다. Authorization 헤더가 있으면 쿠키보다 우선하며 유효하지 않은 Authorization은 쿠키로 대체하지 않고 401입니다. 사용자 ID·역할·저장 키를 권한 증명으로 입력받지 않습니다. query key는 허용하지 않습니다. 쿠키 요청은 동일 출처 Origin이 필수이고 검증된 Bearer 요청은 Origin 검사를 생략하며, application/json이 필수이고 실제 JSON 본문을 16KiB로 제한합니다. ACADEMIC_ENABLED·ACADEMIC_UPLOADS_ENABLED·ACADEMIC_SUBMISSION_ARTIFACTS_ENABLED가 모두 true일 때만 제공하며, 하나라도 꺼져 있으면 입력 검사 전에 404입니다. 검증된 항목별 업로드 1~2개를 한 번에 원자적으로 확정합니다. 동일한 submissionKey와 같은 의도 묶음은 이미 확정된 성공을 복구하며 새 확정과 재시도 모두 HTTP 200입니다. replayed로 구분합니다. 필수 항목 누락·미사용 항목 첨부·같은 항목 중복·합계 100MiB 초과는 400, 다른 묶음에 쓴 키·이미 제출함·PDF 단일 제출 과제는 409입니다. 실제 파일 재검증·마감·현재 대상 재인가·원자 저장은 기존 Application Service에서 수행합니다.
+         */
+        post: operations["finalizeMyAssignmentArtifactSubmission"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -975,6 +1075,93 @@ export interface components {
                 /** Format: uuid */
                 requestId: string;
                 retryAfterSeconds: number;
+            };
+        };
+        /** @description 최종 제출 파일 하나의 메타입니다. 저장 키·Blob URL·체크섬·계정 ID는 포함하지 않습니다. mimeType은 fileFormat의 정규 MIME 하나이고, TEXT는 PDF·HWP·HWPX, SLIDES는 PDF·PPT·PPTX, LEGACY_PDF는 PDF만 가집니다. */
+        AcademicSubmissionArtifactFile: {
+            /** Format: uuid */
+            fileId: string;
+            /**
+             * @description LEGACY_PDF는 기존 PDF 단일 제출 파일, TEXT는 텍스트, SLIDES는 발표자료입니다.
+             * @enum {string}
+             */
+            artifactType: "LEGACY_PDF" | "TEXT" | "SLIDES";
+            /** @enum {string} */
+            fileFormat: "PDF" | "HWP" | "HWPX" | "PPT" | "PPTX";
+            originalName: string;
+            /** @enum {string} */
+            mimeType: "application/pdf" | "application/x-hwp" | "application/hwp+zip" | "application/vnd.ms-powerpoint" | "application/vnd.openxmlformats-officedocument.presentationml.presentation";
+            sizeBytes: number;
+            /** @description 같은 파일의 보호 다운로드 operation(GET /api/v1/submissions/{id}/files/{fileId}) 상대 경로입니다. 공개 URL이 아니며 같은 인증으로 요청해야 합니다. */
+            downloadPath: string;
+        };
+        /** @description 본인 과제의 제출 형식·항목별 요구·최종 제출 파일 목록입니다. LEGACY_SINGLE_PDF는 두 요구가 null이고 file은 기존 PDF 메타, files는 같은 PDF 하나(LEGACY_PDF) 또는 빈 배열입니다. ARTIFACTS_V2는 두 요구가 지정되고(둘 다 DISABLED일 수 없음) file은 항상 null, files는 제출 전 빈 배열·제출 후 항목별 1개(최대 2개, 합계 100MiB 이하)입니다. 기존 GET /api/v1/assignments/{id}·/submission에서 submission이 null이 아닌데 file이 null이면 분리 제출일 수 있으므로, 클라이언트는 이 응답의 files로 제출물을 확인해야 하며 PDF 미제출·재제출 대상으로 취급하면 안 됩니다. */
+        AcademicAssignmentArtifactsResponse: {
+            /** Format: uuid */
+            assignmentId: string;
+            /** @enum {string} */
+            submissionFormat: "LEGACY_SINGLE_PDF" | "ARTIFACTS_V2";
+            /** @description 텍스트 항목 요구입니다. LEGACY_SINGLE_PDF이면 null입니다. */
+            textRequirement: ("REQUIRED" | "OPTIONAL" | "DISABLED") | null;
+            /** @description 발표자료 항목 요구입니다. LEGACY_SINGLE_PDF이면 null입니다. */
+            slidesRequirement: ("REQUIRED" | "OPTIONAL" | "DISABLED") | null;
+            submission: components["schemas"]["AcademicSubmissionSummary"] | null;
+            /** @description 기존 PDF 단일 제출 메타입니다. ARTIFACTS_V2에서는 항상 null입니다. */
+            file: components["schemas"]["AcademicFileMetadata"] | null;
+            files: components["schemas"]["AcademicSubmissionArtifactFile"][];
+        };
+        /** @description artifactType이 받는 fileFormat(TEXT: PDF·HWP·HWPX, SLIDES: PDF·PPT·PPTX), originalName의 확장자, mimeType(형식별 정규 MIME)이 모두 일치해야 합니다. 실제 내용은 업로드 뒤 서버 검증이 다시 판정합니다. */
+        AcademicArtifactUploadIntentInput: {
+            /** Format: uuid */
+            assignmentId: string;
+            /**
+             * Format: uuid
+             * @description 같은 requestId 재시도는 같은 발급 결과를 돌려줍니다.
+             */
+            requestId: string;
+            /** @enum {string} */
+            artifactType: "TEXT" | "SLIDES";
+            /** @enum {string} */
+            fileFormat: "PDF" | "HWP" | "HWPX" | "PPT" | "PPTX";
+            /** @description 앞뒤 공백을 제거한 뒤 파일명 제약을 적용합니다. 확장자는 fileFormat과 같아야 합니다(대소문자 무관). */
+            originalName: string;
+            sizeBytes: number;
+            /** @enum {string} */
+            mimeType: "application/pdf" | "application/x-hwp" | "application/hwp+zip" | "application/vnd.ms-powerpoint" | "application/vnd.openxmlformats-officedocument.presentationml.presentation";
+        };
+        AcademicArtifactUploadIntentResponse: {
+            /** Format: uuid */
+            uploadIntentId: string;
+            /** @enum {string} */
+            artifactType: "TEXT" | "SLIDES";
+            /** @enum {string} */
+            fileFormat: "PDF" | "HWP" | "HWPX" | "PPT" | "PPTX";
+            /** @description uploadIntentId를 소문자로 표현한 값과 경로의 UUID가 같아야 합니다. 공개 URL이 아니며 이 경로 자체로 다운로드할 수 없습니다. 기존 POST /api/v1/uploads SDK 토큰 교환에 사용합니다. */
+            pathname: string;
+            /**
+             * @description fileFormat의 정규 MIME입니다. SDK 업로드는 이 Content-Type으로만 승인됩니다.
+             * @enum {string}
+             */
+            contentType: "application/pdf" | "application/x-hwp" | "application/hwp+zip" | "application/vnd.ms-powerpoint" | "application/vnd.openxmlformats-officedocument.presentationml.presentation";
+            expiresAt: components["schemas"]["UtcTimestamp"];
+        };
+        AcademicFinalizeArtifactSubmissionInput: {
+            /** Format: uuid */
+            assignmentId: string;
+            /** @description 서버 검증을 마친 항목별 업로드 의도 1~2개입니다. 순서는 의미가 없습니다. */
+            uploadIntentIds: string[];
+            /** Format: uuid */
+            submissionKey: string;
+        };
+        AcademicFinalizedArtifactSubmissionResponse: {
+            submission: {
+                /** Format: uuid */
+                assignmentId: string;
+                /** Format: uuid */
+                submissionId: string;
+                submittedAt: components["schemas"]["UtcTimestamp"];
+                replayed: boolean;
+                files: components["schemas"]["AcademicSubmissionArtifactFile"][];
             };
         };
     };
@@ -3155,6 +3342,596 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["UnavailableError"];
+                };
+            };
+        };
+    };
+    getMyAssignmentArtifacts: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 존재하지 않거나 허용되지 않은 대상과 잘못된 UUID는 동일한 404로 처리합니다. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 제출 형식·항목별 요구와 본인 최종 제출 파일 목록 */
+            200: {
+                headers: {
+                    "Cache-Control"?: "private, no-store";
+                    Vary?: "Cookie, Authorization";
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AcademicAssignmentArtifactsResponse"];
+                };
+            };
+            /** @description 허용되지 않은 입력 또는 JSON 형식 오류 */
+            400: {
+                headers: {
+                    "Cache-Control"?: "private, no-store";
+                    Vary?: "Cookie, Authorization";
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvalidInputError"];
+                };
+            };
+            /** @description 유효한 Web 세션이 없음 */
+            401: {
+                headers: {
+                    "Cache-Control"?: "private, no-store";
+                    Vary?: "Cookie, Authorization";
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedError"];
+                };
+            };
+            /** @description 역할 또는 동일 출처 검증 거부 */
+            403: {
+                headers: {
+                    "Cache-Control"?: "private, no-store";
+                    Vary?: "Cookie, Authorization";
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenError"];
+                };
+            };
+            /** @description 없는 대상·본인 대상이 아님·잘못된 경로 UUID 또는 분리 제출 기능 비활성 */
+            404: {
+                headers: {
+                    "Cache-Control"?: "private, no-store";
+                    Vary?: "Cookie, Authorization";
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundError"];
+                };
+            };
+            /** @description 기능 비활성·스토리지 처리 실패 또는 제공 불가 */
+            503: {
+                headers: {
+                    "Cache-Control"?: "private, no-store";
+                    Vary?: "Cookie, Authorization";
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AcademicUnavailableError"];
+                };
+            };
+        };
+    };
+    createMyAssignmentArtifactUploadIntent: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description 쿠키 요청에서는 요청 URL과 동일한 신뢰 출처가 필요합니다. 검증된 모바일 Bearer 요청은 생략할 수 있습니다. */
+                Origin?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AcademicArtifactUploadIntentInput"];
+            };
+        };
+        responses: {
+            /** @description 비공개 직접 업로드에 사용할 발급 정보 */
+            200: {
+                headers: {
+                    "Cache-Control"?: "private, no-store";
+                    Vary?: "Cookie, Authorization";
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AcademicArtifactUploadIntentResponse"];
+                };
+            };
+            /** @description 허용되지 않은 입력 또는 JSON 형식 오류 */
+            400: {
+                headers: {
+                    "Cache-Control"?: "private, no-store";
+                    Vary?: "Cookie, Authorization";
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvalidInputError"];
+                };
+            };
+            /** @description 유효한 Web 세션이 없음 */
+            401: {
+                headers: {
+                    "Cache-Control"?: "private, no-store";
+                    Vary?: "Cookie, Authorization";
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedError"];
+                };
+            };
+            /** @description 역할 또는 동일 출처 검증 거부 */
+            403: {
+                headers: {
+                    "Cache-Control"?: "private, no-store";
+                    Vary?: "Cookie, Authorization";
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenError"];
+                };
+            };
+            /** @description 없는 대상·본인 대상이 아님·잘못된 경로 UUID 또는 분리 제출 기능 비활성 */
+            404: {
+                headers: {
+                    "Cache-Control"?: "private, no-store";
+                    Vary?: "Cookie, Authorization";
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundError"];
+                };
+            };
+            /** @description 마감·만료·검증 대기 또는 중복 상태 충돌 */
+            409: {
+                headers: {
+                    "Cache-Control"?: "private, no-store";
+                    Vary?: "Cookie, Authorization";
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AcademicConflictError"];
+                };
+            };
+            /** @description 실제로 읽은 JSON 본문이 16KiB를 초과함 */
+            413: {
+                headers: {
+                    "Cache-Control"?: "private, no-store";
+                    Vary?: "Cookie, Authorization";
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AcademicTooLargeError"];
+                };
+            };
+            /** @description 업로드 요청 예산을 초과함 */
+            429: {
+                headers: {
+                    "Cache-Control"?: "private, no-store";
+                    Vary?: "Cookie, Authorization";
+                    "X-Request-Id"?: string;
+                    /** @description 재시도까지 기다릴 초 수입니다. */
+                    "Retry-After"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AcademicRateLimitedError"];
+                };
+            };
+            /** @description 기능 비활성·스토리지 처리 실패 또는 제공 불가 */
+            503: {
+                headers: {
+                    "Cache-Control"?: "private, no-store";
+                    Vary?: "Cookie, Authorization";
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AcademicUnavailableError"];
+                };
+            };
+        };
+    };
+    cancelMyAssignmentArtifactUploadIntent: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description 쿠키 요청에서는 요청 URL과 동일한 신뢰 출처가 필요합니다. 검증된 모바일 Bearer 요청은 생략할 수 있습니다. */
+                Origin?: string;
+            };
+            path: {
+                /** @description 존재하지 않거나 허용되지 않은 대상과 잘못된 UUID는 동일한 404로 처리합니다. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AcademicUploadSelectionInput"];
+            };
+        };
+        responses: {
+            /** @description 업로드 원장 취소 완료 */
+            200: {
+                headers: {
+                    "Cache-Control"?: "private, no-store";
+                    Vary?: "Cookie, Authorization";
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AcademicUploadCancelledResponse"];
+                };
+            };
+            /** @description 허용되지 않은 입력 또는 JSON 형식 오류 */
+            400: {
+                headers: {
+                    "Cache-Control"?: "private, no-store";
+                    Vary?: "Cookie, Authorization";
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvalidInputError"];
+                };
+            };
+            /** @description 유효한 Web 세션이 없음 */
+            401: {
+                headers: {
+                    "Cache-Control"?: "private, no-store";
+                    Vary?: "Cookie, Authorization";
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedError"];
+                };
+            };
+            /** @description 역할 또는 동일 출처 검증 거부 */
+            403: {
+                headers: {
+                    "Cache-Control"?: "private, no-store";
+                    Vary?: "Cookie, Authorization";
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenError"];
+                };
+            };
+            /** @description 없는 대상·본인 대상이 아님·잘못된 경로 UUID 또는 분리 제출 기능 비활성 */
+            404: {
+                headers: {
+                    "Cache-Control"?: "private, no-store";
+                    Vary?: "Cookie, Authorization";
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundError"];
+                };
+            };
+            /** @description 마감·만료·검증 대기 또는 중복 상태 충돌 */
+            409: {
+                headers: {
+                    "Cache-Control"?: "private, no-store";
+                    Vary?: "Cookie, Authorization";
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AcademicConflictError"];
+                };
+            };
+            /** @description 실제로 읽은 JSON 본문이 16KiB를 초과함 */
+            413: {
+                headers: {
+                    "Cache-Control"?: "private, no-store";
+                    Vary?: "Cookie, Authorization";
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AcademicTooLargeError"];
+                };
+            };
+            /** @description 기능 비활성·스토리지 처리 실패 또는 제공 불가 */
+            503: {
+                headers: {
+                    "Cache-Control"?: "private, no-store";
+                    Vary?: "Cookie, Authorization";
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AcademicUnavailableError"];
+                };
+            };
+        };
+    };
+    verifyMyAssignmentArtifactUpload: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description 쿠키 요청에서는 요청 URL과 동일한 신뢰 출처가 필요합니다. 검증된 모바일 Bearer 요청은 생략할 수 있습니다. */
+                Origin?: string;
+            };
+            path: {
+                /** @description 존재하지 않거나 허용되지 않은 대상과 잘못된 UUID는 동일한 404로 처리합니다. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AcademicUploadSelectionInput"];
+            };
+        };
+        responses: {
+            /** @description 비공개 원본 검증 완료 */
+            200: {
+                headers: {
+                    "Cache-Control"?: "private, no-store";
+                    Vary?: "Cookie, Authorization";
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AcademicUploadVerifiedResponse"];
+                };
+            };
+            /** @description 허용되지 않은 입력 또는 JSON 형식 오류 */
+            400: {
+                headers: {
+                    "Cache-Control"?: "private, no-store";
+                    Vary?: "Cookie, Authorization";
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvalidInputError"];
+                };
+            };
+            /** @description 유효한 Web 세션이 없음 */
+            401: {
+                headers: {
+                    "Cache-Control"?: "private, no-store";
+                    Vary?: "Cookie, Authorization";
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedError"];
+                };
+            };
+            /** @description 역할 또는 동일 출처 검증 거부 */
+            403: {
+                headers: {
+                    "Cache-Control"?: "private, no-store";
+                    Vary?: "Cookie, Authorization";
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenError"];
+                };
+            };
+            /** @description 없는 대상·본인 대상이 아님·잘못된 경로 UUID 또는 분리 제출 기능 비활성 */
+            404: {
+                headers: {
+                    "Cache-Control"?: "private, no-store";
+                    Vary?: "Cookie, Authorization";
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundError"];
+                };
+            };
+            /** @description 마감·만료·검증 대기 또는 중복 상태 충돌 */
+            409: {
+                headers: {
+                    "Cache-Control"?: "private, no-store";
+                    Vary?: "Cookie, Authorization";
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AcademicConflictError"];
+                };
+            };
+            /** @description 실제로 읽은 JSON 본문이 16KiB를 초과함 */
+            413: {
+                headers: {
+                    "Cache-Control"?: "private, no-store";
+                    Vary?: "Cookie, Authorization";
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AcademicTooLargeError"];
+                };
+            };
+            /** @description 업로드 요청 예산을 초과함 */
+            429: {
+                headers: {
+                    "Cache-Control"?: "private, no-store";
+                    Vary?: "Cookie, Authorization";
+                    "X-Request-Id"?: string;
+                    /** @description 재시도까지 기다릴 초 수입니다. */
+                    "Retry-After"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AcademicRateLimitedError"];
+                };
+            };
+            /** @description 기능 비활성·스토리지 처리 실패 또는 제공 불가 */
+            503: {
+                headers: {
+                    "Cache-Control"?: "private, no-store";
+                    Vary?: "Cookie, Authorization";
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AcademicUnavailableError"];
+                };
+            };
+        };
+    };
+    finalizeMyAssignmentArtifactSubmission: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description 쿠키 요청에서는 요청 URL과 동일한 신뢰 출처가 필요합니다. 검증된 모바일 Bearer 요청은 생략할 수 있습니다. */
+                Origin?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AcademicFinalizeArtifactSubmissionInput"];
+            };
+        };
+        responses: {
+            /** @description 새 제출 확정 또는 동일 키의 성공 복구 */
+            200: {
+                headers: {
+                    "Cache-Control"?: "private, no-store";
+                    Vary?: "Cookie, Authorization";
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AcademicFinalizedArtifactSubmissionResponse"];
+                };
+            };
+            /** @description 허용되지 않은 입력 또는 JSON 형식 오류 */
+            400: {
+                headers: {
+                    "Cache-Control"?: "private, no-store";
+                    Vary?: "Cookie, Authorization";
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvalidInputError"];
+                };
+            };
+            /** @description 유효한 Web 세션이 없음 */
+            401: {
+                headers: {
+                    "Cache-Control"?: "private, no-store";
+                    Vary?: "Cookie, Authorization";
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedError"];
+                };
+            };
+            /** @description 역할 또는 동일 출처 검증 거부 */
+            403: {
+                headers: {
+                    "Cache-Control"?: "private, no-store";
+                    Vary?: "Cookie, Authorization";
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenError"];
+                };
+            };
+            /** @description 없는 대상·본인 대상이 아님·잘못된 경로 UUID 또는 분리 제출 기능 비활성 */
+            404: {
+                headers: {
+                    "Cache-Control"?: "private, no-store";
+                    Vary?: "Cookie, Authorization";
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundError"];
+                };
+            };
+            /** @description 마감·만료·검증 대기 또는 중복 상태 충돌 */
+            409: {
+                headers: {
+                    "Cache-Control"?: "private, no-store";
+                    Vary?: "Cookie, Authorization";
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AcademicConflictError"];
+                };
+            };
+            /** @description 실제로 읽은 JSON 본문이 16KiB를 초과함 */
+            413: {
+                headers: {
+                    "Cache-Control"?: "private, no-store";
+                    Vary?: "Cookie, Authorization";
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AcademicTooLargeError"];
+                };
+            };
+            /** @description 업로드 요청 예산을 초과함 */
+            429: {
+                headers: {
+                    "Cache-Control"?: "private, no-store";
+                    Vary?: "Cookie, Authorization";
+                    "X-Request-Id"?: string;
+                    /** @description 재시도까지 기다릴 초 수입니다. */
+                    "Retry-After"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AcademicRateLimitedError"];
+                };
+            };
+            /** @description 기능 비활성·스토리지 처리 실패 또는 제공 불가 */
+            503: {
+                headers: {
+                    "Cache-Control"?: "private, no-store";
+                    Vary?: "Cookie, Authorization";
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AcademicUnavailableError"];
                 };
             };
         };

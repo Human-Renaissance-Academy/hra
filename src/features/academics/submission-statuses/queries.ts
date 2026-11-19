@@ -2,9 +2,11 @@
 import "server-only";
 import { db } from "@/lib/db";
 import { getAcademicApproverId, requireAcademicApprover } from "@/lib/academic-admin";
+import { isAcademicSubmissionArtifactsEnabled } from "@/features/academics/assignment-uploads/contract";
 import type { AcademicObservation } from "@/lib/academic-observability";
 import {
   SubmissionStatusError,
+  submissionStatusArtifactsConsistent,
   submissionStatusInput,
   submissionStatusSnapshot,
 } from "./contracts";
@@ -30,8 +32,10 @@ async function load(input: unknown, exportAll: boolean, observation?: AcademicOb
   const parsed = submissionStatusInput.safeParse(input);
   if (!parsed.success) throw new SubmissionStatusError("INVALID_INPUT");
   try {
+    // #516: 분리 제출 gate가 켜졌을 때만 제출 형식·항목 컬럼을 읽는다(꺼져 있으면 기존 SQL과 같다).
+    const artifacts = isAcademicSubmissionArtifactsEnabled();
     const result = await db.execute(
-      buildSubmissionStatusesQuery(parsed.data, authorization, exportAll),
+      buildSubmissionStatusesQuery(parsed.data, authorization, exportAll, artifacts),
     );
     const raw = result.rows[0];
     // 인증 뒤 역할 철회도 SQL과 같은 snapshot에서 판단하며 빈 성공 응답으로 바꾸지 않는다.
@@ -40,6 +44,8 @@ async function load(input: unknown, exportAll: boolean, observation?: AcademicOb
     if (!raw.assignment) throw new SubmissionStatusError("NOT_FOUND");
     const snapshot = submissionStatusSnapshot.parse(raw);
     if (snapshot.counts.total !== snapshot.counts.submitted + snapshot.counts.unsubmitted)
+      throw new SubmissionStatusError("UNAVAILABLE");
+    if (!submissionStatusArtifactsConsistent(snapshot))
       throw new SubmissionStatusError("UNAVAILABLE");
     if (exportAll && snapshot.filteredCount > SUBMISSION_STATUS_EXPORT_LIMIT)
       throw new SubmissionStatusError("TOO_MANY_ROWS");

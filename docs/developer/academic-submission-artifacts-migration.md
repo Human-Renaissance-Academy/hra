@@ -125,7 +125,29 @@ V2는 대상 예산을 (대상, 산출물 유형)별 4회/60초로 나눈다(sco
 | 학생 화면 | 미사용이 아닌 항목마다 파일 선택(확장자 필터)·50MiB·합계 100MiB 사전 검사 → 서버 액션으로 의도 발급 → 기존 SDK 토큰 경로로 서버가 돌려준 `contentType` PUT → 서버 검증. 항목별 다시 전송·다시 확인·취소, 필수 충족·최소 1개일 때만 최종 제출 버튼 활성, 멱등 키 하나로 원자적 최종 제출, 완료 후 두 파일 다운로드 링크. 검증 거부는 서버의 사유별 고정 한국어 문구를 그대로 보여 준다. |
 | 서버 액션 | `submissions/artifact-actions.ts`의 발급·검증·취소·최종화는 PR-D 서비스를 그대로 호출하는 얇은 경계다. 주체는 입력이 아니라 세션에서 얻는다. 취소는 기존 서비스가 업로드 gate만 보므로 분리 제출 gate를 먼저 확인한다. |
 
-API v1(`/api/v1/assignments/{id}`·`/submission`)은 V2 파일 목록을 아직 응답하지 않는다(PR-G). gate를 켜면 V2 과제의 API v1 상세는 `submission`은 채우고 `file`은 `null`로 응답한다(기존 계약의 nullable 범위). gate가 꺼져 있으면 기존처럼 V2 제출을 `UNAVAILABLE`로 거부한다. V2 파일 목록 계약과 OpenAPI는 PR-G에서 정한다.
+기존 API v1(`/api/v1/assignments/{id}`·`/submission`)은 계약을 바꾸지 않는다. gate를 켜면 V2 과제의 기존 상세는 `submission`은 채우고 `file`은 `null`로 응답한다(기존 계약의 nullable 범위). V2 파일 목록은 아래 PR-G의 새 operation이 제공한다.
+
+## PR-G(API v1·OpenAPI·제출 현황) 연결 결과
+
+OpenAPI 추가 전용 검사(`scripts/check-openapi-compat.mjs`)는 기존 operation·component의 변경을 거부한다. 그래서 기존 상세 DTO에 `files[]`를 덧붙이지 않고, 같은 서비스를 호출하는 새 operation과 새 component만 추가했다. 모든 새 operation은 세 gate가 모두 `true`일 때만 열리고, 꺼져 있으면 입력 검사·서비스 호출 전에 404다. 인증은 기존 v1 경로와 같은 `withApiV1Principal`(모바일 Bearer 우선, 없으면 Web 세션 쿠키)이다.
+
+| operation | 연결 서비스 |
+| --- | --- |
+| `GET /api/v1/assignments/{id}/artifacts` (`getMyAssignmentArtifacts`) | `getMyAssignment` — 제출 형식·두 요구·`files[]`(유형·형식·원본명·MIME·크기·보호 `downloadPath`). LEGACY는 `file`을 유지하고 같은 파일을 `LEGACY_PDF` 항목으로도 제공, V2는 `file`이 항상 `null` |
+| `POST /api/v1/uploads/artifact-intents` | `createAssignmentArtifactUploadIntent` |
+| `DELETE /api/v1/uploads/artifact-intents/{id}` | `cancelAssignmentUploadIntent`(gate 확인 후) |
+| `POST /api/v1/uploads/artifact-intents/{id}/verify` | `verifyAssignmentArtifactUpload` |
+| `POST /api/v1/submissions/artifacts` | `finalizeAssignmentArtifactSubmission` |
+
+오류는 PR-D 대응을 그대로 쓴다: `INCOMPLETE`·`TOO_LARGE`(합계)·파일 검증 거부 → `INVALID_INPUT`(400), `WRONG_FORMAT`·`CONFLICT` → `CONFLICT`(409). V2 검증 거부 사유별 문구는 API v1 오류 계약(고정 문구)에 싣지 않는다. `downloadPath`는 기존 보호 다운로드 operation의 상대 경로이며 저장 키·URL은 응답하지 않는다. 모바일 생성 타입(`apps/mobile/src/api/schema.d.ts`)은 저장소 생성기와 같은 `openapi-typescript` 버전으로 다시 생성했고 추가만 있다. 모바일 코드는 바꾸지 않았다(#491 동결).
+
+제출 현황 화면과 CSV는 gate가 켜져 있을 때만 과제의 제출 형식과 V2 제출 파일의 유형·형식·크기를 읽는다(파일명·파일 ID·저장 키는 읽지 않는다). V2 과제는 화면에 텍스트·발표자료 열을, CSV에 `텍스트 제출`·`텍스트 형식`·`텍스트 크기(바이트)`·`발표자료 제출`·`발표자료 형식`·`발표자료 크기(바이트)` 열을 덧붙인다. 미사용 항목은 `미사용`이다. 기존 PDF 과제와 gate 꺼짐은 기존 세 열 그대로다. 파일 구성이 요구와 어긋나면 정상 현황으로 표시하지 않고 `UNAVAILABLE`이다. CSV 수식 주입 방어는 기존 셀 함수를 그대로 쓴다.
+
+## 활성화 체크리스트
+
+- **모바일 앱이 V2를 지원하기 전에는 `ACADEMIC_SUBMISSION_ARTIFACTS_ENABLED`를 켜지 않는다.** 동결된 모바일 앱(#491)은 기존 상세에서 `submission != null && file == null`인 V2 과제를 PDF 과제로 보고 "다시 제출" 버튼을 보여 준다. 서버가 `CONFLICT`로 거부하므로 보안 문제는 아니지만 사용자를 혼란스럽게 한다. 클라이언트는 이 조합을 분리 제출로 취급하고 `/artifacts`의 `files`로 제출물을 확인해야 한다(OpenAPI 설명에 명시).
+- **V2 제출이 생긴 뒤 gate를 끄지 않는다(N-1).** gate가 꺼지면 학생 상세는 새 컬럼을 읽지 않는 기존 조회로 돌아간다. 이때 V2 제출의 텍스트가 PDF이면 기존 상세가 그 파일 하나를 PDF 단일 제출처럼 보여 줄 수 있고, 제출 현황도 항목 열 없이 표시된다. 끄기가 불가피하면 V2 과제가 없는지 먼저 확인하고 영향을 공지한다.
+- PR-H의 실제 비공개 Blob 2×50MiB 최종화 시간 측정이 `maxDuration` 안에 끝나는지 확인한다.
 
 ## 남은 위험과 미확인
 
