@@ -22,6 +22,10 @@
  * 미탐지(한계, 후속 과제):
  * - PPT RC4 CryptoAPI 암호화는 `EncryptedSummary` 스트림만 확인합니다. 이 스트림 없이
  *   `PowerPoint Document` 내부 CryptSession10Container만 있는 경우는 탐지하지 않습니다.
+ * - HWP 기본 `Scripts` 허용 한계: 속성 bit 3 없이 `DefaultJScript`가 최대 1 KiB(압축 상태, 풀면 수 KB의
+ *   JScript)까지 허용되므로 이 크기 안에 스크립트가 숨을 수 있습니다. #516 범위에서는 수용합니다
+ *   (서버는 실행하지 않고, 다운로드는 attachment로만 제공하며, 한글은 스크립트 실행 전에 확인을 묻습니다).
+ *   단, 업로드를 실제로 열기 전에 한컴 실제 샘플로 이 상한을 더 낮춰야 합니다.
  * - `PowerPoint Document` 스트림 안의 VBA 레코드, OLE 개체 임베드는 해석하지 않습니다.
  *   서버는 업로드 문서를 렌더링·실행하지 않으며 다운로드는 attachment로만 제공합니다.
  */
