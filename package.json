@@ -26,6 +26,7 @@
     "verify:csp": "node scripts/verify-site-routes.mjs --browser csp",
     "verify:repository-secrets": "node scripts/scan-repository-secrets.mjs",
     "verify:dependencies": "node scripts/verify-dependencies.mjs",
+    "deps:triage:regenerate": "node scripts/regenerate-dependency-triage.mjs",
     "verify:public-artifact": "node scripts/check-public-artifact.mjs",
     "verify:public-sources": "node scripts/check-public-sources.mjs",
     "verify:production-smoke": "node scripts/verify-production-smoke.mjs",

@@ -147,12 +147,20 @@ export async function updateAdminEvent(
           "과제에 연결된 세션은 삭제할 수 없습니다. 해당 세션을 유지한 뒤 다시 저장해주세요.",
       };
     }
+    // #161 수업별 과제 검토자 지정이 참조하는 세션도 감사 보존을 위해 삭제하지 않습니다.
+    if (
+      ["23001", "23503"].some((code) =>
+        isConstraintViolation(error, code, "academic_class_reviewer_designations_session_fk"),
+      )
+    ) {
+      return { success: false, message: "검토자 지정이 있는 세션은 삭제할 수 없습니다." };
+    }
     throw error;
   }
   return null;
 }
 
-/** 과제·출결(#159)의 일정·세션 참조 거부만 고정 안내로 바꾸며 다른 오류는 숨겨 분류하지 않습니다. */
+/** 과제·#161 검토자 지정·출결(#159)의 일정·세션 참조 거부만 고정 안내로 바꾸며 다른 오류는 숨겨 분류하지 않습니다. */
 export async function deleteAdminEvent(actor: ScheduleActor, id: string): Promise<ScheduleResult> {
   assertAdmin(actor);
   try {
@@ -176,6 +184,17 @@ export async function deleteAdminEvent(actor: ScheduleActor, id: string): Promis
         success: false,
         message: "과제에 연결된 일정이나 세션은 삭제할 수 없습니다. 연결된 과제를 확인해주세요.",
       };
+    }
+    // #161 수업별 과제 검토자 지정이 일정·세션을 참조하면 지정 기록 보존을 위해 삭제하지 않습니다.
+    if (
+      ["23503", "23001"].some((code) =>
+        [
+          "academic_class_reviewer_designations_event_fk",
+          "academic_class_reviewer_designations_session_fk",
+        ].some((constraint) => isConstraintViolation(error, code, constraint)),
+      )
+    ) {
+      return { success: false, message: "검토자 지정이 있는 수업은 삭제할 수 없습니다." };
     }
     // #159 출결 기록·정정·이력이 참조하는 수업은 보존해야 하므로 같은 방식(SQLSTATE + 제약명)으로만 안내합니다.
     const attendanceConstraints = [

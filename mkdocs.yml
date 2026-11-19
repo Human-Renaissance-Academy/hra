@@ -62,6 +62,7 @@ nav:
       - 데이터베이스: DATABASE.md
       - 배포와 문제 해결: DEPLOYMENT.md
       - 운영 공개 경로 점검: operations/production-smoke.md
+      - 운영 읽기 전용 확인 절차: operations/production-verification-runbook.md
       - 공개 저장소 보안 확인표: operations/public-repository-security.md
       - DB 변경 절차: developer/database-change-procedure.md
       - DB 변경 검증 정본별 책임: developer/db-contract-responsibilities.md
@@ -101,6 +102,7 @@ nav:
           - 업로드·검증·정리: developer/academic-assignment-uploads.md
           - 최종 제출 확정: developer/academic-submission-finalization.md
           - 파일 다운로드와 삭제: developer/academic-submission-files.md
+          - 텍스트·발표자료 분리 제출 SQL: developer/academic-submission-artifacts-migration.md
       - 운영과 검증:
           - 로그·지표·기능 설정: developer/academic-observability.md
           - G1 통합 품질 검사: developer/academic-g1-quality-gate.md
@@ -108,6 +110,7 @@ nav:
       - 출결·검토·수료 정책 초안: ACADEMIC-OPERATIONS-POLICY.md
       - G2 운영 인력 배정(비활성): developer/academic-staff-assignments.md
       - G2 학생별 출결(비활성): developer/academic-attendance.md
+      - G2 교수 과제 검토 권한(비활성): developer/academic-faculty-reviewers.md
       - 주차별 텍스트 열람 범위 초안: WEEKLY-TEXT-ACCESS-POLICY.md
   - 앞으로의 플랫폼:
       - 모바일·API v1 동결 결정: decisions/2026-11-19-mobile-api-freeze.md

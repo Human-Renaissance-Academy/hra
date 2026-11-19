@@ -29,7 +29,7 @@ export async function generateMetadata({ params }: WeeklyTextViewerPageProps): P
   }
 
   const session = await auth();
-  const title = await getWebWeeklyTextTitle(session?.user?.role, parsedId.data);
+  const title = await getWebWeeklyTextTitle(session?.user, parsedId.data);
   return { title: title ?? "주차별 텍스트" };
 }
 
@@ -44,7 +44,7 @@ export default async function WeeklyTextViewerPage({ params }: WeeklyTextViewerP
     notFound();
   }
 
-  const text = await getWebWeeklyTextDetail(session.user.role, parsedId.data);
+  const text = await getWebWeeklyTextDetail(session.user, parsedId.data);
 
   if (!text) {
     notFound();
