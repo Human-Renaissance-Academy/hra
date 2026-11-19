@@ -46,7 +46,9 @@ Next의 config 헤더는 Route가 만든 같은 이름의 응답 헤더보다 �
 
 1. 전역 X-Frame-Options·nosniff·Referrer-Policy·Permissions-Policy 유지.
 2. API 경로에는 기존 frame/base/object/form CSP를 유지하여 Auth.js의 API HTML도 보호.
-3. 자료실 다운로드(`/api/resources/:kind/:id/download`)는 `SAMEORIGIN`을 유지하고 기본 응답(첨부·이미지)에 `sandbox; default-src 'none'; frame-ancestors 'self'`를 둡니다. `?inline=1` PDF 미리보기만 뒤 규칙에서 `frame-ancestors 'self'` 기반의 기존 임베드 정책으로 덮습니다(#513). 2026-11-18 Chromium 156에서는 sandbox CSP가 붙은 PDF도 iframe·직접 열기 모두 표시됐지만, Firefox·Safari 내장 뷰어는 확인하지 않아 미리보기에는 아직 sandbox를 적용하지 않습니다. 확인되면 미리보기도 같은 sandbox 정책으로 통일합니다.
+3. 자료실 다운로드(`/api/resources/:kind/:id/download`)는 `SAMEORIGIN`을 유지하고 기본 응답(첨부·이미지)에 `sandbox; default-src 'none'; frame-ancestors 'self'`를 둡니다. `?inline=1` PDF 미리보기만 뒤 규칙에서 `frame-ancestors 'self'` 기반의 기존 임베드 정책으로 덮습니다(#513). 2026-11-18·19 확인에서 Chromium 156과 Firefox 157(pdf.js)은 sandbox CSP가 붙은 PDF를 같은 출처 iframe과 직접 열기 모두에서 표시했습니다. WebKit·Safari 내장 뷰어는 확인하지 않았습니다.
+   - **결정(#513):** Safari 미확인이므로 `?inline=1` 미리보기는 기존 임베드 정책을 유지합니다. Safari에서 sandbox CSP PDF가 iframe·직접 열기 모두 표시되는 것을 확인하면 미리보기도 같은 sandbox 정책으로 통일하고, `next.config.ts`·`scripts/verify-site-routes.mjs`·단위 테스트를 함께 바꿉니다.
+   - Route는 `inline` 파라미터가 정확히 한 번 `1`일 때만 미리보기로 취급합니다. Next의 `has`(마지막 값)와 Route(첫 값)의 해석이 갈려 미리보기 응답에 sandbox 없는 정책이 붙는 일을 막습니다. 첨부 응답 검사에는 `private, no-store`도 포함합니다.
 4. 학사 제출 파일은 마지막 config 규칙에서도 `sandbox; default-src 'none'`을 명시하여 broad API 규칙이 더 엄격한 정책을 덮지 않게 함.
 
 자료 PDF는 실제 SDK PUT으로 G1 로컬 private 저장소에 넣은 합성 파일을 사용합니다. Next의 정상 200·PDF 바이트 해시·inline·private/no-store·nosniff·프레임 정책을 확인하며 404의 헤더만 보고 완료하지 않습니다. 학사 G1의 정상 다운로드에서도 sandbox·attachment/octet-stream·감사 및 바이트를 확인합니다. 업무 DB 제약이나 인가는 완화하지 않습니다.
