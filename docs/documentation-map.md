@@ -85,6 +85,7 @@ G1은 첫 학사 기능 묶음으로, 학생·수강 이력, 과제 대상, 개�
 | G2 학생별 출결(기능 비활성) | [출결 기록과 정정 승인](developer/academic-attendance.md) |
 | G2 교수 과제 검토 권한(기능 비활성) | [교수 계정 연결과 수업별 과제 검토 권한](developer/academic-faculty-reviewers.md) |
 | G3 과제 검토·피드백(기능 비활성) | [과제 검토·피드백 이력과 담당 검토자 평가 화면](developer/academic-assignment-reviews.md) |
+| G3 수료 기준·확정 이력(기능 비활성) | [수료 기준 버전과 수료 확정 이력](developer/academic-completion.md) |
 
 정책 초안에 적힌 보존 기간이나 기능 문서의 체크리스트를 승인 완료로 해석하지 않는다. 실제 결과를 기록할 때는 날짜, 코드 버전, 환경, 실행한 명령, 통과·실패·미실행 범위를 함께 남긴다.
 
