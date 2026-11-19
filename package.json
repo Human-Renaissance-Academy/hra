@@ -54,7 +54,7 @@
   "dependencies": {
     "@base-ui/react": "^1.9.0",
     "@hra/contracts": "file:packages/contracts",
-    "@neondatabase/serverless": "^1.2.0",
+    "@neondatabase/serverless": "^1.2.1",
     "@radix-ui/react-checkbox": "^1.4.1",
     "@radix-ui/react-radio-group": "^1.5.1",
     "@radix-ui/react-switch": "^1.4.1",
