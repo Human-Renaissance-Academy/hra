@@ -25,13 +25,14 @@ const legacyKey = "60000000-0000-4000-8000-000000000001";
 const checksum = "a".repeat(64);
 const MiB = 1024 * 1024;
 // 기존 G1 SQL을 v1 상태로 먼저 적용한다. 새 SQL은 반드시 이 뒤에 적용한다.
-// 이 시험은 새 SQL이 직접 의존하는 G1 원문 5개(학생·과제·제출·업로드 원장·최종화)만 미리 적용한다.
-// 나머지(enrollment-links·roster·assignment-actions·submission-file-reads)를 포함한 G1 전체 10개 순서는
+// 이 시험은 새 SQL이 직접 의존하는 G1 원문 6개(학생·과제·제출·과제 변경 함수·업로드 원장·최종화)만 미리 적용한다.
+// 나머지(enrollment-links·roster·submission-file-reads)를 포함한 G1 전체 10개 순서는
 // tests/unit/academic-g1-fixture.test.ts의 G1 fixture와 tests/integration/db-fresh-*.test.mjs의 신규 설치 reference·bundle이 검증한다.
 const v1Files = [
   "students",
   "assignments",
   "submissions",
+  "assignment-actions",
   "upload-authorizations",
   "submission-finalization",
 ].map((name) => `scripts/migrate-academic-${name}.sql`);
