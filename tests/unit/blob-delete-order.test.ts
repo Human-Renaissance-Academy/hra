@@ -43,8 +43,12 @@ vi.mock("@/lib/resource-upload-server", () => ({
   recordResourceUpload: mocks.recordResourceUpload,
   validateResourceUploadReference: mocks.validateResourceUploadReference,
 }));
-vi.mock("@/lib/alumni-upload-server", () => ({ validateAlumniImageReference: mocks.validateAlumniImageReference }));
-vi.mock("@/lib/faculty-upload-server", () => ({ validateFacultyImageReference: mocks.validateFacultyImageReference }));
+vi.mock("@/lib/alumni-upload-server", () => ({
+  validateAlumniImageReference: mocks.validateAlumniImageReference,
+}));
+vi.mock("@/lib/faculty-upload-server", () => ({
+  validateFacultyImageReference: mocks.validateFacultyImageReference,
+}));
 vi.mock("@/lib/db", () => ({
   db: {
     query: {
@@ -54,10 +58,12 @@ vi.mock("@/lib/db", () => ({
       classMaterials: { findFirst: mocks.findClassMaterial },
     },
     select: () => ({ from: () => ({ where: mocks.selectWhere }) }),
-    update: () => ({ set: (values: unknown) => {
-      mocks.updateSet(values);
-      return { where: mocks.updateWhere };
-    } }),
+    update: () => ({
+      set: (values: unknown) => {
+        mocks.updateSet(values);
+        return { where: mocks.updateWhere };
+      },
+    }),
     insert: () => ({ values: mocks.insertValues }),
     delete: () => ({ where: mocks.deleteWhere }),
   },
@@ -74,7 +80,8 @@ const id = "11111111-1111-4111-8111-111111111111";
 const imageId = "22222222-2222-4222-8222-222222222222";
 const oldUrl = "https://example.public.blob.vercel-storage.com/faculty/old.png";
 const newUrl = "https://example.public.blob.vercel-storage.com/faculty/new.png";
-const uuidUrlPattern = (prefix: string) => new RegExp(`^https://${projectBlobHost}/${prefix}/[0-9a-f-]{36}\\.png$`);
+const uuidUrlPattern = (prefix: string) =>
+  new RegExp(`^https://${projectBlobHost}/${prefix}/[0-9a-f-]{36}\\.png$`);
 
 function facultyForm() {
   const formData = new FormData();
@@ -113,7 +120,9 @@ describe("기존 Blob 보존", () => {
     vi.resetAllMocks();
     mocks.requireAdmin.mockResolvedValue({ user: { id, role: "ADMIN" } });
     mocks.selectWhere.mockResolvedValue([{ imageUrl: oldUrl }]);
-    mocks.put.mockImplementation(async (path: string) => ({ url: `https://${projectBlobHost}/${path}` }));
+    mocks.put.mockImplementation(async (path: string) => ({
+      url: `https://${projectBlobHost}/${path}`,
+    }));
     mocks.recordOwnedBlob.mockResolvedValue(undefined);
     mocks.recordResourceUpload.mockResolvedValue(undefined);
     mocks.validateResourceUploadReference.mockResolvedValue({ url: newUrl, fileName: "new.pdf" });
@@ -122,12 +131,16 @@ describe("기존 Blob 보존", () => {
     mocks.updateReturning.mockResolvedValue([{ id }]);
     mocks.insertValues.mockResolvedValue(undefined);
     mocks.updateWhere.mockImplementation(() =>
-      Object.assign(Promise.resolve([]), { returning: mocks.updateReturning }));
+      Object.assign(Promise.resolve([]), { returning: mocks.updateReturning }),
+    );
     mocks.deleteReturning.mockResolvedValue([{ id }]);
     mocks.deleteWhere.mockImplementation(() =>
-      Object.assign(Promise.resolve([]), { returning: mocks.deleteReturning }));
+      Object.assign(Promise.resolve([]), { returning: mocks.deleteReturning }),
+    );
     mocks.findGallery.mockResolvedValue({
-      id, coverImageUrl: oldUrl, images: [{ id: imageId, url: oldUrl }],
+      id,
+      coverImageUrl: oldUrl,
+      images: [{ id: imageId, url: oldUrl }],
     });
     mocks.findGalleryImage.mockResolvedValue({ id: imageId, url: oldUrl });
     mocks.findGuidebook.mockResolvedValue({ id, fileUrl: oldUrl });
@@ -142,14 +155,20 @@ describe("기존 Blob 보존", () => {
 
     await expect(updateFaculty(id, facultyForm())).rejects.toThrow("업로드 실패");
     expect(mocks.updateWhere).not.toHaveBeenCalled();
-    expect(mocks.recordResourceUpload).toHaveBeenCalledExactlyOnceWith(expect.stringMatching(uuidUrlPattern("faculty")), id);
+    expect(mocks.recordResourceUpload).toHaveBeenCalledExactlyOnceWith(
+      expect.stringMatching(uuidUrlPattern("faculty")),
+      id,
+    );
     expect(mocks.deleteBlobIfExists).not.toHaveBeenCalled();
   });
 
   it("교수진 DB UPDATE 실패와 0행 경합에서도 이전 파일을 보존한다", async () => {
     mocks.updateReturning.mockRejectedValueOnce(new Error("DB 실패"));
     await expect(updateFaculty(id, facultyForm())).rejects.toThrow("DB 실패");
-    expect(mocks.recordResourceUpload).toHaveBeenCalledWith(expect.stringMatching(uuidUrlPattern("faculty")), id);
+    expect(mocks.recordResourceUpload).toHaveBeenCalledWith(
+      expect.stringMatching(uuidUrlPattern("faculty")),
+      id,
+    );
     expect(mocks.deleteBlobIfExists).not.toHaveBeenCalled();
 
     mocks.updateReturning.mockResolvedValueOnce([]);
@@ -166,7 +185,14 @@ describe("기존 Blob 보존", () => {
 
   it("교수진 삭제가 DB에서 실패해도 사진은 남는다", async () => {
     mocks.deleteWhere.mockRejectedValueOnce(new Error("DB 실패"));
-    await expect(deleteFaculty(id)).rejects.toThrow("DB 실패");
+    // 알 수 없는 DB 실패는 원문 없이 일반 안내로 바꾸고 정제 로그만 남깁니다.
+    expect(await deleteFaculty(id)).toEqual({
+      success: false,
+      message: "교수진을 삭제하지 못했습니다. 잠시 후 다시 시도해주세요.",
+    });
+    expect(mocks.logServerError).toHaveBeenCalledWith("faculty/delete", expect.any(Error), {
+      facultyId: id,
+    });
     expect(mocks.deleteBlobIfExists).not.toHaveBeenCalled();
   });
 
@@ -229,16 +255,25 @@ describe("기존 Blob 보존", () => {
     const result = await updateAlumniStory(id, alumniForm());
 
     expect(result.success).toBe(false);
-    expect(mocks.recordResourceUpload).toHaveBeenCalledExactlyOnceWith(expect.stringMatching(uuidUrlPattern("alumni")), id);
+    expect(mocks.recordResourceUpload).toHaveBeenCalledExactlyOnceWith(
+      expect.stringMatching(uuidUrlPattern("alumni")),
+      id,
+    );
     expect(mocks.deleteBlobIfExists).not.toHaveBeenCalled();
   });
 
   it("수료생 이야기의 새 사진을 대표 이미지로 저장한다", async () => {
     await updateAlumniStory(id, alumniForm());
 
-    expect(mocks.updateSet).toHaveBeenCalledWith(expect.objectContaining({ imageUrl: expect.stringMatching(uuidUrlPattern("alumni")) }));
+    expect(mocks.updateSet).toHaveBeenCalledWith(
+      expect.objectContaining({ imageUrl: expect.stringMatching(uuidUrlPattern("alumni")) }),
+    );
     expect(mocks.insertValues).toHaveBeenCalledWith([
-      expect.objectContaining({ alumniStoryId: id, url: expect.stringMatching(uuidUrlPattern("alumni")), order: 0 }),
+      expect.objectContaining({
+        alumniStoryId: id,
+        url: expect.stringMatching(uuidUrlPattern("alumni")),
+        order: 0,
+      }),
     ]);
   });
 

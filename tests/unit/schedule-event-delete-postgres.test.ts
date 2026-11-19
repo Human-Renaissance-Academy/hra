@@ -11,7 +11,10 @@ import { join } from "node:path";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
-  query: vi.fn(), requireAdmin: vi.fn(), revalidatePath: vi.fn(), log: vi.fn(),
+  query: vi.fn(),
+  requireAdmin: vi.fn(),
+  revalidatePath: vi.fn(),
+  log: vi.fn(),
 }));
 vi.mock("@/lib/admin", () => ({ requireAdmin: mocks.requireAdmin }));
 vi.mock("@/lib/db", async () => {
@@ -33,7 +36,12 @@ const session = "60000000-0000-4000-8000-000000000001";
 const assignment = "70000000-0000-4000-8000-000000000001";
 const eventConstraint = "assignments_schedule_event_id_schedule_events_id_fk";
 const sessionConstraint = "assignments_schedule_session_id_schedule_sessions_id_fk";
-const referenceMessage = "과제에 연결된 일정이나 세션은 삭제할 수 없습니다. 연결된 과제를 확인해주세요.";
+const referenceMessage =
+  "과제에 연결된 일정이나 세션은 삭제할 수 없습니다. 연결된 과제를 확인해주세요.";
+const reviewerMessage = "검토자 지정이 있는 수업은 삭제할 수 없습니다.";
+const reviewerFaculty = "80000000-0000-4000-8000-000000000001";
+const designationEventConstraint = "academic_class_reviewer_designations_event_fk";
+const designationSessionConstraint = "academic_class_reviewer_designations_session_fk";
 const failureMessage = "일정을 삭제하지 못했습니다. 잠시 후 다시 시도해주세요.";
 
 beforeEach(() => {
@@ -44,17 +52,65 @@ beforeEach(() => {
 // 실패 응답은 원본 SQL·제약명·테스트 개인정보를 포함하지 않아야 한다.
 function expectSafeFailure(result: Awaited<ReturnType<typeof deleteScheduleEvent>>) {
   expect(result.success).toBe(false);
-  expect(JSON.stringify(result)).not.toMatch(/DELETE|SELECT|schedule_events|assignments_|23503|23001|private@example\.test|원본 DB 오류/);
+  expect(JSON.stringify(result)).not.toMatch(
+    /DELETE|SELECT|schedule_events|assignments_|23503|23001|private@example\.test|원본 DB 오류/,
+  );
   expect(mocks.revalidatePath).not.toHaveBeenCalled();
 }
 
 describe("일정 삭제 오류의 제한적인 분류", () => {
-  it.each(["23503", "23001"].flatMap(code =>
-    [eventConstraint, sessionConstraint].map(constraint => ({ code, constraint }))
-  ))("$code와 $constraint가 함께 일치하면 참조 안내를 반환한다", async (error) => {
-    mocks.query.mockRejectedValueOnce({ ...error, message: "원본 DB 오류 private@example.test DELETE FROM schedule_events" });
+  it.each(
+    ["23503", "23001"].flatMap((code) =>
+      [eventConstraint, sessionConstraint].map((constraint) => ({ code, constraint })),
+    ),
+  )("$code와 $constraint가 함께 일치하면 참조 안내를 반환한다", async (error) => {
+    mocks.query.mockRejectedValueOnce({
+      ...error,
+      message: "원본 DB 오류 private@example.test DELETE FROM schedule_events",
+    });
     const result = await deleteScheduleEvent(event);
     expect(result).toEqual({ success: false, message: referenceMessage });
+    expectSafeFailure(result);
+    expect(mocks.log).not.toHaveBeenCalled();
+  });
+
+  it.each(
+    ["23503", "23001"].flatMap((code) =>
+      [designationEventConstraint, designationSessionConstraint].map((constraint) => ({
+        code,
+        constraint,
+      })),
+    ),
+  )("$code와 #161 $constraint가 함께 일치하면 검토자 지정 안내를 반환한다", async (error) => {
+    mocks.query.mockRejectedValueOnce({
+      ...error,
+      message: "원본 DB 오류 private@example.test DELETE FROM schedule_events",
+    });
+    const result = await deleteScheduleEvent(event);
+    expect(result).toEqual({ success: false, message: reviewerMessage });
+    expect(JSON.stringify(result)).not.toMatch(/academic_|23503|23001|private@example\.test/);
+    expect(mocks.revalidatePath).not.toHaveBeenCalled();
+    expect(mocks.log).not.toHaveBeenCalled();
+  });
+
+  it.each(
+    ["23503", "23001"].flatMap((code) =>
+      [
+        "academic_attendance_records_event_fk",
+        "academic_attendance_corrections_event_fk",
+        "academic_attendance_events_event_fk",
+      ].map((constraint) => ({ code, constraint })),
+    ),
+  )("$code와 출결 $constraint가 함께 일치하면 출결 보존 안내를 반환한다", async (error) => {
+    mocks.query.mockRejectedValueOnce({
+      ...error,
+      message: "원본 DB 오류 private@example.test DELETE FROM schedule_events",
+    });
+    const result = await deleteScheduleEvent(event);
+    expect(result).toEqual({
+      success: false,
+      message: "출결 기록이 있는 수업은 삭제할 수 없습니다.",
+    });
     expectSafeFailure(result);
     expect(mocks.log).not.toHaveBeenCalled();
   });
@@ -66,11 +122,16 @@ describe("일정 삭제 오류의 제한적인 분류", () => {
     { code: "42P01", constraint: sessionConstraint },
     { code: "23503" },
   ])("알려진 조합이 아닌 $code 오류는 일반 실패로 기록한다", async (error) => {
-    mocks.query.mockRejectedValueOnce({ ...error, message: "원본 DB 오류 private@example.test DELETE FROM schedule_events" });
+    mocks.query.mockRejectedValueOnce({
+      ...error,
+      message: "원본 DB 오류 private@example.test DELETE FROM schedule_events",
+    });
     const result = await deleteScheduleEvent(event);
     expect(result).toEqual({ success: false, message: failureMessage });
     expectSafeFailure(result);
-    expect(mocks.log).toHaveBeenCalledWith("schedule/delete", expect.anything(), { eventId: event });
+    expect(mocks.log).toHaveBeenCalledWith("schedule/delete", expect.anything(), {
+      eventId: event,
+    });
   });
 });
 
@@ -80,17 +141,52 @@ describe.skipIf(!bin)("격리 PostgreSQL에서 일정 삭제", () => {
   let args: string[];
   const observedErrors: { code?: string; constraint?: string }[] = [];
   const program = (name: string) => join(bin!, name);
-  const run = (query: string) => execFileSync(program("psql"), args, {
-    input: query, encoding: "utf8", stdio: ["pipe", "pipe", "pipe"],
-  }).trim();
+  const run = (query: string) =>
+    execFileSync(program("psql"), args, {
+      input: query,
+      encoding: "utf8",
+      stdio: ["pipe", "pipe", "pipe"],
+    }).trim();
 
   beforeAll(() => {
     root = mkdtempSync(join(tmpdir(), "hra-schedule-delete-"));
-    execFileSync(program("initdb"), ["-D", join(root, "data"), "-A", "trust", "-U", "hra_test", "--no-locale", "-E", "UTF8"], { stdio: "pipe" });
-    execFileSync(program("pg_ctl"), ["-D", join(root, "data"), "-l", join(root, "server.log"), "-o", `-h '' -k ${root} -p 55453`, "-w", "start"], { stdio: "pipe" });
+    execFileSync(
+      program("initdb"),
+      ["-D", join(root, "data"), "-A", "trust", "-U", "hra_test", "--no-locale", "-E", "UTF8"],
+      { stdio: "pipe" },
+    );
+    execFileSync(
+      program("pg_ctl"),
+      [
+        "-D",
+        join(root, "data"),
+        "-l",
+        join(root, "server.log"),
+        "-o",
+        `-h '' -k ${root} -p 55453`,
+        "-w",
+        "start",
+      ],
+      { stdio: "pipe" },
+    );
     started = true;
-    args = ["-X", "-h", root, "-p", "55453", "-U", "hra_test", "-d", "postgres", "-v", "ON_ERROR_STOP=1", "-v", "VERBOSITY=verbose", "-Atq"];
-    run(`CREATE TABLE cohorts (id uuid PRIMARY KEY); CREATE TABLE users (id uuid PRIMARY KEY);
+    args = [
+      "-X",
+      "-h",
+      root,
+      "-p",
+      "55453",
+      "-U",
+      "hra_test",
+      "-d",
+      "postgres",
+      "-v",
+      "ON_ERROR_STOP=1",
+      "-v",
+      "VERBOSITY=verbose",
+      "-Atq",
+    ];
+    run(`CREATE TABLE cohorts (id uuid PRIMARY KEY); CREATE TABLE users (id uuid PRIMARY KEY, role text NOT NULL DEFAULT 'ADMIN');
       CREATE TABLE faculty (id uuid PRIMARY KEY);
       CREATE TYPE schedule_event_type AS ENUM ('CLASS','EVENT');
       CREATE TYPE session_category AS ENUM ('CLASSICS','ENGLISH','SPEECH','SPECIAL_LECTURE','CASE_STUDY');
@@ -103,16 +199,24 @@ describe.skipIf(!bin)("격리 PostgreSQL에서 일정 삭제", () => {
     // 과제의 실제 마이그레이션으로 RESTRICT FK와 쓰기 계약을 그대로 설치한다.
     run(readFileSync("scripts/migrate-academic-students.sql", "utf8"));
     run(readFileSync("scripts/migrate-academic-assignments.sql", "utf8"));
+    // #161 검토자 지정의 실제 RESTRICT FK를 설치합니다(선행: #165 학사 운영 관리자 SQL).
+    run(readFileSync("scripts/migrate-academic-staff-assignments.sql", "utf8"));
+    run(readFileSync("scripts/migrate-academic-faculty-reviewers.sql", "utf8"));
+    run(`INSERT INTO faculty VALUES ('${reviewerFaculty}');`);
   }, 30000);
 
   beforeEach(() => {
     observedErrors.length = 0;
     mocks.query.mockImplementation(async (query: string, values: unknown[]) => {
       // PREPARE의 값은 SQL 리터럴로 이스케이프하며 실제 앱 연결 문자열은 사용하지 않는다.
-      const params = values.map(value => value === null ? "NULL" : `'${String(value).replaceAll("'", "''")}'`).join(",");
+      const params = values
+        .map((value) => (value === null ? "NULL" : `'${String(value).replaceAll("'", "''")}'`))
+        .join(",");
       try {
-        const response = run(`PREPARE schedule_delete AS ${query}; EXECUTE schedule_delete(${params});`);
-        return { rows: response ? response.split("\n").map(row => row.split("|")) : [] };
+        const response = run(
+          `PREPARE schedule_delete AS ${query}; EXECUTE schedule_delete(${params});`,
+        );
+        return { rows: response ? response.split("\n").map((row) => row.split("|")) : [] };
       } catch (error) {
         const stderr = error instanceof Error && "stderr" in error ? String(error.stderr) : "";
         const violation = {
@@ -124,42 +228,59 @@ describe.skipIf(!bin)("격리 PostgreSQL에서 일정 삭제", () => {
         throw { ...violation, cause: error };
       }
     });
-    run(`TRUNCATE assignment_targets, assignments, cohort_enrollments, academic_students, schedule_sessions, schedule_events;
+    // 검토자 지정·감사 표는 보호 트리거가 비우기를 막으므로 이 격리 DB에서만 트리거를 끄고 비웁니다.
+    run(`SET session_replication_role = replica;
+      TRUNCATE academic_faculty_review_events, academic_class_reviewer_designations, assignment_targets, assignments, cohort_enrollments, academic_students, schedule_sessions, schedule_events;
+      SET session_replication_role = origin;
       INSERT INTO schedule_events VALUES ('${event}', '2026-10-14', 'CLASS', '보존할 일정', '${cohort}');
       INSERT INTO schedule_sessions VALUES ('${session}', '${event}', 'CLASSICS');`);
   });
 
   afterAll(() => {
     try {
-      if (started) execFileSync(program("pg_ctl"), ["-D", join(root, "data"), "-m", "immediate", "-w", "stop"], { stdio: "pipe" });
+      if (started)
+        execFileSync(
+          program("pg_ctl"),
+          ["-D", join(root, "data"), "-m", "immediate", "-w", "stop"],
+          { stdio: "pipe" },
+        );
     } finally {
       if (root) rmSync(root, { recursive: true, force: true });
     }
   });
 
   // 일정 직접 참조와 세션 참조 모두 실제 과제 쓰기 계약을 통과한 행으로 만든다.
-  const linkAssignment = (withSession: boolean) => run(`
+  const linkAssignment = (withSession: boolean) =>
+    run(`
     INSERT INTO assignments (id, cohort_id, schedule_event_id, schedule_session_id, title, created_by_user_id)
     VALUES ('${assignment}', '${cohort}', '${event}', ${withSession ? `'${session}'` : "NULL"}, '보존할 과제', '${actor}');`);
 
   function expectPreserved(withAssignment: boolean) {
     expect(run(`SELECT title FROM schedule_events WHERE id='${event}';`)).toBe("보존할 일정");
-    expect(run(`SELECT schedule_event_id FROM schedule_sessions WHERE id='${session}';`)).toBe(event);
+    expect(run(`SELECT schedule_event_id FROM schedule_sessions WHERE id='${session}';`)).toBe(
+      event,
+    );
     expect(run("SELECT count(*) FROM assignments;")).toBe(withAssignment ? "1" : "0");
-    if (withAssignment) expect(run(`SELECT title FROM assignments WHERE id='${assignment}';`)).toBe("보존할 과제");
+    if (withAssignment)
+      expect(run(`SELECT title FROM assignments WHERE id='${assignment}';`)).toBe("보존할 과제");
   }
 
-  it.each([false, true])("과제의 세션 참조 여부 %s에서 삭제를 거부하고 모든 기록을 보존한다", async (withSession) => {
-    linkAssignment(withSession);
-    const before = run("SELECT row_to_json(a) FROM assignments a;");
-    const result = await deleteScheduleEvent(event);
-    expect(result).toEqual({ success: false, message: referenceMessage });
-    expectSafeFailure(result);
-    expectPreserved(true);
-    expect(run("SELECT row_to_json(a) FROM assignments a;")).toBe(before);
-    expect(observedErrors).toEqual([{ code: expect.stringMatching(/^(23503|23001)$/), constraint: eventConstraint }]);
-    expect(mocks.log).not.toHaveBeenCalled();
-  });
+  it.each([false, true])(
+    "과제의 세션 참조 여부 %s에서 삭제를 거부하고 모든 기록을 보존한다",
+    async (withSession) => {
+      linkAssignment(withSession);
+      const before = run("SELECT row_to_json(a) FROM assignments a;");
+      const result = await deleteScheduleEvent(event);
+      expect(result).toEqual({ success: false, message: referenceMessage });
+      expectSafeFailure(result);
+      expectPreserved(true);
+      expect(run("SELECT row_to_json(a) FROM assignments a;")).toBe(before);
+      expect(observedErrors).toEqual([
+        { code: expect.stringMatching(/^(23503|23001)$/), constraint: eventConstraint },
+      ]);
+      expect(mocks.log).not.toHaveBeenCalled();
+    },
+  );
 
   it("CASCADE 중 세션 FK가 삭제를 거부해도 일정·세션·과제를 모두 보존한다", async () => {
     linkAssignment(true);
@@ -173,7 +294,9 @@ describe.skipIf(!bin)("격리 PostgreSQL에서 일정 삭제", () => {
       expectSafeFailure(result);
       expectPreserved(true);
       expect(run("SELECT row_to_json(a) FROM assignments a;")).toBe(before);
-      expect(observedErrors).toEqual([{ code: expect.stringMatching(/^(23503|23001)$/), constraint: sessionConstraint }]);
+      expect(observedErrors).toEqual([
+        { code: expect.stringMatching(/^(23503|23001)$/), constraint: sessionConstraint },
+      ]);
       expect(mocks.log).not.toHaveBeenCalled();
     } finally {
       run(`ALTER TABLE assignments ADD CONSTRAINT ${eventConstraint}
@@ -181,8 +304,29 @@ describe.skipIf(!bin)("격리 PostgreSQL에서 일정 삭제", () => {
     }
   });
 
+  it.each([false, true])(
+    "#161 검토자 지정(세션 지정 %s)이 있으면 삭제를 거부하고 일정·세션·지정을 보존한다",
+    async (withSession) => {
+      // 지정 함수 대신 소유 역할의 직접 INSERT로 실제 FK가 있는 지정 행만 만듭니다.
+      run(`INSERT INTO academic_class_reviewer_designations (faculty_id, schedule_event_id, schedule_session_id, valid_from, designated_by_user_id)
+      VALUES ('${reviewerFaculty}', '${event}', ${withSession ? `'${session}'` : "NULL"}, now(), '${actor}');`);
+      const result = await deleteScheduleEvent(event);
+      expect(result).toEqual({ success: false, message: reviewerMessage });
+      expectSafeFailure(result);
+      expectPreserved(false);
+      expect(run("SELECT count(*) FROM academic_class_reviewer_designations;")).toBe("1");
+      expect(observedErrors).toEqual([
+        { code: expect.stringMatching(/^(23503|23001)$/), constraint: designationEventConstraint },
+      ]);
+      expect(mocks.log).not.toHaveBeenCalled();
+    },
+  );
+
   it("참조가 없으면 일정과 세션을 삭제하고 성공용 캐시를 갱신한다", async () => {
-    expect(await deleteScheduleEvent(event)).toEqual({ success: true, message: "일정이 삭제되었습니다." });
+    expect(await deleteScheduleEvent(event)).toEqual({
+      success: true,
+      message: "일정이 삭제되었습니다.",
+    });
     expect(run("SELECT count(*) FROM schedule_events;")).toBe("0");
     expect(run("SELECT count(*) FROM schedule_sessions;")).toBe("0");
     expect(mocks.revalidatePath.mock.calls).toEqual([["/"], ["/admin/schedule"]]);
@@ -191,7 +335,10 @@ describe.skipIf(!bin)("격리 PostgreSQL에서 일정 삭제", () => {
 
   it("없는 대상은 성공으로 오인하지 않고 캐시를 갱신하지 않는다", async () => {
     const result = await deleteScheduleEvent(missingEvent);
-    expect(result).toEqual({ success: false, message: "일정을 찾을 수 없습니다. 목록을 새로고침해주세요." });
+    expect(result).toEqual({
+      success: false,
+      message: "일정을 찾을 수 없습니다. 목록을 새로고침해주세요.",
+    });
     expectSafeFailure(result);
     expectPreserved(false);
   });
@@ -213,8 +360,12 @@ describe.skipIf(!bin)("격리 PostgreSQL에서 일정 삭제", () => {
       expect(result).toEqual({ success: false, message: failureMessage });
       expectSafeFailure(result);
       expectPreserved(false);
-      expect(observedErrors).toEqual([{ code: expect.stringMatching(/^(23503|23001)$/), constraint: "unrelated_reference_fk" }]);
-      expect(mocks.log).toHaveBeenCalledWith("schedule/delete", expect.anything(), { eventId: event });
+      expect(observedErrors).toEqual([
+        { code: expect.stringMatching(/^(23503|23001)$/), constraint: "unrelated_reference_fk" },
+      ]);
+      expect(mocks.log).toHaveBeenCalledWith("schedule/delete", expect.anything(), {
+        eventId: event,
+      });
     } finally {
       run("DROP TABLE unrelated_links;");
     }

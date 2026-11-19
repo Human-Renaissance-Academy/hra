@@ -22,14 +22,27 @@ function assertAdmin(actor: ScheduleActor): void {
 /** 내부 관계 메타데이터를 제외하고 관리자 화면에서 사용하는 값만 제공합니다. */
 function eventDto(event: NonNullable<Awaited<ReturnType<typeof repository.findEvent>>>) {
   return {
-    id: event.id, eventDate: event.eventDate, endTime: event.endTime,
-    eventType: event.eventType, title: event.title, cohortId: event.cohortId,
-    weekNumber: event.weekNumber, description: event.description, isPublic: event.isPublic,
+    id: event.id,
+    eventDate: event.eventDate,
+    endTime: event.endTime,
+    eventType: event.eventType,
+    title: event.title,
+    cohortId: event.cohortId,
+    weekNumber: event.weekNumber,
+    description: event.description,
+    isPublic: event.isPublic,
     cohort: event.cohort ? { id: event.cohort.id, name: event.cohort.name } : null,
-    sessions: event.sessions.map(s => ({ id: s.id, category: s.category, facultyId: s.facultyId,
-      content: s.content, reportCategory: s.reportCategory, subTitle: s.subTitle,
-      subDescription: s.subDescription, order: s.order,
-      faculty: s.faculty ? { id: s.faculty.id, name: s.faculty.name } : null })),
+    sessions: event.sessions.map((s) => ({
+      id: s.id,
+      category: s.category,
+      facultyId: s.facultyId,
+      content: s.content,
+      reportCategory: s.reportCategory,
+      subTitle: s.subTitle,
+      subDescription: s.subDescription,
+      order: s.order,
+      faculty: s.faculty ? { id: s.faculty.id, name: s.faculty.name } : null,
+    })),
   };
 }
 
@@ -38,8 +51,10 @@ export async function getAdminChoices(actor: ScheduleActor) {
   assertAdmin(actor);
   const faculties = await repository.listFacultyChoices();
   const cohorts = await repository.listCohortChoices();
-  return { faculties: faculties.map(f => ({ id: f.id, name: f.name, category: f.category })),
-    cohorts: cohorts.map(c => ({ id: c.id, name: c.name })) };
+  return {
+    faculties: faculties.map((f) => ({ id: f.id, name: f.name, category: f.category })),
+    cohorts: cohorts.map((c) => ({ id: c.id, name: c.name })),
+  };
 }
 
 /** 목록은 비공개를 포함한 전체 일정의 기존 정렬 결과를 제공합니다. */
@@ -56,26 +71,40 @@ export async function getAdminEvent(actor: ScheduleActor, id: string) {
 }
 
 /** 새 일정은 기존 UUID를 채택하지 않으며 수업 세션만 함께 생성합니다. */
-export async function createAdminEvent(actor: ScheduleActor, input: ScheduleEventInput): Promise<ScheduleResult | null> {
+export async function createAdminEvent(
+  actor: ScheduleActor,
+  input: ScheduleEventInput,
+): Promise<ScheduleResult | null> {
   assertAdmin(actor);
-  if (input.sessions.some(session => session.serverId)) {
+  if (input.sessions.some((session) => session.serverId)) {
     return { success: false, message: "새 일정에는 기존 세션을 연결할 수 없습니다." };
   }
   if (input.eventType === "CLASS" && input.sessions.length > 0) {
     await repository.insertEventWithSessions(input);
   } else {
-    await repository.insertEvent({ eventDate: input.eventDate, endTime: input.endTime,
-      eventType: input.eventType, title: input.title, cohortId: input.cohortId,
-      weekNumber: input.weekNumber, description: input.description, isPublic: input.isPublic });
+    await repository.insertEvent({
+      eventDate: input.eventDate,
+      endTime: input.endTime,
+      eventType: input.eventType,
+      title: input.title,
+      cohortId: input.cohortId,
+      weekNumber: input.weekNumber,
+      description: input.description,
+      isPublic: input.isPublic,
+    });
   }
   return null;
 }
 
 /** 소유 세션 UUID의 유지·추가·제거는 저장소의 단일 원자 CTE로 수행합니다. */
-export async function updateAdminEvent(actor: ScheduleActor, id: string, input: ScheduleEventInput): Promise<ScheduleResult | null> {
+export async function updateAdminEvent(
+  actor: ScheduleActor,
+  id: string,
+  input: ScheduleEventInput,
+): Promise<ScheduleResult | null> {
   assertAdmin(actor);
   // 행사 전환도 전달 UUID의 소유권부터 확인하도록 모든 세션을 전달합니다.
-  const sessionPayload = input.sessions.map(session => ({
+  const sessionPayload = input.sessions.map((session) => ({
     id: session.serverId ?? null,
     category: session.category,
     faculty_id: session.facultyId ?? null,
@@ -87,23 +116,51 @@ export async function updateAdminEvent(actor: ScheduleActor, id: string, input: 
   }));
   try {
     const saved = await repository.updateEvent(id, input, sessionPayload);
-    const status = z.object({ event_exists: z.boolean(), sessions_valid: z.boolean() }).safeParse(saved.rows[0]);
+    const status = z
+      .object({ event_exists: z.boolean(), sessions_valid: z.boolean() })
+      .safeParse(saved.rows[0]);
     if (!status.success) throw new Error("일정 저장 결과를 확인할 수 없습니다.");
-    if (!status.data.event_exists) return { success: false, message: "일정을 찾을 수 없습니다. 목록을 새로고침해주세요." };
-    if (!status.data.sessions_valid) return { success: false, message: "다른 일정의 세션이 포함되었거나 세션이 변경되었습니다. 새로고침 후 다시 확인해주세요." };
+    if (!status.data.event_exists)
+      return { success: false, message: "일정을 찾을 수 없습니다. 목록을 새로고침해주세요." };
+    if (!status.data.sessions_valid)
+      return {
+        success: false,
+        message:
+          "다른 일정의 세션이 포함되었거나 세션이 변경되었습니다. 새로고침 후 다시 확인해주세요.",
+      };
   } catch (error) {
     // 알려진 과제 세션 RESTRICT만 처리하고 그 밖의 오류는 웹의 기존 정제 로그로 전달합니다.
     // PostgreSQL 18의 RESTRICT 위반은 23001이며, 이전 서버의 23503도 같은 정책으로 처리합니다.
     // SQLSTATE와 제약명이 함께 일치할 때만 안내로 바꿔 다른 FK 오류를 잘못 분류하지 않습니다.
-    if (["23001", "23503"].some(code => isConstraintViolation(error, code, "assignments_schedule_session_id_schedule_sessions_id_fk"))) {
-      return { success: false, message: "과제에 연결된 세션은 삭제할 수 없습니다. 해당 세션을 유지한 뒤 다시 저장해주세요." };
+    if (
+      ["23001", "23503"].some((code) =>
+        isConstraintViolation(
+          error,
+          code,
+          "assignments_schedule_session_id_schedule_sessions_id_fk",
+        ),
+      )
+    ) {
+      return {
+        success: false,
+        message:
+          "과제에 연결된 세션은 삭제할 수 없습니다. 해당 세션을 유지한 뒤 다시 저장해주세요.",
+      };
+    }
+    // #161 수업별 과제 검토자 지정이 참조하는 세션도 감사 보존을 위해 삭제하지 않습니다.
+    if (
+      ["23001", "23503"].some((code) =>
+        isConstraintViolation(error, code, "academic_class_reviewer_designations_session_fk"),
+      )
+    ) {
+      return { success: false, message: "검토자 지정이 있는 세션은 삭제할 수 없습니다." };
     }
     throw error;
   }
   return null;
 }
 
-/** 과제의 일정·세션 참조 거부만 고정 안내로 바꾸며 다른 오류는 숨겨 분류하지 않습니다. */
+/** 과제·#161 검토자 지정·출결(#159)의 일정·세션 참조 거부만 고정 안내로 바꾸며 다른 오류는 숨겨 분류하지 않습니다. */
 export async function deleteAdminEvent(actor: ScheduleActor, id: string): Promise<ScheduleResult> {
   assertAdmin(actor);
   try {
@@ -118,10 +175,39 @@ export async function deleteAdminEvent(actor: ScheduleActor, id: string): Promis
     ];
     // RESTRICT 위반은 PostgreSQL 18에서 23001, 이전 서버에서 23503이므로 두 코드를 모두 받되
     // SQLSTATE와 과제 FK 제약명이 함께 일치해야 고정 안내로 바꿉니다.
-    if (["23503", "23001"].some(code => assignmentConstraints.some(constraint =>
-      isConstraintViolation(error, code, constraint)
-    ))) {
-      return { success: false, message: "과제에 연결된 일정이나 세션은 삭제할 수 없습니다. 연결된 과제를 확인해주세요." };
+    if (
+      ["23503", "23001"].some((code) =>
+        assignmentConstraints.some((constraint) => isConstraintViolation(error, code, constraint)),
+      )
+    ) {
+      return {
+        success: false,
+        message: "과제에 연결된 일정이나 세션은 삭제할 수 없습니다. 연결된 과제를 확인해주세요.",
+      };
+    }
+    // #161 수업별 과제 검토자 지정이 일정·세션을 참조하면 지정 기록 보존을 위해 삭제하지 않습니다.
+    if (
+      ["23503", "23001"].some((code) =>
+        [
+          "academic_class_reviewer_designations_event_fk",
+          "academic_class_reviewer_designations_session_fk",
+        ].some((constraint) => isConstraintViolation(error, code, constraint)),
+      )
+    ) {
+      return { success: false, message: "검토자 지정이 있는 수업은 삭제할 수 없습니다." };
+    }
+    // #159 출결 기록·정정·이력이 참조하는 수업은 보존해야 하므로 같은 방식(SQLSTATE + 제약명)으로만 안내합니다.
+    const attendanceConstraints = [
+      "academic_attendance_records_event_fk",
+      "academic_attendance_corrections_event_fk",
+      "academic_attendance_events_event_fk",
+    ];
+    if (
+      ["23503", "23001"].some((code) =>
+        attendanceConstraints.some((constraint) => isConstraintViolation(error, code, constraint)),
+      )
+    ) {
+      return { success: false, message: "출결 기록이 있는 수업은 삭제할 수 없습니다." };
     }
     throw error;
   }
