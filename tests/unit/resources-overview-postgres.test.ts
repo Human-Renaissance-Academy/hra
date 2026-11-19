@@ -9,9 +9,15 @@ import { existsSync } from "node:fs";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import * as schema from "@/lib/db/schema";
 import { createQaPostgres } from "../support/resource-qa-postgres.mjs";
-import { createPsqlTransport, qaDatabaseUrl, qaNeonEndpoint } from "../support/neon-psql-transport.mjs";
+import {
+  createPsqlTransport,
+  qaDatabaseUrl,
+  qaNeonEndpoint,
+} from "../support/neon-psql-transport.mjs";
 
-const mocks = vi.hoisted(() => ({ database: undefined as NeonHttpDatabase<typeof schema> | undefined }));
+const mocks = vi.hoisted(() => ({
+  database: undefined as NeonHttpDatabase<typeof schema> | undefined,
+}));
 vi.mock("@/lib/db", () => ({
   get db() {
     if (!mocks.database) throw new Error("격리 DB 준비 전 호출");
@@ -86,15 +92,21 @@ describe.skipIf(!bin)("자료실 통합 목록 실제 PostgreSQL 경계", () => 
     const transport = createPsqlTransport(cluster.environment);
     neonConfig.fetchEndpoint = qaNeonEndpoint;
     neonConfig.fetchFunction = async (input: unknown, options: RequestInit) => {
-      if (String(input) !== qaNeonEndpoint || options.method !== "POST" ||
-        new Headers(options.headers).get("Neon-Connection-String") !== qaDatabaseUrl) {
+      if (
+        String(input) !== qaNeonEndpoint ||
+        options.method !== "POST" ||
+        new Headers(options.headers).get("Neon-Connection-String") !== qaDatabaseUrl
+      ) {
         throw new Error("격리 SQL 범위 이외 요청 차단");
       }
       postCount++;
       try {
         return Response.json(await transport(JSON.parse(String(options.body))));
       } catch {
-        return Response.json({ message: "격리 SQL 실행 거부", code: "QA_TRANSPORT_ERROR" }, { status: 400 });
+        return Response.json(
+          { message: "격리 SQL 실행 거부", code: "QA_TRANSPORT_ERROR" },
+          { status: 400 },
+        );
       }
     };
     mocks.database = drizzle(neon(qaDatabaseUrl), { schema });
@@ -116,8 +128,9 @@ describe.skipIf(!bin)("자료실 통합 목록 실제 PostgreSQL 경계", () => 
     expect(result.userCohortId).toBe(ids.cohort20);
     expect(result.cohorts.map((row) => row.name)).toEqual(["20기", "1기", "특별반"]);
     expect(result.logs.map((row) => row.title)).toEqual(["새 일지", "옛 일지"]);
+    // 주차별 텍스트는 MEMBER 본인 기수(20기)만 SQL에서 거릅니다(#441). 수업일지는 위처럼 기수와 무관합니다.
     expect(result.weeklyTexts.map((row) => [row.title, row.hasBody, row.hasFile])).toEqual([
-      ["본문 글", true, false], ["파일 글", false, true],
+      ["본문 글", true, false],
     ]);
     expect(result.classMaterials.map((row) => row.title)).toEqual(["학생 강의"]);
     expect(result.guidebooks.map((row) => row.title)).toEqual(["합성 가이드북"]);
@@ -125,26 +138,40 @@ describe.skipIf(!bin)("자료실 통합 목록 실제 PostgreSQL 경계", () => 
     expect(JSON.stringify(result)).not.toMatch(/private:|secret\.pdf|합성 비공개 본문|내부 본문/);
   });
 
-  it("FACULTY·ADMIN은 강의자료 두 audience를 SQL에서 읽는다", async () => {
-    for (const [userId, role] of [[ids.faculty, "FACULTY"], [ids.admin, "ADMIN"]] as const) {
+  it("FACULTY·ADMIN은 강의자료 두 audience와 모든 기수의 주차별 텍스트를 SQL에서 읽는다", async () => {
+    for (const [userId, role] of [
+      [ids.faculty, "FACULTY"],
+      [ids.admin, "ADMIN"],
+    ] as const) {
       const result = await getResourcesOverview({ userId, role });
       expect(result.kind).toBe("ok");
       if (result.kind !== "ok") throw new Error("합성 운영 역할 오류");
       expect(result.classMaterials.map((row) => row.title)).toEqual(["학생 강의", "교수 강의"]);
+      // FACULTY·ADMIN은 모든 기수의 주차별 텍스트와 본문/파일 분기를 받습니다(#441).
+      expect(result.weeklyTexts.map((row) => [row.title, row.hasBody, row.hasFile])).toEqual([
+        ["본문 글", true, false],
+        ["파일 글", false, true],
+      ]);
     }
   });
 
   it("PENDING은 모든 DB 접근 전에 거부하고 역할 철회·계정 삭제는 목록 전에 무효화한다", async () => {
     postCount = 0;
-    expect(await getResourcesOverview({ userId: ids.pending, role: "PENDING" })).toEqual({ kind: "forbidden" });
+    expect(await getResourcesOverview({ userId: ids.pending, role: "PENDING" })).toEqual({
+      kind: "forbidden",
+    });
     expect(postCount).toBe(0);
 
     cluster?.sql(`UPDATE users SET role='PENDING' WHERE id='${ids.revoked}';`);
     postCount = 0;
-    expect(await getResourcesOverview({ userId: ids.revoked, role: "MEMBER" })).toEqual({ kind: "unauthenticated" });
+    expect(await getResourcesOverview({ userId: ids.revoked, role: "MEMBER" })).toEqual({
+      kind: "unauthenticated",
+    });
     expect(postCount).toBe(1); // 현재 사용자 한 건만 조회하고 콘텐츠 여섯 조회는 실행하지 않음
 
     cluster?.sql(`DELETE FROM users WHERE id='${ids.revoked}';`);
-    expect(await getResourcesOverview({ userId: ids.revoked, role: "MEMBER" })).toEqual({ kind: "unauthenticated" });
+    expect(await getResourcesOverview({ userId: ids.revoked, role: "MEMBER" })).toEqual({
+      kind: "unauthenticated",
+    });
   });
 });
