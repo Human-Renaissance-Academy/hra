@@ -71,7 +71,7 @@ const audit = {
   ),
 };
 test("현재 정확한 집합은 package 수와 advisory 수를 구분한다", () => {
-  assert.deepEqual(verifyReviewedFixture(audit, lock, policy, "2026-11-17"), {
+  assert.deepEqual(verifyReviewedFixture(audit, lock, policy, "2026-11-19"), {
     affectedPackages: 15,
     advisoryEntries: 2,
     p1: 0,
@@ -89,7 +89,7 @@ for (const [name, change] of [
   test(name + " 차단", () => {
     const input = structuredClone(audit);
     change(input);
-    assert.throws(() => verifyReviewedFixture(input, lock, policy, "2026-11-17"), /DEPENDENCY_/);
+    assert.throws(() => verifyReviewedFixture(input, lock, policy, "2026-11-19"), /DEPENDENCY_/);
   });
 for (const [name, change] of [
   ["미분류", (p) => p.assessments.pop()],
@@ -101,19 +101,19 @@ for (const [name, change] of [
   test(name + " 원장 차단", () => {
     const input = structuredClone(policy);
     change(input);
-    assert.throws(() => verifyReviewedFixture(audit, lock, input, "2026-11-17"), /DEPENDENCY_/);
+    assert.throws(() => verifyReviewedFixture(audit, lock, input, "2026-11-19"), /DEPENDENCY_/);
   });
-// 가장 이른 재검토 기한(2026-11-26) 다음 날부터는 실제 원장 전체가 만료로 차단된다.
+// 가장 이른 재검토 기한(2026-12-03) 다음 날부터는 실제 원장 전체가 만료로 차단된다.
 test("검토 기한 만료 차단", () =>
   assert.throws(
-    () => verifyReviewedFixture(audit, lock, policy, "2026-11-27"),
+    () => verifyReviewedFixture(audit, lock, policy, "2026-12-04"),
     /DEPENDENCY_TRIAGE_INVALID/,
   ));
 test("lock 설치 버전 변경 차단", () => {
   const input = structuredClone(lock);
   input.packages["node_modules/@esbuild-kit/core-utils/node_modules/esbuild"].version = "99.0.0";
   assert.throws(
-    () => verifyReviewedFixture(audit, input, policy, "2026-11-17"),
+    () => verifyReviewedFixture(audit, input, policy, "2026-11-19"),
     /DEPENDENCY_TRIAGE_CHANGED/,
   );
 });
@@ -125,7 +125,7 @@ test("깨진 audit는 정상 0건이 아니다", () => {
 // 감사 응답의 제목·영향 범위는 원문에 민감한 문자열이 섞일 수 있으므로 진단에는 식별자만 남긴다.
 function capturePolicyError(inputAudit, inputLock = lock) {
   try {
-    verifyReviewedFixture(inputAudit, inputLock, policy, "2026-11-17");
+    verifyReviewedFixture(inputAudit, inputLock, policy, "2026-11-19");
   } catch (error) {
     return error;
   }
@@ -169,7 +169,7 @@ test("권고 제거는 철회로 단정하지 않고 원장에만 남은 ID를 �
   input.packages.find((item) => item.name === "esbuild").via.push(removed);
   let error;
   try {
-    verifyReviewedFixture(audit, lock, input, "2026-11-17");
+    verifyReviewedFixture(audit, lock, input, "2026-11-19");
   } catch (caught) {
     error = caught;
   }
@@ -217,7 +217,7 @@ test("새 설치 경로는 경로만 진단하고 실제 lock 일치 검사를 �
   ]);
   assert.doesNotMatch(JSON.stringify(error.diagnostics), /99\.0\.0/);
   assert.throws(
-    () => verifyReviewedFixture(input, lock, policy, "2026-11-17"),
+    () => verifyReviewedFixture(input, lock, policy, "2026-11-19"),
     /DEPENDENCY_LOCK_MISMATCH/,
   );
 });
@@ -256,7 +256,7 @@ test("손상된 원장은 원문 없이 실패 차단한다", () => {
   input.packages[0].via = [null];
   let error;
   try {
-    verifyReviewedFixture(audit, lock, input, "2026-11-17");
+    verifyReviewedFixture(audit, lock, input, "2026-11-19");
   } catch (caught) {
     error = caught;
   }
@@ -275,7 +275,7 @@ test("v3 검토 정본은 20개 명시 판단과 3개 공유 사용 맥락을 �
       .sort((a, b) => a - b),
     [3, 4, 13],
   );
-  assert.deepEqual(verifyReviewedFixture(audit, lock, policy, "2026-11-17"), {
+  assert.deepEqual(verifyReviewedFixture(audit, lock, policy, "2026-11-19"), {
     affectedPackages: 15,
     advisoryEntries: 2,
     p1: 0,
@@ -303,14 +303,14 @@ for (const [name, change] of [
   test(name + " 차단", () => {
     const input = structuredClone(policy);
     change(input);
-    assert.throws(() => verifyReviewedFixture(audit, lock, input, "2026-11-17"), /DEPENDENCY_/);
+    assert.throws(() => verifyReviewedFixture(audit, lock, input, "2026-11-19"), /DEPENDENCY_/);
   });
 
 test("구 schema v1은 새 검토 원장으로 자동 승인하지 않는다", () => {
   const input = structuredClone(policy);
   input.schemaVersion = 1;
   assert.throws(
-    () => verifyReviewedFixture(audit, lock, input, "2026-11-17"),
+    () => verifyReviewedFixture(audit, lock, input, "2026-11-19"),
     /DEPENDENCY_TRIAGE_CHANGED/,
   );
 });
@@ -355,7 +355,7 @@ test("패치된 YAML 설치본은 임시 평가·공유 맥락 없이 확인한�
     policy.contexts.filter((item) => item.id === "shadcn-registry-cli"),
     [],
   );
-  assert.deepEqual(verifyReviewedFixture(audit, lock, policy, "2026-11-17"), {
+  assert.deepEqual(verifyReviewedFixture(audit, lock, policy, "2026-11-19"), {
     affectedPackages: 15,
     advisoryEntries: 2,
     p1: 0,
@@ -382,9 +382,11 @@ test("수정본으로 해소한 권고는 제거하고 남은 평가는 위험�
     [],
   );
   // 철회된 deepmerge 평가는 제외하고, 2026-11-05(UTC) 권고 범위 정정 후 다시 검토한
-  // tooling-minimatch-glob 평가만 검토일이 바뀌며 나머지는 2026-11-03 검토일을 유지한다.
+  // tooling-minimatch-glob 평가와 2026-11-19(UTC) 기한 전 registry로 재확인한 shadcn-ts-morph-glob 평가만
+  // 검토일이 바뀌며 나머지는 2026-11-03 검토일을 유지한다.
   const reviewedOn = {
     "tooling-minimatch-glob": "2026-11-05",
+    "shadcn-ts-morph-glob": "2026-11-19",
   };
   // drizzle-kit 설치 노드만 추가 재검토했으며 제거된 eslint-config-next 항목은 복원하지 않는다.
   // 2026-11-18 철회된 picomatch 권고(GHSA-fc5q-39xc-vjpf)의 평가·맥락은 남기지 않는다.
@@ -398,26 +400,27 @@ test("수정본으로 해소한 권고는 제거하고 남은 평가는 위험�
     ),
   );
   // dev=false이거나 수정본이 있는데 적용되지 못한 사용면은 2주, dev=false CLI DoS는 3주, 개발 도구 전용은 4주다.
+  // shadcn-ts-morph-glob은 2026-11-19 재검토일부터 dev=true 개발 도구 전용 4주(2026-12-17)다.
   const deadlines = {
-    "shadcn-ts-morph-glob": "2026-11-26",
+    "shadcn-ts-morph-glob": "2026-12-17",
     "build-esbuild": "2026-12-03",
     "tooling-minimatch-glob": "2026-12-03",
   };
   assert.deepEqual(Object.keys(deadlines).sort(), policy.contexts.map((item) => item.id).sort());
   assert.ok(policy.assessments.every((item) => item.reviewBy === deadlines[item.contextId]));
-  // 최단 기한(2026-11-26) 당일까지 통과하고, 그 다음 날부터는 다시 차단한다.
-  assert.deepEqual(verifyReviewedFixture(audit, lock, policy, "2026-11-17"), {
+  // 최단 기한(2026-12-03) 당일까지 통과하고, 그 다음 날부터는 다시 차단한다.
+  assert.deepEqual(verifyReviewedFixture(audit, lock, policy, "2026-11-19"), {
     affectedPackages: 15,
     advisoryEntries: 2,
     p1: 0,
   });
-  assert.deepEqual(verifyReviewedFixture(audit, lock, policy, "2026-11-26"), {
+  assert.deepEqual(verifyReviewedFixture(audit, lock, policy, "2026-12-03"), {
     affectedPackages: 15,
     advisoryEntries: 2,
     p1: 0,
   });
   assert.throws(
-    () => verifyReviewedFixture(audit, lock, policy, "2026-11-27"),
+    () => verifyReviewedFixture(audit, lock, policy, "2026-12-04"),
     /DEPENDENCY_TRIAGE_INVALID/,
   );
 });
@@ -520,14 +523,14 @@ test("minimatch 권고는 사용면을 분리해 위험별 기한으로 재검�
 // 실제 원장의 기한을 늘리지 않고 합성 평가만 만료시켜 일반 실패 차단이 남아 있음을 확인합니다.
 test("YAML 예외를 제거해도 다른 평가의 만료는 계속 차단한다", () => {
   const input = structuredClone(policy);
-  input.assessments[0].reviewBy = "2026-11-17";
-  assert.deepEqual(verifyReviewedFixture(audit, lock, input, "2026-11-17"), {
+  input.assessments[0].reviewBy = "2026-11-19";
+  assert.deepEqual(verifyReviewedFixture(audit, lock, input, "2026-11-19"), {
     affectedPackages: 15,
     advisoryEntries: 2,
     p1: 0,
   });
   assert.throws(
-    () => verifyReviewedFixture(audit, lock, input, "2026-11-18"),
+    () => verifyReviewedFixture(audit, lock, input, "2026-11-20"),
     /DEPENDENCY_TRIAGE_INVALID/,
   );
 });
@@ -579,7 +582,7 @@ test("더는 취약하지 않은 Next ESLint 경로는 원장에서 빠지고 �
     via: ["typescript-eslint"],
   };
   assert.throws(
-    () => verifyReviewedFixture(input, lock, policy, "2026-11-17"),
+    () => verifyReviewedFixture(input, lock, policy, "2026-11-19"),
     /DEPENDENCY_TRIAGE_CHANGED/,
   );
 });
@@ -599,7 +602,7 @@ test("외부 피드 resolved는 주소 없이 설치 경로만 진단하고 차�
   );
   let thrown;
   try {
-    verifyReviewedFixture(audit, input, policy, "2026-11-17");
+    verifyReviewedFixture(audit, input, policy, "2026-11-19");
   } catch (error) {
     thrown = error;
   }
@@ -645,42 +648,42 @@ test("상위 패키지 파생 range만 바뀌면 통과하지만 실제 권고·
   changedDerived.vulnerabilities["@expo/cli"].range += " || 999.0.0";
   changedDerived.vulnerabilities["@expo/fingerprint"].range += " || 999.0.0";
   assert.deepEqual(
-    verifyReviewedFixture(changedDerived, mobileLock, mobilePolicy, "2026-11-17"),
+    verifyReviewedFixture(changedDerived, mobileLock, mobilePolicy, "2026-11-19"),
     mobileResult,
   );
 
   const severityChanged = structuredClone(changedDerived);
   severityChanged.vulnerabilities["@expo/cli"].severity = "critical";
   assert.throws(
-    () => verifyReviewedFixture(severityChanged, mobileLock, mobilePolicy, "2026-11-17"),
+    () => verifyReviewedFixture(severityChanged, mobileLock, mobilePolicy, "2026-11-19"),
     /DEPENDENCY_TRIAGE_CHANGED/,
   );
 
   const advisoryChanged = structuredClone(changedDerived);
   advisoryChanged.vulnerabilities.minimatch.via[0].range += " || 999.0.0";
   assert.throws(
-    () => verifyReviewedFixture(advisoryChanged, mobileLock, mobilePolicy, "2026-11-17"),
+    () => verifyReviewedFixture(advisoryChanged, mobileLock, mobilePolicy, "2026-11-19"),
     /DEPENDENCY_TRIAGE_CHANGED/,
   );
 
   const linkChanged = structuredClone(changedDerived);
   linkChanged.vulnerabilities["@expo/cli"].via.push("previously-unreviewed-dependency");
   assert.throws(
-    () => verifyReviewedFixture(linkChanged, mobileLock, mobilePolicy, "2026-11-17"),
+    () => verifyReviewedFixture(linkChanged, mobileLock, mobilePolicy, "2026-11-19"),
     /DEPENDENCY_TRIAGE_CHANGED/,
   );
 
   const versionChanged = structuredClone(mobileLock);
   versionChanged.packages["node_modules/@expo/cli"].version = "99.0.0";
   assert.throws(
-    () => verifyReviewedFixture(changedDerived, versionChanged, mobilePolicy, "2026-11-17"),
+    () => verifyReviewedFixture(changedDerived, versionChanged, mobilePolicy, "2026-11-19"),
     /DEPENDENCY_TRIAGE_CHANGED/,
   );
 
   const invalidRange = structuredClone(mobilePolicy);
   invalidRange.packages.find((item) => item.name === "@expo/cli").range = "";
   assert.throws(
-    () => verifyReviewedFixture(mobileAudit, mobileLock, invalidRange, "2026-11-17"),
+    () => verifyReviewedFixture(mobileAudit, mobileLock, invalidRange, "2026-11-19"),
     /DEPENDENCY_TRIAGE_CHANGED/,
   );
 });
@@ -689,7 +692,7 @@ test("모바일 원장은 lock 스냅샷과 정확히 일치하고 모든 resolv
   assert.deepEqual(dependencySnapshot(mobileAudit, mobileLock), mobilePolicy.packages);
   assert.deepEqual(lockRegistryViolations(mobileLock), []);
   assert.deepEqual(
-    verifyReviewedFixture(mobileAudit, mobileLock, mobilePolicy, "2026-11-17"),
+    verifyReviewedFixture(mobileAudit, mobileLock, mobilePolicy, "2026-11-19"),
     mobileResult,
   );
 });
@@ -758,7 +761,7 @@ test("모바일 node-forge는 보안 패치 1.4.3을 사용하며 새 권고가 
     ],
   };
   assert.throws(
-    () => verifyReviewedFixture(changed, mobileLock, mobilePolicy, "2026-11-17"),
+    () => verifyReviewedFixture(changed, mobileLock, mobilePolicy, "2026-11-19"),
     /DEPENDENCY_TRIAGE_CHANGED/,
   );
 });
@@ -798,24 +801,19 @@ test("모바일 sharp는 수정본으로 해소해 원장에 남지 않는다", 
   );
 });
 
-// Expo SDK 58.0.23은 zod high 경로를 npm audit에서 더 이상 보고하지 않는다. 남은 CLI·테스트 DoS는 3주, 개발 도구 전용은 4주 기한을 유지한다.
-// 2026-11-05 minimatch 권고 범위 정정(>=7.0.0 <11.0.1, source 1244012 → 1244623)으로 다시 확인한 평가만 검토일을 옮기고 기한은 늘리지 않는다.
+// Expo SDK 58.0.23은 zod high 경로를 npm audit에서 더 이상 보고하지 않는다. 개발 도구 전용(eslint-lint-tooling)은 4주 기한을 유지한다.
+// 2026-11-05 minimatch 권고 범위 정정(>=7.0.0 <11.0.1, source 1244012 → 1244623)으로 다시 확인한 평가는 검토일만 옮겼다.
+// 2026-11-19(UTC) 기한 전 registry 재확인으로 expo-cli-config-glob·jest-test-runner 전체 평가의 검토일을 옮겼다.
+// expo-cli-config-glob은 범위 안 부분 수정본(@expo/cli 58.1.20+, @expo/fingerprint 0.21.10)이 미적용이라 2주,
+// jest-test-runner는 범위 안 수정본이 없는 dev=false 테스트 도구 DoS라 3주다.
 test("모바일 평가는 사용면 위험별 기한을 두고 가장 이른 기한 다음 날 차단한다", () => {
   const deadlines = {
-    "expo-cli-config-glob": "2026-11-25",
-    "jest-test-runner": "2026-11-25",
+    "expo-cli-config-glob": "2026-12-03",
+    "jest-test-runner": "2026-12-10",
     "eslint-lint-tooling": "2026-12-02",
   };
-  const rechecked = (item) =>
-    item.contextId === "eslint-lint-tooling" || item.key === "minimatch:1244623";
-  const updatedSdk = new Set([
-    "@expo/cli:glob",
-    "@expo/fingerprint:glob",
-    "@expo/fingerprint:minimatch",
-    "expo:@expo/cli",
-    "expo:@expo/fingerprint",
-    "jest-expo:jest-watch-typeahead",
-  ]);
+  const rechecked = (item) => item.contextId === "eslint-lint-tooling";
+  const rereviewed = new Set(["expo-cli-config-glob", "jest-test-runner"]);
   assert.deepEqual(
     mobilePolicy.contexts.map((item) => item.id).sort(),
     Object.keys(deadlines).sort(),
@@ -826,8 +824,8 @@ test("모바일 평가는 사용면 위험별 기한을 두고 가장 이른 기
     mobilePolicy.assessments.every(
       (item) =>
         item.reviewedOn ===
-          (updatedSdk.has(item.key)
-            ? "2026-11-08"
+          (rereviewed.has(item.contextId)
+            ? "2026-11-19"
             : rechecked(item)
               ? "2026-11-05"
               : "2026-11-04") && item.reviewBy === deadlines[item.contextId],
@@ -840,11 +838,11 @@ test("모바일 평가는 사용면 위험별 기한을 두고 가장 이른 기
     [],
   );
   assert.deepEqual(
-    verifyReviewedFixture(mobileAudit, mobileLock, mobilePolicy, "2026-11-25"),
+    verifyReviewedFixture(mobileAudit, mobileLock, mobilePolicy, "2026-12-02"),
     mobileResult,
   );
   assert.throws(
-    () => verifyReviewedFixture(mobileAudit, mobileLock, mobilePolicy, "2026-11-26"),
+    () => verifyReviewedFixture(mobileAudit, mobileLock, mobilePolicy, "2026-12-03"),
     /DEPENDENCY_TRIAGE_INVALID/,
   );
 });
@@ -887,17 +885,17 @@ test("검증된 meta copy는 정본 평가 하나를 쓰되 중복 평가는 계
     .find((item) => item.name === "test-exclude")
     .via.unshift({ dependency: "glob" });
   assert.deepEqual(
-    verifyReviewedFixture(audited, mobileLock, recorded, "2026-11-17"),
+    verifyReviewedFixture(audited, mobileLock, recorded, "2026-11-19"),
     mobileResult,
   );
   assert.deepEqual(
-    verifyReviewedFixture(mobileAudit, mobileLock, recorded, "2026-11-17"),
+    verifyReviewedFixture(mobileAudit, mobileLock, recorded, "2026-11-19"),
     mobileResult,
   );
   const extra = structuredClone(recorded);
   extra.assessments.push({ ...extra.assessments.find((item) => item.key === "test-exclude:glob") });
   assert.throws(
-    () => verifyReviewedFixture(audited, mobileLock, extra, "2026-11-17"),
+    () => verifyReviewedFixture(audited, mobileLock, extra, "2026-11-19"),
     /DEPENDENCY_TRIAGE_MISSING/,
   );
 });
@@ -912,14 +910,14 @@ test("모바일 lock의 새 권고·외부 피드 resolved는 차단한다", () 
     title: "SENSITIVE_SENTINEL",
   });
   assert.throws(
-    () => verifyReviewedFixture(input, mobileLock, mobilePolicy, "2026-11-17"),
+    () => verifyReviewedFixture(input, mobileLock, mobilePolicy, "2026-11-19"),
     /DEPENDENCY_TRIAGE_CHANGED/,
   );
   const lockInput = structuredClone(mobileLock);
   lockInput.packages["node_modules/expo"].resolved =
     "https://registry.npmjs.org.evil.example/expo/-/expo-58.0.23.tgz";
   assert.throws(
-    () => verifyReviewedFixture(mobileAudit, lockInput, mobilePolicy, "2026-11-17"),
+    () => verifyReviewedFixture(mobileAudit, lockInput, mobilePolicy, "2026-11-19"),
     /DEPENDENCY_LOCK_REGISTRY_INVALID/,
   );
 });
@@ -962,7 +960,7 @@ test("철회된 picomatch 권고의 평가·맥락은 남기지 않고 재등장
       ],
     };
     assert.throws(
-      () => verifyReviewedFixture(reappeared, currentLock, current, "2026-11-17"),
+      () => verifyReviewedFixture(reappeared, currentLock, current, "2026-11-19"),
       /DEPENDENCY_TRIAGE_CHANGED/,
     );
   }
@@ -975,7 +973,7 @@ test("정본에서 복원한 합성 mobile 표현은 qualified closure 뒤 정�
   included.vulnerabilities["jest-runner"].via.push("jest-snapshot");
   included.vulnerabilities.jest.via.push("jest-config");
   assert.deepEqual(
-    verifyReviewedFixture(included, mobileLock, mobilePolicy, "2026-11-17"),
+    verifyReviewedFixture(included, mobileLock, mobilePolicy, "2026-11-19"),
     mobileResult,
   );
 });
@@ -1008,12 +1006,12 @@ for (const [label, mutate, category] of [
     const recorded = structuredClone(policy);
     mutate(input, recorded);
     if (category === "CANONICAL_PASS") {
-      assert.equal(verifyReviewedFixture(input, lock, recorded, "2026-11-17").p1, 0);
+      assert.equal(verifyReviewedFixture(input, lock, recorded, "2026-11-19").p1, 0);
       return;
     }
     let error;
     try {
-      verifyReviewedFixture(input, lock, recorded, "2026-11-17");
+      verifyReviewedFixture(input, lock, recorded, "2026-11-19");
     } catch (caught) {
       error = caught;
     }
@@ -1057,7 +1055,7 @@ for (const [label, key] of [
     node.version = { [key]: { title: "SENSITIVE_EXPECTED_VALUE" } };
     let error;
     try {
-      verifyReviewedFixture(audit, inputLock, recorded, "2026-11-17");
+      verifyReviewedFixture(audit, inputLock, recorded, "2026-11-19");
     } catch (caught) {
       error = caught;
     }
@@ -1174,7 +1172,7 @@ function identityFixture(
   fixture.audit = fixtureAudit(packages);
   return fixture;
 }
-const verifyFixture = (f) => verifyV3DependencyPolicy(f.audit, f.inputs, f.policy, "2026-11-17");
+const verifyFixture = (f) => verifyV3DependencyPolicy(f.audit, f.inputs, f.policy, "2026-11-19");
 test("v3는 reviewed Buffer pair와 전체 origin closure를 확인한다", () => {
   assert.deepEqual(verifyFixture(identityFixture()), {
     affectedPackages: 3,
