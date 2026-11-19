@@ -90,6 +90,63 @@ export function insertManagerDesignation(input: {
     ${input.verificationMethod}::text, ${input.evidenceReference}::uuid) AS result`);
 }
 
+// ── #160 화면용 읽기 ─────────────────────────────────────────────────────────
+// 인가가 필요한 조회는 같은 SQL 문 안에서 DB 현재 시각 기준 권한을 다시 판정하고, 권한이 없으면 null을 돌려줍니다.
+// 홈페이지 ADMIN·FACULTY 역할은 판정 근거가 아니며(계정 상태 확인에만 사용), 쓰기 함수와 같은 조건을 따릅니다.
+
+/** DB 현재 시각 기준 유효한 학사 운영 관리자 지정이 있는지 나타내는 SQL 조건입니다. */
+export function activeManagerCondition(actorId: string): SQL {
+  return sql`EXISTS (SELECT 1 FROM public.academic_operations_managers m
+    JOIN public.users u ON u.id = m.user_id
+    WHERE m.user_id = ${actorId}::uuid AND m.valid_from <= now() AND (m.valid_to IS NULL OR now() < m.valid_to)
+      AND u.role::text IN ('ADMIN', 'FACULTY', 'MEMBER'))`;
+}
+
+/** 학사 운영 관리자에게만 기수 목록과 현재·예정(종료 전) 배정을 돌려줍니다. 예정 여부도 DB 현재 시각으로 계산합니다. 사유·확인 근거·이메일은 제외합니다. */
+export function selectStaffOverview(actorId: string) {
+  return single(sql`SELECT CASE WHEN ${activeManagerCondition(actorId)} THEN jsonb_build_object(
+    'cohorts', COALESCE((SELECT jsonb_agg(jsonb_build_object('id', c.id, 'name', c.name)
+      ORDER BY c."order", c.name, c.id) FROM public.cohorts c), '[]'::jsonb),
+    'assignments', COALESCE((SELECT jsonb_agg(jsonb_build_object(
+        'id', s.id, 'cohortId', s.cohort_id, 'userId', s.user_id, 'userName', u.name,
+        'staffRole', s.staff_role, 'validFrom', s.valid_from, 'validTo', s.valid_to,
+        'upcoming', now() < s.valid_from)
+      ORDER BY s.cohort_id, s.staff_role, s.valid_from, s.id)
+      FROM public.academic_cohort_staff_assignments s JOIN public.users u ON u.id = s.user_id
+      WHERE s.valid_to IS NULL OR now() < s.valid_to), '[]'::jsonb)) END AS result`);
+}
+
+/** 학사 운영 관리자에게만 최근 감사 50건을 돌려줍니다. 입력 요약값·사유는 내보내지 않습니다. */
+export function selectStaffAudit(actorId: string) {
+  return single(sql`SELECT CASE WHEN ${activeManagerCondition(actorId)} THEN COALESCE((SELECT jsonb_agg(
+      jsonb_build_object('id', x.request_id, 'action', x.action, 'actorName', x.actor_name,
+        'cohortName', x.cohort_name, 'targetName', x.target_name, 'createdAt', x.created_at)
+      ORDER BY x.created_at DESC, x.request_id)
+    FROM (SELECT e.request_id, e.action, actor.name AS actor_name, c.name AS cohort_name,
+        COALESCE(target.name, manager_user.name) AS target_name, e.created_at
+      FROM public.academic_staff_events e
+      JOIN public.users actor ON actor.id = e.actor_user_id
+      LEFT JOIN public.academic_cohort_staff_assignments s
+        ON s.id = COALESCE(e.replacement_assignment_id, e.assignment_id)
+      LEFT JOIN public.cohorts c ON c.id = s.cohort_id
+      LEFT JOIN public.users target ON target.id = s.user_id
+      LEFT JOIN public.academic_operations_managers m ON m.id = e.manager_designation_id
+      LEFT JOIN public.users manager_user ON manager_user.id = m.user_id
+      ORDER BY e.created_at DESC, e.request_id LIMIT 50) x), '[]'::jsonb) END AS result`);
+}
+
+/** 로그인 계정 본인의 DB 현재 시각 기준 유효 배정 기수만 돌려줍니다. */
+export function selectMyStaffCohorts(actorId: string) {
+  return single(sql`SELECT COALESCE(jsonb_agg(jsonb_build_object(
+      'cohortId', s.cohort_id, 'cohortName', c.name, 'staffRole', s.staff_role, 'validTo', s.valid_to)
+    ORDER BY c.name, s.cohort_id), '[]'::jsonb) AS result
+    FROM public.academic_cohort_staff_assignments s
+    JOIN public.cohorts c ON c.id = s.cohort_id
+    JOIN public.users u ON u.id = s.user_id
+    WHERE s.user_id = ${actorId}::uuid AND s.valid_from <= now() AND (s.valid_to IS NULL OR now() < s.valid_to)
+      AND u.role::text IN ('ADMIN', 'FACULTY', 'MEMBER')`);
+}
+
 export function closeManagerDesignation(input: {
   requestId: string;
   actorId: string;
