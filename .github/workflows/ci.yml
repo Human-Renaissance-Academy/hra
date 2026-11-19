@@ -118,6 +118,10 @@ jobs:
         # 실제 DB·Vercel·Blob 없이 mock 으로 READ ONLY 트랜잭션·SQL 목록·출력 차단을 검사합니다.
         run: node --test scripts/tests/ops-readonly-report.test.mjs
 
+      - name: 분리 제출 측정 도구 안전 계약
+        # 실제 Blob 없이 mock 으로 읽기 전용 호출·출력 비밀 제거·판정 경계를 검사합니다.
+        run: node --test scripts/tests/academic-artifact-measurement.test.mjs
+
       - name: 로컬 push 훅 ref 계약 검사
         # 삭제 전용 push만 빌드를 생략하고 코드 ref·손상된 입력은 계속 차단합니다.
         run: node --test scripts/tests/pre-push-hook.test.mjs

@@ -220,6 +220,15 @@ export const environmentInventory = {
       active("false"),
     ),
     variable(
+      "ACADEMIC_COMPLETION_ENABLED",
+      "application",
+      "수료 기준 버전·수료 심사·확정 이력(#163)",
+      false,
+      "학사 운영 정책 초안(#143) 운영 승인과 SQL 적용 후 ACADEMIC_ENABLED·ACADEMIC_STAFF_ENABLED와 함께 true",
+      "정확한 true가 아니면 수료 기준·결정·심사 명부·본인 조회 모두 DISABLED; DB 조회 없음",
+      active("false"),
+    ),
+    variable(
       "ACADEMIC_ENABLED",
       "application",
       "학사 사용자 기능 공개",

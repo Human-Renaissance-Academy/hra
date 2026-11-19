@@ -143,6 +143,29 @@
       ]
     },
     {
+      "ref": "scripts/migrate-academic-completion.sql",
+      "phase": "academic",
+      "fresh": {
+        "disposition": "unresolved",
+        "required": true,
+        "reason": "G3 수료 기준 버전·수료 확정 이력의 격리 검증 후보이며 #143·#142 정책 운영 승인, G1 학적·과제·제출과 #165·#159의 설치 확정 전에는 설치를 확정하지 않는다."
+      },
+      "objects": ["academic-completion-tables", "academic-completion-functions", "academic-completion-triggers"],
+      "requires": ["web-base", "academic-students", "academic-assignments", "academic-submissions", "academic-staff-tables", "academic-staff-functions", "academic-attendance-tables", "academic-attendance-functions"],
+      "checks": [
+        "소유 PostgreSQL에서 공개 기준 불변, 학사 운영 관리자 전용 결정, 자기 결정 거부, 같은 학적 동시 확정의 순번 충돌과 재적용 멱등성을 확인한다.",
+        "이름만 같은 다른 표·제약·인덱스·트리거를 수용하지 않고 전체 롤백하며 PUBLIC 함수 실행 권한이 없는지 확인한다."
+      ],
+      "evidence": [
+        { "file": "scripts/migrate-academic-completion.sql", "line": 1, "note": "cohorts·cohort_enrollments·운영 관리자 지정을 외래키로만 참조하는 G3 추가형 표·함수·트리거의 검토 후보 원문이다. 운영 적용 이력이 아니다." },
+        { "file": "tests/unit/academic-completion-postgres.test.ts", "line": 1, "note": "소유 PostgreSQL의 기준 불변·인가·자기 결정·이력 대체·동시 확정·보조 지표 회귀이며 전체 신규 설치를 증명하지 않는다." }
+      ],
+      "unresolved": [
+        "#143·#142 운영 승인·운영 대상 catalog·권한·백업/복구와 #280 gate는 미완료다.",
+        "G1 g1Order·schema export·fresh bundle에 자동 편입하거나 운영 manifest를 적용됨으로 기록하지 않는다."
+      ]
+    },
+    {
       "ref": "scripts/migrate-mobile-sessions.sql",
       "phase": "schema-overlap",
       "fresh": { "disposition": "unresolved", "required": true, "reason": "모바일 세션 구조는 export가 소유하며 기존 DB의 엄격한 catalog 비교와 한국어 설명을 별도 원문으로 유지한다." },
@@ -2093,6 +2116,45 @@
       "requiredForFresh": true
     },
     {
+      "id": "academic-completion-tables",
+      "kind": "table-set",
+      "names": ["public.completion_criteria_versions", "public.completion_decisions", "public.completion_events"],
+      "owner": "scripts/migrate-academic-completion.sql",
+      "definitions": [
+        { "source": "scripts/migrate-academic-completion.sql", "relationship": "primary", "reason": "기수별 수료 기준 버전·학적별 수료 결정 이력·추가 전용 감사 표의 검토 후보 정의이다." }
+      ],
+      "requires": ["web-base", "academic-students", "academic-assignments", "academic-submissions", "academic-staff-tables", "academic-staff-functions", "academic-attendance-tables", "academic-attendance-functions"],
+      "checks": ["소유 PostgreSQL에서 재적용·구조 불일치 롤백과 기준 불변·자기 결정·동시 확정 회귀를 확인한다."],
+      "unresolved": ["운영 catalog 관측과 승인된 upgrade·fresh bundle 편입은 #143·#142·#280 후속 검토 대상이다."],
+      "requiredForFresh": true
+    },
+    {
+      "id": "academic-completion-functions",
+      "kind": "function-set",
+      "names": ["public.academic_completion_criteria_valid", "public.guard_completion_write", "public.guard_completion_events", "public.academic_completion_replay", "public.compute_completion_snapshot", "public.create_academic_completion_criteria", "public.update_academic_completion_criteria", "public.publish_academic_completion_criteria", "public.record_academic_completion_decision", "public.list_academic_completion_cohorts", "public.list_academic_completion_roster", "public.list_own_academic_completion"],
+      "owner": "scripts/migrate-academic-completion.sql",
+      "definitions": [
+        { "source": "scripts/migrate-academic-completion.sql", "relationship": "primary", "reason": "기준 작성·수정·공개, 수료 결정, 보조 지표 계산과 명부·본인 조회 SQL 함수의 검토 후보 정의이다." }
+      ],
+      "requires": ["web-base", "academic-students", "academic-assignments", "academic-submissions", "academic-staff-tables", "academic-staff-functions", "academic-attendance-tables", "academic-attendance-functions"],
+      "checks": ["소유 PostgreSQL에서 재적용·구조 불일치 롤백과 기준 불변·자기 결정·동시 확정 회귀를 확인한다."],
+      "unresolved": ["운영 catalog 관측과 승인된 upgrade·fresh bundle 편입은 #143·#142·#280 후속 검토 대상이다."],
+      "requiredForFresh": true
+    },
+    {
+      "id": "academic-completion-triggers",
+      "kind": "trigger-set",
+      "names": ["public.completion_criteria_versions.completion_criteria_versions_guard", "public.completion_criteria_versions.completion_criteria_versions_truncate_guard", "public.completion_decisions.completion_decisions_guard", "public.completion_decisions.completion_decisions_truncate_guard", "public.completion_events.completion_events_guard", "public.completion_events.completion_events_truncate_guard"],
+      "owner": "scripts/migrate-academic-completion.sql",
+      "definitions": [
+        { "source": "scripts/migrate-academic-completion.sql", "relationship": "primary", "reason": "공개 기준 불변·결정 추가 전용·감사 추가 전용을 강제하는 트리거의 검토 후보 정의이다." }
+      ],
+      "requires": ["web-base", "academic-students", "academic-assignments", "academic-submissions", "academic-staff-tables", "academic-staff-functions", "academic-attendance-tables", "academic-attendance-functions"],
+      "checks": ["소유 PostgreSQL에서 재적용·구조 불일치 롤백과 기준 불변·자기 결정·동시 확정 회귀를 확인한다."],
+      "unresolved": ["운영 catalog 관측과 승인된 upgrade·fresh bundle 편입은 #143·#142·#280 후속 검토 대상이다."],
+      "requiredForFresh": true
+    },
+    {
       "id": "mobile-sessions",
       "kind": "table-set",
       "names": ["public.mobile_sessions", "public.mobile_session_refresh_history"],
@@ -3668,6 +3730,7 @@
         { "ref": "scripts/migrate-academic-faculty-reviewers.sql", "reason": "G2 교수 과제 검토 권한 후보는 이 fixture 범위 밖이며 전용 격리 회귀로 검증한다. fresh bundle·운영 편입은 미해결이다." },
         { "ref": "scripts/migrate-academic-staff-assignments.sql", "reason": "G2 운영 인력 배정 후보는 이 fixture 범위 밖이며 전용 격리 회귀로 검증한다. fresh bundle·운영 편입은 미해결이다." },
         { "ref": "scripts/migrate-academic-attendance.sql", "reason": "G2 출결 후보는 이 fixture 범위 밖이며 전용 격리 회귀로 검증한다. fresh bundle·운영 편입은 미해결이다." },
+        { "ref": "scripts/migrate-academic-completion.sql", "reason": "G3 수료 후보는 이 fixture 범위 밖이며 전용 격리 회귀로 검증한다. fresh bundle·운영 편입은 미해결이다." },
         { "ref": "scripts/migrate-mobile-sessions.sql", "reason": "이 기존 학사 fixture는 모바일 로그인 설치를 수행하지 않는다." },
         { "ref": "scripts/db/candidates/db-fresh/mobile-sessions.sql", "reason": "모바일 세션 신규 후보는 별도 소유 로컬 시험 범위다." },
         {
@@ -3867,6 +3930,7 @@
         { "ref": "scripts/migrate-academic-faculty-reviewers.sql", "reason": "G2 교수 과제 검토 권한 후보는 이 fixture 범위 밖이며 전용 격리 회귀로 검증한다. fresh bundle·운영 편입은 미해결이다." },
         { "ref": "scripts/migrate-academic-staff-assignments.sql", "reason": "G2 운영 인력 배정 후보는 이 fixture 범위 밖이며 전용 격리 회귀로 검증한다. fresh bundle·운영 편입은 미해결이다." },
         { "ref": "scripts/migrate-academic-attendance.sql", "reason": "G2 출결 후보는 이 fixture 범위 밖이며 전용 격리 회귀로 검증한다. fresh bundle·운영 편입은 미해결이다." },
+        { "ref": "scripts/migrate-academic-completion.sql", "reason": "G3 수료 후보는 이 fixture 범위 밖이며 전용 격리 회귀로 검증한다. fresh bundle·운영 편입은 미해결이다." },
         { "ref": "scripts/migrate-mobile-sessions.sql", "reason": "이 기존 경로 fixture는 모바일 로그인 설치를 수행하지 않는다." },
         { "ref": "scripts/db/candidates/db-fresh/mobile-sessions.sql", "reason": "모바일 세션 신규 후보는 별도 소유 로컬 시험 범위다." },
         {
