@@ -78,7 +78,7 @@ G1은 첫 학사 기능 묶음으로, 학생·수강 이력, 과제 대상, 개�
 | 학생·수강 관계 | [학생 모델 SQL 적용](developer/academic-students-migration.md), [기존 수강 데이터 연결](developer/academic-enrollment-backfill.md), [학사 명단 관리](developer/academic-roster.md) |
 | 과제와 제출 대상 | [과제 모델 SQL 적용](developer/academic-assignments-migration.md), [과제 변경 액션](developer/academic-assignment-actions.md), [관리자 화면](developer/academic-assignment-admin.md) |
 | 학생 화면의 입력 데이터 | [학생 조회 계약](developer/academic-student-queries.md), [제출 상태 계산](developer/academic-submission-statuses.md), [학생 화면과 검증 기록](developer/academic-student-ui.md) |
-| 파일 업로드와 최종 제출 | [제출 모델 SQL 적용](developer/academic-submissions-migration.md), [업로드·검증·정리](developer/academic-assignment-uploads.md), [최종 제출 확정](developer/academic-submission-finalization.md), [파일 다운로드·삭제](developer/academic-submission-files.md) |
+| 파일 업로드와 최종 제출 | [제출 모델 SQL 적용](developer/academic-submissions-migration.md), [업로드·검증·정리](developer/academic-assignment-uploads.md), [최종 제출 확정](developer/academic-submission-finalization.md), [파일 다운로드·삭제](developer/academic-submission-files.md), [텍스트·발표자료 분리 제출 SQL](developer/academic-submission-artifacts-migration.md) |
 | 운영 확인과 통합 검사 | [로그·지표·기능 설정](developer/academic-observability.md), [G1 통합 품질 검사](developer/academic-g1-quality-gate.md) |
 | 결정이 필요한 개인정보 정책 | [보존·파기 정책 초안](ACADEMIC-PRIVACY-RETENTION-POLICY.md) |
 | G2 운영 인력 배정(기능 비활성) | [운영 인력 배정과 출결 권한 판정](developer/academic-staff-assignments.md) |

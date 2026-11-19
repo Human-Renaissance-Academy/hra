@@ -229,11 +229,11 @@ test("현재 인벤토리는 읽기 전용 preflight·현행 뷰와 알려진 �
   const inventory = JSON.parse(
     readFileSync(join(root, "scripts/db/source-inventory.json"), "utf8"),
   );
-  // #507 검토 SQL과 #165 G2 운영 인력 배정 검토 SQL이 한 건씩 늘었으며 fresh 후보·실행 진입점·G1 순서는 그대로입니다.
-  assert.equal(inventory.sql.length, 39);
-  assert.equal(inventory.sql.filter((entry) => entry.role === "fresh_candidate").length, 19);
+  // #507·#165 검토 SQL과 #516 텍스트·발표자료 분리 제출 SQL이 늘었고 #516 fresh 후보가 한 건 늘었으며 실행 진입점 수는 그대로입니다.
+  assert.equal(inventory.sql.length, 41);
+  assert.equal(inventory.sql.filter((entry) => entry.role === "fresh_candidate").length, 20);
   assert.equal(inventory.scripts.length, 18);
-  assert.equal(inventory.g1Order.length, 9);
+  assert.equal(inventory.g1Order.length, 10);
   assert.equal(
     inventory.sql.find((entry) => entry.path === "scripts/preflight-academic-students.sql")?.role,
     "read_only_preflight",
@@ -301,5 +301,5 @@ test("가짜 DB 주소가 있어도 CLI는 소스만 검사하고 통과한다",
     timeout: 10_000,
   });
   assert.equal(result.status, 0, "소스 검사기는 DB 접속 없이 종료해야 합니다.");
-  assert.match(result.stdout, /SQL 39개.*MJS 18개/);
+  assert.match(result.stdout, /SQL 41개.*MJS 18개/);
 });
