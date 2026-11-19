@@ -553,13 +553,79 @@ describe("CFB 형식 혼합·실행 콘텐츠·암호화", () => {
     expect(reasonOf(buildCfb(hwpWithWorkbook).bytes)).toBe("UNSUPPORTED");
   });
 
-  it("VBA 저장소, HWP 스크립트 비트·Scripts 저장소는 MACRO", () => {
+  it("VBA 저장소, HWP 스크립트 비트는 MACRO", () => {
     expect(reasonOf(buildCfb([...pptStreams(), cfbStorage("_VBA_PROJECT_CUR")]).bytes)).toBe(
       "MACRO",
     );
     expect(reasonOf(buildCfb([...hwpStreams(), cfbStorage("Macros")]).bytes)).toBe("MACRO");
     expect(reasonOf(syntheticHwp({ properties: 0x1 | 0x8 }).bytes)).toBe("MACRO");
-    expect(reasonOf(buildCfb([...hwpStreams(), cfbStorage("Scripts")]).bytes)).toBe("MACRO");
+  });
+
+  it("HWP 기본 Scripts 저장소(DefaultJScript·JScriptVersion)는 허용한다", () => {
+    const defaults = (script = 40) => ({
+      ...cfbStorage("Scripts"),
+      children: [
+        { name: "DefaultJScript", data: new Uint8Array(script).fill(3) },
+        { name: "JScriptVersion", data: new Uint8Array(8).fill(1) },
+      ],
+    });
+    // 빈 저장소와 기본 두 스트림 모두 허용
+    expect(reasonOf(buildCfb([...hwpStreams(), cfbStorage("Scripts")]).bytes)).toBe("OK:HWP");
+    expect(reasonOf(buildCfb([...hwpStreams(), defaults()]).bytes)).toBe("OK:HWP");
+    // 기본 스트림이 상한을 넘으면 MACRO
+    expect(reasonOf(buildCfb([...hwpStreams(), defaults(2000)]).bytes)).toBe("MACRO");
+  });
+
+  it("HWP Scripts 저장소에 기본 외 스트림이 있으면 MACRO", () => {
+    const extra = {
+      ...cfbStorage("Scripts"),
+      children: [
+        { name: "DefaultJScript", data: new Uint8Array(40).fill(3) },
+        { name: "UserScript", data: new Uint8Array(10).fill(4) },
+      ],
+    };
+    expect(reasonOf(buildCfb([...hwpStreams(), extra]).bytes)).toBe("MACRO");
+  });
+
+  it("HWP Scripts 우회 경로: 스트림·하위 저장소·JScriptVersion 초과는 MACRO", () => {
+    const scriptsStream = { name: "Scripts", data: new Uint8Array(10).fill(5) };
+    expect(reasonOf(buildCfb([...hwpStreams(), scriptsStream]).bytes)).toBe("MACRO");
+    const subStorage = { ...cfbStorage("Scripts"), children: [cfbStorage("DefaultJScript")] };
+    expect(reasonOf(buildCfb([...hwpStreams(), subStorage]).bytes)).toBe("MACRO");
+    const bigVersion = {
+      ...cfbStorage("Scripts"),
+      children: [{ name: "JScriptVersion", data: new Uint8Array(65).fill(1) }],
+    };
+    expect(reasonOf(buildCfb([...hwpStreams(), bigVersion]).bytes)).toBe("MACRO");
+  });
+
+  it("HWP Scripts 안에서 대소문자만 다른 중복 이름은 MALFORMED", () => {
+    const duplicated = {
+      ...cfbStorage("Scripts"),
+      children: [
+        { name: "DefaultJScript", data: new Uint8Array(40).fill(3) },
+        { name: "DEFAULTJSCRIPT", data: new Uint8Array(40).fill(3) },
+      ],
+    };
+    expect(reasonOf(buildCfb([...hwpStreams(), duplicated]).bytes)).toBe("MALFORMED");
+  });
+
+  it("HWP Scripts 자식 트리가 자기 자신을 참조해도 예외 없이 MALFORMED", () => {
+    const scripts = {
+      ...cfbStorage("Scripts"),
+      children: [{ name: "DefaultJScript", data: new Uint8Array(40).fill(3) }],
+    };
+    const fixture = buildCfb([...hwpStreams(), scripts]);
+    // 엔트리 번호: 루트 0, FileHeader·DocInfo·BodyText 1~3, Scripts 4, DefaultJScript 5.
+    // 5번 엔트리의 right(+72)를 자기 자신으로 바꿔 순환을 만듭니다.
+    const entry = (fixture.directorySectors[0] + 1) * 512 + 5 * 128;
+    new DataView(fixture.bytes.buffer).setUint32(entry + 72, 5, true);
+    expect(reasonOf(fixture.bytes)).toBe("MALFORMED");
+  });
+
+  it("HWP 스크립트 저장 비트(bit 3)는 기본 Scripts 저장소가 있어도 MACRO", () => {
+    const bytes = buildCfb([...hwpStreams({ properties: 0x1 | 0x8 }), cfbStorage("Scripts")]).bytes;
+    expect(reasonOf(bytes)).toBe("MACRO");
   });
 
   it("배포용 문서 비트(bit 2)는 의도적으로 허용한다", () => {
