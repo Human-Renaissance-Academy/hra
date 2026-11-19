@@ -236,6 +236,19 @@
       ]
     },
     {
+      "path": "scripts/migrate-academic-completion.sql",
+      "role": "versioned_candidate",
+      "sha256": "283c3c52e4616b698fae086fc6187780c04cbf99673b855688974b08f4fc1f6b",
+      "id": "g3-completion",
+      "predecessors": [
+        "g1-students",
+        "g1-assignments",
+        "g1-submissions",
+        "g2-staff-assignments",
+        "g2-attendance"
+      ]
+    },
+    {
       "path": "scripts/migrate-academic-students.sql",
       "role": "versioned_candidate",
       "sha256": "2ca8845821ccf17c5f5268c1975ec025837e5e1f268e4ffd39d7bf191dd1c378",
