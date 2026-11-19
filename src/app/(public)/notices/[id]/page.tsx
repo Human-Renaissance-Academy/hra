@@ -20,6 +20,7 @@ import {
 import { formatKstDate } from "@/lib/date-time";
 import { logServerError } from "@/lib/errors";
 import { buildNoticeExcerpt } from "@/lib/notice-excerpt";
+import { defaultOpenGraphImages, defaultTwitterImages } from "@/lib/seo/share-image";
 
 type NoticePageProps = {
   params: Promise<{ id: string }>;
@@ -50,10 +51,13 @@ export async function generateMetadata({ params }: NoticePageProps): Promise<Met
       type: "article",
       url: `/notices/${notice.id}`,
       publishedTime: notice.createdAt.toISOString(),
+      // openGraph/twitter를 선언하면 루트의 공유 이미지가 대체되므로 기본 이미지를 명시합니다(#414).
+      images: defaultOpenGraphImages,
     },
     twitter: {
       title: notice.title,
       description,
+      images: defaultTwitterImages,
     },
   };
 }
