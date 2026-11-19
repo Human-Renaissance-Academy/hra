@@ -3,6 +3,7 @@ import "server-only";
 import { db } from "@/lib/db";
 import { getAcademicApproverId, requireAcademicApprover } from "@/lib/academic-admin";
 import { isAcademicSubmissionArtifactsEnabled } from "@/features/academics/assignment-uploads/contract";
+import type { AcademicObservation } from "@/lib/academic-observability";
 import {
   SubmissionStatusError,
   submissionStatusArtifactsConsistent,
@@ -25,7 +26,8 @@ async function authorize() {
   return { actorId, configuredId };
 }
 
-async function load(input: unknown, exportAll: boolean) {
+// 관측기가 있으면 세션 인증과 SQL 역할 재검사를 모두 통과한 뒤에만 actor를 연결한다.
+async function load(input: unknown, exportAll: boolean, observation?: AcademicObservation) {
   const authorization = await authorize();
   const parsed = submissionStatusInput.safeParse(input);
   if (!parsed.success) throw new SubmissionStatusError("INVALID_INPUT");
@@ -38,6 +40,7 @@ async function load(input: unknown, exportAll: boolean) {
     const raw = result.rows[0];
     // 인증 뒤 역할 철회도 SQL과 같은 snapshot에서 판단하며 빈 성공 응답으로 바꾸지 않는다.
     if (raw?.authorized !== true) throw new SubmissionStatusError("FORBIDDEN");
+    observation?.authenticated(authorization.actorId);
     if (!raw.assignment) throw new SubmissionStatusError("NOT_FOUND");
     const snapshot = submissionStatusSnapshot.parse(raw);
     if (snapshot.counts.total !== snapshot.counts.submitted + snapshot.counts.unsubmitted)
@@ -56,6 +59,10 @@ async function load(input: unknown, exportAll: boolean) {
 export async function listAssignmentSubmissionStatuses(input: unknown) {
   return load(input, false);
 }
-export async function exportAssignmentSubmissionStatuses(input: unknown) {
-  return load(input, true);
+/** CSV 사본 생성은 보존 정책상 생성 시각 확인 대상이므로 라우트의 서버 관측기를 함께 받는다. */
+export async function exportAssignmentSubmissionStatuses(
+  input: unknown,
+  observation?: AcademicObservation,
+) {
+  return load(input, true, observation);
 }

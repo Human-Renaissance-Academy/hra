@@ -258,3 +258,86 @@ it("분리 제출 CSV 내려받기는 과제 형식에 맞는 열을 사용한�
   expect(response.status).toBe(200);
   expect(await response.text()).toContain('"발표자료 크기(바이트)"');
 });
+// CSV 사본 생성 관측: 서버 요청 참조 전파와 이벤트 형태·개인정보 비노출을 함께 확인한다.
+function exportRequest() {
+  return GET(new Request(`http://localhost/api/academic/assignments/${id}/submissions/export`), {
+    params: Promise.resolve({ id }),
+  });
+}
+// 성공은 console.info의 평탄 이벤트, 거부·실패는 logServerError의 context로 기록된다.
+function loggedEvents() {
+  const info = vi.mocked(console.info).mock.calls.map((call) => call[1]);
+  const errors = vi
+    .mocked(console.error)
+    .mock.calls.map((call) => (call[1] as { context?: unknown } | undefined)?.context);
+  return [...info, ...errors].filter(Boolean) as Array<Record<string, unknown>>;
+}
+it("CSV 성공은 SQL 재검사 뒤 actor를 연결한 COMPLETED 이벤트와 같은 X-Request-Id를 남긴다", async () => {
+  vi.spyOn(console, "info").mockImplementation(() => {});
+  vi.spyOn(console, "error").mockImplementation(() => {});
+  const response = await exportRequest();
+  const referenceId = response.headers.get("x-request-id");
+  expect(response.status).toBe(200);
+  expect(referenceId).toMatch(/^[0-9a-f-]{36}$/);
+  const events = loggedEvents();
+  expect(events).toHaveLength(1);
+  expect(Object.keys(events[0]).sort()).toEqual([
+    "action",
+    "actorUserId",
+    "correlationId",
+    "failureCode",
+    "outcome",
+    "requestId",
+    "resourceId",
+    "resourceType",
+    "retryCount",
+    "schemaVersion",
+    "sqlState",
+    "timestamp",
+  ]);
+  expect(events[0]).toMatchObject({
+    action: "SUBMISSION_EXPORT",
+    resourceType: "ASSIGNMENT",
+    resourceId: id,
+    actorUserId: approver,
+    outcome: "COMPLETED",
+    correlationId: referenceId,
+  });
+  const logged = JSON.stringify([
+    vi.mocked(console.info).mock.calls,
+    vi.mocked(console.error).mock.calls,
+  ]);
+  for (const value of [snapshot.rows[0].displayName, "한글/과제", target])
+    expect(logged).not.toContain(value);
+  vi.restoreAllMocks();
+});
+it("CSV 거부·실패는 고정 안내와 헤더와 같은 참조만 반환하고 actor·원본 오류를 기록하지 않는다", async () => {
+  vi.spyOn(console, "info").mockImplementation(() => {});
+  vi.spyOn(console, "error").mockImplementation(() => {});
+  mocks.execute.mockResolvedValue({ rows: [{ authorized: false }] });
+  const denied = await exportRequest();
+  expect(denied.status).toBe(403);
+  expect(await denied.json()).toEqual({
+    message: "지정된 학사 운영 책임자만 조회할 수 있습니다.",
+    referenceId: denied.headers.get("x-request-id"),
+  });
+  expect(loggedEvents().at(-1)).toMatchObject({
+    outcome: "DENIED",
+    failureCode: "AUTHORIZATION",
+    actorUserId: null,
+  });
+  mocks.execute.mockRejectedValue(new Error("비밀 DB 주소와 개인 이름"));
+  const failed = await exportRequest();
+  expect(failed.status).toBe(503);
+  expect(await failed.json()).toEqual({
+    message: "제출 현황을 조회할 수 없습니다. 잠시 후 다시 시도해 주세요.",
+    referenceId: failed.headers.get("x-request-id"),
+  });
+  expect(loggedEvents().at(-1)).toMatchObject({
+    outcome: "FAILED",
+    failureCode: "UNKNOWN",
+    correlationId: failed.headers.get("x-request-id"),
+  });
+  expect(JSON.stringify(vi.mocked(console.error).mock.calls)).not.toContain("비밀 DB 주소");
+  vi.restoreAllMocks();
+});
