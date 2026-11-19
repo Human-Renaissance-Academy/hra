@@ -15,9 +15,11 @@ import { spawnSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
+  classifyDependencyDrift,
   dependencyDiagnosticLines,
   dependencySnapshot,
   lockRegistryViolations,
+  regenerateDependencyPolicy,
   verifyDependencyPolicy as verifyV3DependencyPolicy,
 } from "../_lib/dependency-policy.mjs";
 const policy = JSON.parse(
@@ -261,7 +263,11 @@ test("손상된 원장은 원문 없이 실패 차단한다", () => {
     error = caught;
   }
   assert.equal(error?.message, "DEPENDENCY_TRIAGE_CHANGED");
-  assert.deepEqual(dependencyDiagnosticLines(error), ["DEPENDENCY_TRIAGE_CHANGED"]);
+  // 손상된 원장은 비교할 수 없으므로 변화 유형을 unclassified로만 표시하고 원문은 내보내지 않는다.
+  assert.deepEqual(dependencyDiagnosticLines(error), [
+    "DEPENDENCY_TRIAGE_CHANGED",
+    "DEPENDENCY_DRIFT_KIND unclassified",
+  ]);
 });
 
 test("v3 검토 정본은 20개 명시 판단과 3개 공유 사용 맥락을 유지한다", () => {
@@ -639,13 +645,13 @@ const mobileAudit = {
     ]),
   ),
 };
-const mobileResult = { affectedPackages: 28, advisoryEntries: 2, p1: 0 };
+const mobileResult = { affectedPackages: 27, advisoryEntries: 2, p1: 0 };
 
 // npm의 상위 패키지 meta range는 새 upstream 릴리스만으로 바뀔 수 있다.
 // 실제 위험 평가에 쓰는 severity, via의 advisory range/ID/source와 lock nodes의 정확 일치는 유지한다.
 test("상위 패키지 파생 range만 바뀌면 통과하지만 실제 권고·등급·경로 변경은 차단한다", () => {
   const changedDerived = structuredClone(mobileAudit);
-  changedDerived.vulnerabilities["@expo/cli"].range += " || 999.0.0";
+  changedDerived.vulnerabilities.expo.range += " || 999.0.0";
   changedDerived.vulnerabilities["@expo/fingerprint"].range += " || 999.0.0";
   assert.deepEqual(
     verifyReviewedFixture(changedDerived, mobileLock, mobilePolicy, "2026-11-19"),
@@ -653,7 +659,7 @@ test("상위 패키지 파생 range만 바뀌면 통과하지만 실제 권고·
   );
 
   const severityChanged = structuredClone(changedDerived);
-  severityChanged.vulnerabilities["@expo/cli"].severity = "critical";
+  severityChanged.vulnerabilities["@expo/fingerprint"].severity = "critical";
   assert.throws(
     () => verifyReviewedFixture(severityChanged, mobileLock, mobilePolicy, "2026-11-19"),
     /DEPENDENCY_TRIAGE_CHANGED/,
@@ -667,21 +673,21 @@ test("상위 패키지 파생 range만 바뀌면 통과하지만 실제 권고·
   );
 
   const linkChanged = structuredClone(changedDerived);
-  linkChanged.vulnerabilities["@expo/cli"].via.push("previously-unreviewed-dependency");
+  linkChanged.vulnerabilities["@expo/fingerprint"].via.push("previously-unreviewed-dependency");
   assert.throws(
     () => verifyReviewedFixture(linkChanged, mobileLock, mobilePolicy, "2026-11-19"),
     /DEPENDENCY_TRIAGE_CHANGED/,
   );
 
   const versionChanged = structuredClone(mobileLock);
-  versionChanged.packages["node_modules/@expo/cli"].version = "99.0.0";
+  versionChanged.packages["node_modules/@expo/fingerprint"].version = "99.0.0";
   assert.throws(
     () => verifyReviewedFixture(changedDerived, versionChanged, mobilePolicy, "2026-11-19"),
     /DEPENDENCY_TRIAGE_CHANGED/,
   );
 
   const invalidRange = structuredClone(mobilePolicy);
-  invalidRange.packages.find((item) => item.name === "@expo/cli").range = "";
+  invalidRange.packages.find((item) => item.name === "@expo/fingerprint").range = "";
   assert.throws(
     () => verifyReviewedFixture(mobileAudit, mobileLock, invalidRange, "2026-11-19"),
     /DEPENDENCY_TRIAGE_CHANGED/,
@@ -700,7 +706,7 @@ test("모바일 원장은 lock 스냅샷과 정확히 일치하고 모든 resolv
 test("Expo 58 패치의 호환 버전과 Zod high audit 제거를 정확히 검증한다", () => {
   const app = JSON.parse(readFileSync(new URL("../../apps/mobile/package.json", import.meta.url)));
   for (const [name, version] of Object.entries({
-    expo: "58.0.23",
+    expo: "58.0.26",
     react: "19.3.0",
     "react-dom": "19.3.0",
     "react-native-safe-area-context": "5.11.1",
@@ -709,11 +715,13 @@ test("Expo 58 패치의 호환 버전과 Zod high audit 제거를 정확히 검�
     assert.equal(mobileLock.packages[""].dependencies[name], version);
     assert.equal(mobileLock.packages["node_modules/" + name].version, version);
   }
-  assert.equal(mobileLock.packages["node_modules/@expo/cli"].version, "58.1.19");
-  // 2026-11-18 picomatch high 권고 철회로 @expo/cli의 보고 등급은 다시 moderate입니다.
+  // Expo 58.0.26은 @expo/cli를 expo 아래에 중첩 설치하며, 58.1.20+는 glob 경로를 더 이상 쓰지 않습니다.
+  assert.equal(mobileLock.packages["node_modules/@expo/cli"], undefined);
+  assert.equal(mobileLock.packages["node_modules/expo/node_modules/@expo/cli"].version, "58.1.21");
+  assert.equal(mobileLock.packages["node_modules/@expo/fingerprint"].version, "0.21.10");
   assert.equal(
-    mobilePolicy.packages.find((item) => item.name === "@expo/cli").severity,
-    "moderate",
+    mobilePolicy.packages.some((item) => item.name === "@expo/cli"),
+    false,
   );
   assert.deepEqual(
     mobilePolicy.packages.filter((item) => ["zod", "picomatch"].includes(item.name)),
@@ -737,7 +745,10 @@ test("모바일 node-forge는 보안 패치 1.4.3을 사용하며 새 권고가 
     forge.integrity,
     "sha512-P6wzfh6t70avmV8FrVEAd/36sOPJQ+hkaJVX1Laap9J/77m7M0eyozDvc8SwnDf4P7MP94gwbAAo0rg3YVXT+g==",
   );
-  for (const path of ["node_modules/@expo/code-signing-certificates", "node_modules/@expo/cli"]) {
+  for (const path of [
+    "node_modules/@expo/code-signing-certificates",
+    "node_modules/expo/node_modules/@expo/cli",
+  ]) {
     assert.equal(mobileLock.packages[path].dependencies["node-forge"], "^1.4.0");
   }
   assert.equal(
@@ -781,6 +792,25 @@ test("모바일 감사에서 사라진 린트 경로와 CLI 링크는 원장에�
     mobilePolicy.packages.find((item) => item.name === "expo").via.map((item) => item.dependency),
     ["@expo/fingerprint"],
   );
+  // @expo/fingerprint 0.21.10은 glob 링크가 사라지고 minimatch 링크만 남습니다.
+  assert.deepEqual(
+    mobilePolicy.packages
+      .find((item) => item.name === "@expo/fingerprint")
+      .via.map((item) => item.dependency),
+    ["minimatch"],
+  );
+  assert.deepEqual(
+    mobilePolicy.assessments
+      .filter((item) => item.contextId === "expo-cli-config-glob")
+      .map((item) => item.key),
+    [
+      "@expo/fingerprint:minimatch",
+      "expo:@expo/fingerprint",
+      "glob:minimatch",
+      "glob:1244013",
+      "minimatch:1244623",
+    ],
+  );
   assert.deepEqual(
     mobilePolicy.packages
       .find((item) => item.name === "@typescript-eslint/eslint-plugin")
@@ -805,6 +835,7 @@ test("모바일 sharp는 수정본으로 해소해 원장에 남지 않는다", 
 // 2026-11-05 minimatch 권고 범위 정정(>=7.0.0 <11.0.1, source 1244012 → 1244623)으로 다시 확인한 평가는 검토일만 옮겼다.
 // 2026-11-19(UTC) 기한 전 registry 재확인으로 expo-cli-config-glob·jest-test-runner 전체 평가의 검토일을 옮겼다.
 // expo-cli-config-glob은 범위 안 부분 수정본(@expo/cli 58.1.20+, @expo/fingerprint 0.21.10)이 미적용이라 2주,
+// 이후 Expo 58.0.26 패치 적용으로 @expo/cli:glob·@expo/fingerprint:glob 평가는 제거했고 남은 평가의 기한은 바꾸지 않았다.
 // jest-test-runner는 범위 안 수정본이 없는 dev=false 테스트 도구 DoS라 3주다.
 test("모바일 평가는 사용면 위험별 기한을 두고 가장 이른 기한 다음 날 차단한다", () => {
   const deadlines = {
@@ -819,7 +850,7 @@ test("모바일 평가는 사용면 위험별 기한을 두고 가장 이른 기
     Object.keys(deadlines).sort(),
   );
   // 철회된 picomatch 권고(GHSA-fc5q-39xc-vjpf)의 171개 전이 평가와 전용 맥락은 남기지 않는다.
-  assert.equal(mobilePolicy.assessments.length, 52);
+  assert.equal(mobilePolicy.assessments.length, 50);
   assert.ok(
     mobilePolicy.assessments.every(
       (item) =>
@@ -1616,3 +1647,360 @@ for (const [name, mutate] of [
     mutate(f);
     assert.throws(() => verifyFixture(f), /DEPENDENCY_/);
   });
+
+// ---------------------------------------------------------------------------
+// #368 원장 변화 유형 진단과 재생성 도구 회귀
+// - 변화 유형(removal-only/metadata-only/additions-present)은 진단 전용이며 모든 유형이 계속 실패한다.
+// - 재생성은 제거·메타데이터 변화만 반영하고 새 평가가 필요한 변화는 거부한다.
+// ---------------------------------------------------------------------------
+const repositoryFile = (path) => readFileSync(new URL("../../" + path, import.meta.url));
+// 원장 packages의 독립 nodes/via 집합으로 npm 응답을 복원한다(위 root audit 복원과 같은 규칙).
+const auditFromPolicy = (source) => ({
+  auditReportVersion: 2,
+  vulnerabilities: Object.fromEntries(
+    source.packages.map((pkg) => [
+      pkg.name,
+      {
+        name: pkg.name,
+        severity: pkg.severity,
+        range: pkg.range,
+        nodes: pkg.nodes.map((node) => node.path),
+        via: pkg.via.map((v) =>
+          v.source ? { ...v, url: "https://github.com/advisories/" + v.id } : v.dependency,
+        ),
+      },
+    ]),
+  ),
+});
+// 실제 저장소의 manifest/lock bytes와 원장을 그대로 쓰는 재생성 입력입니다.
+const realTargets = {
+  root: {
+    policyPath: "security/dependency-triage.json",
+    input: () => ({
+      manifestBytes: repositoryFile("package.json"),
+      lockBytes: repositoryFile("package-lock.json"),
+    }),
+  },
+  mobile: {
+    policyPath: "security/mobile-dependency-triage.json",
+    input: () => ({
+      manifestBytes: repositoryFile("apps/mobile/package.json"),
+      lockBytes: repositoryFile("apps/mobile/package-lock.json"),
+    }),
+  },
+};
+const regenerateToday = "2026-11-19";
+// 원장에만 남은(=audit에서 사라진) 패키지·권고·평가·맥락을 덧붙여 상위 철회를 재현한다.
+function withWithdrawnFixture(source) {
+  const result = structuredClone(source);
+  result.packages.push({
+    name: "zz-fixture-withdrawn",
+    severity: "high",
+    range: "<99",
+    nodes: [{ path: "node_modules/zz-fixture-withdrawn", version: "1.0.0", development: true }],
+    via: [
+      {
+        source: 999990,
+        id: "GHSA-test-wdrn",
+        severity: "high",
+        range: "<99",
+        title: "SENSITIVE_SENTINEL",
+      },
+    ],
+  });
+  result.assessments.push({
+    key: "zz-fixture-withdrawn:999990",
+    attackCondition: "철회 재현용 합성 평가로 실제 사용 경로가 없다.",
+    contextId: "fixture-withdrawn",
+    owner: "repo-maintainers",
+    priority: "P2",
+    reviewedOn: "2026-11-19",
+    reviewBy: "2026-11-20",
+  });
+  result.contexts.push({
+    id: "fixture-withdrawn",
+    usedApi: "철회 재현용 합성 맥락의 사용 API 설명",
+    callLocations: "철회 재현용 합성 맥락의 호출 위치 설명",
+    assessment: "철회 재현용 합성 맥락의 사용면 평가 설명",
+    residualAssumptions: "철회 재현용 합성 맥락의 잔여 전제 설명",
+  });
+  return result;
+}
+function captureError(run) {
+  try {
+    run();
+  } catch (error) {
+    return error;
+  }
+  assert.fail("차단되어야 할 변화가 통과했다");
+}
+
+test("변화 유형: 원장에만 남은 권고와 파생 등급 하락은 removal-only이며 철회 후보 GHSA를 표시한다", () => {
+  const ledger = withWithdrawnFixture(policy);
+  const snapshot = dependencySnapshot(audit, lock);
+  // 철회로 상위 패키지 등급이 낮아진 선례(#540)도 removal-only로 본다.
+  const lowered = structuredClone(ledger);
+  lowered.packages.find((pkg) => pkg.name === "esbuild").severity = "critical";
+  assert.notEqual(snapshot.find((pkg) => pkg.name === "esbuild").severity, "critical");
+  const drift = classifyDependencyDrift(snapshot, lowered.packages);
+  assert.equal(drift.kind, "removal-only");
+  assert.deepEqual(drift.removedAdvisories, ["GHSA-test-wdrn"]);
+  // verify는 여전히 실패하고 유형 줄만 추가된다.
+  const error = captureError(() => verifyReviewedFixture(audit, lock, ledger, "2026-11-19"));
+  assert.equal(error.message, "DEPENDENCY_TRIAGE_CHANGED");
+  const lines = dependencyDiagnosticLines(error);
+  assert.ok(lines.includes("DEPENDENCY_DRIFT_KIND removal-only"));
+  assert.ok(lines.includes("DEPENDENCY_DRIFT_REMOVED_ADVISORIES GHSA-test-wdrn"));
+  assert.doesNotMatch(lines.join("\n"), /SENSITIVE_SENTINEL/);
+});
+test("변화 유형: 새 권고·등급 상승은 additions-present로 분류하고 차단한다", () => {
+  for (const change of [
+    (a) =>
+      a.vulnerabilities.esbuild.via.push({
+        source: 999999,
+        url: "https://github.com/advisories/GHSA-test-1234",
+        severity: "high",
+        range: "<99",
+        title: "t",
+      }),
+    (a) => (a.vulnerabilities.esbuild.severity = "critical"),
+    (a) => (a.vulnerabilities.esbuild.via[0].severity = "critical"),
+  ]) {
+    const input = structuredClone(audit);
+    change(input);
+    const error = captureError(() => verifyReviewedFixture(input, lock, policy, "2026-11-19"));
+    assert.equal(error.message, "DEPENDENCY_TRIAGE_CHANGED");
+    assert.ok(dependencyDiagnosticLines(error).includes("DEPENDENCY_DRIFT_KIND additions-present"));
+  }
+  // 제거와 추가가 섞이면 추가 쪽으로 분류한다.
+  const mixed = structuredClone(audit);
+  mixed.vulnerabilities.esbuild.via[0].severity = "critical";
+  const drift = classifyDependencyDrift(
+    dependencySnapshot(mixed, lock),
+    withWithdrawnFixture(policy).packages,
+  );
+  assert.equal(drift.kind, "additions-present");
+});
+test("변화 유형: 권고 title·range 변화와 등급 하락만 있으면 metadata-only이며 계속 차단한다", () => {
+  const input = structuredClone(audit);
+  input.vulnerabilities.esbuild.via[0].title = "SENSITIVE_SENTINEL";
+  input.vulnerabilities.esbuild.via[0].range += " || 99.0.0";
+  const error = captureError(() => verifyReviewedFixture(input, lock, policy, "2026-11-19"));
+  const lines = dependencyDiagnosticLines(error);
+  assert.equal(lines[0], "DEPENDENCY_TRIAGE_CHANGED");
+  assert.ok(lines.includes("DEPENDENCY_DRIFT_KIND metadata-only"));
+  assert.doesNotMatch(lines.join("\n"), /SENSITIVE_SENTINEL|99\.0\.0/);
+  const lowered = structuredClone(policy);
+  lowered.packages.find((pkg) => pkg.name === "esbuild").via[0].severity = "critical";
+  assert.equal(
+    classifyDependencyDrift(dependencySnapshot(audit, lock), lowered.packages).kind,
+    "metadata-only",
+  );
+});
+test("변화 유형 요약은 외부에서 붙인 오류 필드를 출력하지 않는다", () => {
+  const forged = new Error("DEPENDENCY_TRIAGE_CHANGED");
+  forged.driftKind = "removal-only";
+  forged.removedAdvisories = ["SENSITIVE_SENTINEL"];
+  assert.deepEqual(dependencyDiagnosticLines(forged), ["DEPENDENCY_TRIAGE_CHANGED"]);
+});
+
+for (const [name, target] of Object.entries(realTargets))
+  test(`재생성: ${name} 현재 audit에 대해 결과가 현재 원장과 byte 단위로 같다(멱등)`, () => {
+    const raw = repositoryFile(target.policyPath).toString("utf8");
+    const current = JSON.parse(raw);
+    const outcome = regenerateDependencyPolicy(
+      auditFromPolicy(current),
+      target.input(),
+      current,
+      regenerateToday,
+    );
+    assert.equal(outcome.changed, false);
+    assert.equal(outcome.summary.driftKind, "none");
+    assert.equal(JSON.stringify(outcome.policy, null, 2) + "\n", raw);
+  });
+for (const [name, target] of Object.entries(realTargets))
+  test(`재생성: ${name} 철회 재현은 평가·맥락만 제거하고 유지 평가 필드를 그대로 둔다`, () => {
+    const raw = repositoryFile(target.policyPath).toString("utf8");
+    const current = JSON.parse(raw);
+    const outcome = regenerateDependencyPolicy(
+      auditFromPolicy(current),
+      target.input(),
+      withWithdrawnFixture(current),
+      regenerateToday,
+    );
+    assert.equal(outcome.changed, true);
+    assert.equal(outcome.summary.driftKind, "removal-only");
+    assert.deepEqual(outcome.summary.removedAdvisories, ["GHSA-test-wdrn"]);
+    assert.deepEqual(outcome.summary.removedAssessments, ["zz-fixture-withdrawn:999990"]);
+    assert.deepEqual(outcome.summary.removedContexts, ["fixture-withdrawn"]);
+    // 결과 전체가 원래 원장과 byte 단위로 같으므로 유지 평가의 reviewedOn/reviewBy/판단 문구도 같다.
+    assert.equal(JSON.stringify(outcome.policy, null, 2) + "\n", raw);
+    for (const [index, item] of current.assessments.entries())
+      assert.equal(JSON.stringify(outcome.policy.assessments[index]), JSON.stringify(item));
+  });
+test("재생성: 새 권고·등급 상승은 평가를 만들지 않고 제거도 부분 반영하지 않는다", () => {
+  const current = JSON.parse(repositoryFile(realTargets.root.policyPath));
+  const cases = [
+    [
+      (a) =>
+        a.vulnerabilities.esbuild.via.push({
+          source: 999999,
+          url: "https://github.com/advisories/GHSA-test-1234",
+          severity: "low",
+          range: "<99",
+          title: "t",
+        }),
+      "ADVISORY_ONLY_IN_AUDIT",
+    ],
+    [(a) => (a.vulnerabilities.esbuild.via[0].severity = "critical"), "ADVISORY_METADATA_CHANGED"],
+  ];
+  for (const [change, kind] of cases) {
+    const input = auditFromPolicy(current);
+    change(input);
+    const error = captureError(() =>
+      regenerateDependencyPolicy(
+        input,
+        realTargets.root.input(),
+        withWithdrawnFixture(current),
+        regenerateToday,
+      ),
+    );
+    assert.equal(error.message, "DEPENDENCY_REGENERATE_REVIEW_REQUIRED");
+    assert.ok(error.items.some((item) => item.kind === kind));
+    assert.doesNotMatch(JSON.stringify(error.items), /SENSITIVE_SENTINEL/);
+  }
+});
+test("재생성: binding 불일치·만료·P1은 자동 갱신·기한 연장·수용 없이 거부한다", () => {
+  const current = JSON.parse(repositoryFile(realTargets.root.policyPath));
+  const input = realTargets.root.input();
+  const changedLock = { ...input, lockBytes: Buffer.concat([input.lockBytes, Buffer.from("\n")]) };
+  assert.throws(
+    () =>
+      regenerateDependencyPolicy(auditFromPolicy(current), changedLock, current, regenerateToday),
+    /DEPENDENCY_REGENERATE_BINDING_CHANGED/,
+  );
+  assert.throws(
+    () =>
+      regenerateDependencyPolicy(
+        auditFromPolicy(current),
+        input,
+        withWithdrawnFixture(current),
+        "2026-12-04",
+      ),
+    /DEPENDENCY_TRIAGE_INVALID/,
+  );
+  const p1 = structuredClone(current);
+  p1.assessments[0].priority = "P1";
+  assert.throws(
+    () => regenerateDependencyPolicy(auditFromPolicy(p1), input, p1, regenerateToday),
+    /DEPENDENCY_TRIAGE_INVALID/,
+  );
+});
+test("재생성 CLI는 verify와 같은 npm audit 인자를 쓴다", () => {
+  const auditArguments = (file) =>
+    readFileSync(new URL("../" + file, import.meta.url), "utf8").match(
+      /spawnSync\(\s*"npm",\s*(\[[^\]]*\])/,
+    )?.[1];
+  const verifyArguments = auditArguments("verify-dependencies.mjs");
+  assert.ok(verifyArguments);
+  assert.equal(
+    auditArguments("regenerate-dependency-triage.mjs")?.replace(/\s+/g, " "),
+    verifyArguments.replace(/\s+/g, " "),
+  );
+});
+/** 격리 mirror와 가짜 npm으로 재생성 CLI의 dry-run/--write/거부를 확인한다. */
+function runRegenerateCli(ledger, auditReport, args) {
+  const directory = mkdtempSync(join(tmpdir(), "hra-regenerate-fixture-"));
+  try {
+    mkdirSync(join(directory, "scripts/_lib"), { recursive: true });
+    mkdirSync(join(directory, "security"));
+    mkdirSync(join(directory, "bin"));
+    for (const file of ["regenerate-dependency-triage.mjs", "_lib/dependency-policy.mjs"])
+      writeFileSync(
+        join(directory, "scripts", file),
+        readFileSync(new URL("../" + file, import.meta.url)),
+      );
+    writeFileSync(join(directory, "package.json"), repositoryFile("package.json"));
+    writeFileSync(join(directory, "package-lock.json"), repositoryFile("package-lock.json"));
+    const ledgerPath = join(directory, "security/dependency-triage.json");
+    writeFileSync(ledgerPath, JSON.stringify(ledger, null, 2) + "\n");
+    const auditPath = join(directory, "audit.json");
+    writeFileSync(auditPath, JSON.stringify(auditReport));
+    const counter = join(directory, "calls.txt");
+    writeFileSync(
+      join(directory, "bin/npm"),
+      `#!${process.execPath}
+const fs=require('node:fs');fs.appendFileSync(${JSON.stringify(counter)},'audit\\n');
+process.stdout.write(fs.readFileSync(${JSON.stringify(auditPath)}));process.exit(1);
+`,
+      { mode: 0o700 },
+    );
+    const result = spawnSync(
+      process.execPath,
+      [join(directory, "scripts/regenerate-dependency-triage.mjs"), ...args],
+      {
+        cwd: directory,
+        env: {
+          PATH: join(directory, "bin") + ":" + process.env.PATH,
+          HOME: directory,
+          TMPDIR: directory,
+        },
+        encoding: "utf8",
+        timeout: 15000,
+      },
+    );
+    return {
+      status: result.status,
+      stdout: result.stdout,
+      stderr: result.stderr,
+      ledger: readFileSync(ledgerPath, "utf8"),
+      calls: existsSync(counter) ? readFileSync(counter, "utf8").split("\n").filter(Boolean) : [],
+      leftovers: readdirSync(directory).filter((name) =>
+        name.startsWith("hra-dependency-regenerate-"),
+      ),
+    };
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+}
+test("재생성 CLI: dry-run은 쓰지 않고 --write만 철회 항목을 제거해 기록한다", () => {
+  const raw = repositoryFile(realTargets.root.policyPath).toString("utf8");
+  const current = JSON.parse(raw);
+  const ledger = withWithdrawnFixture(current);
+  const before = JSON.stringify(ledger, null, 2) + "\n";
+  const dry = runRegenerateCli(ledger, auditFromPolicy(current), ["--target", "root"]);
+  assert.equal(dry.status, 0, dry.stderr);
+  assert.equal(dry.ledger, before);
+  assert.match(dry.stdout, /변화 유형: removal-only/);
+  assert.match(dry.stdout, /GHSA-test-wdrn/);
+  assert.doesNotMatch(dry.stdout, /SENSITIVE_SENTINEL/);
+  assert.deepEqual(dry.leftovers, []);
+  const written = runRegenerateCli(ledger, auditFromPolicy(current), [
+    "--target",
+    "root",
+    "--write",
+  ]);
+  assert.equal(written.status, 0, written.stderr);
+  assert.equal(written.ledger, raw);
+});
+test("재생성 CLI: 추가가 있으면 exit 1이며 --write여도 원장을 바꾸지 않는다", () => {
+  const current = JSON.parse(repositoryFile(realTargets.root.policyPath));
+  const ledger = withWithdrawnFixture(current);
+  const before = JSON.stringify(ledger, null, 2) + "\n";
+  const report = auditFromPolicy(current);
+  report.vulnerabilities.esbuild.severity = "critical";
+  const result = runRegenerateCli(ledger, report, ["--target", "root", "--write"]);
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /DEPENDENCY_REGENERATE_REVIEW_REQUIRED/);
+  assert.match(result.stderr, /PACKAGE_METADATA_CHANGED/);
+  assert.equal(result.ledger, before);
+});
+test("재생성 CLI: 잘못된 인자는 npm을 실행하지 않고 실패한다", () => {
+  const current = JSON.parse(repositoryFile(realTargets.root.policyPath));
+  for (const args of [[], ["--target"], ["--target", "web"], ["--target", "root", "--force"]]) {
+    const result = runRegenerateCli(current, auditFromPolicy(current), args);
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /DEPENDENCY_ARGUMENTS_INVALID/);
+    assert.deepEqual(result.calls, []);
+  }
+});
