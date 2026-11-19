@@ -66,6 +66,7 @@ nav:
       - DB 변경 절차: developer/database-change-procedure.md
       - DB 변경 검증 정본별 책임: developer/db-contract-responsibilities.md
       - 요청 제한: operations/rate-limits.md
+      - 정리 Cron 운영: operations/cron-jobs.md
       - 예약 ID 인덱스 변경: developer/rate-limit-reservation-index.md
       - 업로드 파일 원장과 정리: operations/markdown-image-ownership.md
       - 카카오 로그인 설정: KAKAO-LOGIN-SETUP.md
