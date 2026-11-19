@@ -19,10 +19,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { requireAdmin } from "@/lib/admin";
 import { db } from "@/lib/db";
-import { 
-  applicationForms, 
-  applicationSubmissions, 
-} from "@/lib/db/schema";
+import { applicationForms, applicationSubmissions } from "@/lib/db/schema";
 import { CsvExportButton } from "./_components/csv-export-button";
 import { formatKstDateTime } from "@/lib/date-time";
 
@@ -36,7 +33,7 @@ export default async function AdminFormSubmissionsPage({ params }: Props) {
   await requireAdmin();
   const { id } = await params;
 
-  // Oracle Phase D BLOCK 수정 — z.uuid() 사전 검증으로 라우트 파라미터 leak 방지.
+  // z.uuid() 로 라우트 파라미터 형식을 DB 조회 전에 검증한다.
   // UUID 형식이 아닌 값이 DB 쿼리에 도달하면 Postgres cast error 로 raw ID 가
   // Vercel Logs 에 노출될 수 있으므로 사전 차단한다.
   const parsedId = z.uuid().safeParse(id);
@@ -62,8 +59,8 @@ export default async function AdminFormSubmissionsPage({ params }: Props) {
   return (
     <section className="mx-auto max-w-7xl px-4 sm:px-6 py-6 sm:py-10 space-y-8">
       <div>
-        <Link 
-          href="/admin/application-forms" 
+        <Link
+          href="/admin/application-forms"
           className="flex items-center gap-1 text-sm text-slate-500 hover:text-slate-900 transition-colors mb-2"
         >
           <ChevronLeft className="size-4" />
@@ -71,14 +68,19 @@ export default async function AdminFormSubmissionsPage({ params }: Props) {
         </Link>
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-xl sm:text-2xl font-semibold tracking-tight text-slate-900">제출 내역 확인</h1>
+            <h1 className="text-xl sm:text-2xl font-semibold tracking-tight text-slate-900">
+              제출 내역 확인
+            </h1>
             <p className="mt-1 text-sm text-slate-500">
               [{form.title}] 양식에 제출된 모든 지원서입니다.
             </p>
           </div>
           <div className="flex items-center gap-3">
             <CsvExportButton formId={parsedId.data} />
-            <Badge variant="outline" className="w-fit h-fit px-3 py-1 bg-slate-50 text-slate-700 font-bold">
+            <Badge
+              variant="outline"
+              className="w-fit h-fit px-3 py-1 bg-slate-50 text-slate-700 font-bold"
+            >
               총 {submissions.length}건
             </Badge>
           </div>
@@ -140,7 +142,11 @@ export default async function AdminFormSubmissionsPage({ params }: Props) {
                       </TableCell>
                       <TableCell>
                         <Badge variant="secondary" className="font-medium">
-                          {sub.status === "PENDING" ? "검토중" : sub.status === "ACCEPTED" ? "합격" : "불합격"}
+                          {sub.status === "PENDING"
+                            ? "검토중"
+                            : sub.status === "ACCEPTED"
+                              ? "합격"
+                              : "불합격"}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right">

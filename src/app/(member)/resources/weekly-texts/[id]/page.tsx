@@ -22,7 +22,7 @@ type WeeklyTextViewerPageProps = {
 export async function generateMetadata({ params }: WeeklyTextViewerPageProps): Promise<Metadata> {
   const { id } = await params;
 
-  // Oracle Phase D BLOCK 수정 — z.uuid() 사전 검증으로 Postgres cast 에러 leak 방지.
+  // UUID 형식이 아니면 DB 조회 전에 차단한다. Postgres uuid cast 오류 메시지로 원본 ID 가 로그에 남지 않게 한다.
   const parsedId = z.uuid().safeParse(id);
   if (!parsedId.success) {
     return { title: "주차별 텍스트" };
@@ -38,7 +38,7 @@ export default async function WeeklyTextViewerPage({ params }: WeeklyTextViewerP
 
   const { id } = await params;
 
-  // Oracle Phase D BLOCK 수정 — 라우트 파라미터의 UUID 형식을 먼저 검증.
+  // UUID 형식이 아니면 DB 조회 전에 차단한다. Postgres uuid cast 오류 메시지로 원본 ID 가 로그에 남지 않게 한다.
   const parsedId = z.uuid().safeParse(id);
   if (!parsedId.success) {
     notFound();

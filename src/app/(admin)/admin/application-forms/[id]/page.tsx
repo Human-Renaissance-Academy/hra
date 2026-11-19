@@ -9,11 +9,11 @@ import { z } from "zod/v4";
 import { ChevronLeft } from "lucide-react";
 import { requireAdmin } from "@/lib/admin";
 import { db } from "@/lib/db";
-import { 
-  applicationForms, 
-  applicationQuestions, 
-  applicationQuestionOptions, 
-  cohorts 
+import {
+  applicationForms,
+  applicationQuestions,
+  applicationQuestionOptions,
+  cohorts,
 } from "@/lib/db/schema";
 import { FormSettings } from "../_components/form-settings";
 import { FormBuilder } from "./_components/form-builder";
@@ -28,7 +28,7 @@ export default async function AdminApplicationFormDetailPage({ params }: Props) 
   await requireAdmin();
   const { id } = await params;
 
-  // Oracle Phase D BLOCK 수정 — z.uuid() 사전 검증으로 라우트 파라미터 leak 방지.
+  // z.uuid() 로 라우트 파라미터 형식을 DB 조회 전에 검증한다.
   // UUID 형식이 아닌 값이 DB 쿼리에 도달하면 Postgres cast error 로 raw ID 가
   // Vercel Logs 에 노출될 수 있으므로 사전 차단한다.
   const parsedId = z.uuid().safeParse(id);
@@ -65,17 +65,17 @@ export default async function AdminApplicationFormDetailPage({ params }: Props) 
   return (
     <section className="mx-auto max-w-5xl px-4 sm:px-6 py-6 sm:py-10 space-y-10">
       <div>
-        <Link 
-          href="/admin/application-forms" 
+        <Link
+          href="/admin/application-forms"
           className="flex items-center gap-1 text-sm text-slate-500 hover:text-slate-900 transition-colors mb-2"
         >
           <ChevronLeft className="size-4" />
           양식 목록으로 돌아가기
         </Link>
-        <h1 className="text-xl sm:text-2xl font-semibold tracking-tight text-slate-900">지원서 양식 편집</h1>
-        <p className="mt-1 text-sm text-slate-500">
-          양식의 기본 정보와 질문 항목을 관리합니다.
-        </p>
+        <h1 className="text-xl sm:text-2xl font-semibold tracking-tight text-slate-900">
+          지원서 양식 편집
+        </h1>
+        <p className="mt-1 text-sm text-slate-500">양식의 기본 정보와 질문 항목을 관리합니다.</p>
       </div>
 
       <div className="space-y-12">
@@ -83,13 +83,16 @@ export default async function AdminApplicationFormDetailPage({ params }: Props) 
         <div className="space-y-4">
           <h2 className="text-lg font-medium text-slate-900">기본 설정</h2>
           {/* 기본 설정에서 편집하는 다섯 필드만 전달하고 질문 revision은 빌더에 별도로 전달합니다. */}
-          <FormSettings form={{
-            id: form.id,
-            title: form.title,
-            description: form.description,
-            cohortId: form.cohortId,
-            isPublished: form.isPublished,
-          }} cohorts={cohortList} />
+          <FormSettings
+            form={{
+              id: form.id,
+              title: form.title,
+              description: form.description,
+              cohortId: form.cohortId,
+              isPublished: form.isPublished,
+            }}
+            cohorts={cohortList}
+          />
         </div>
 
         {/* 질문 빌더 섹션 */}
@@ -97,7 +100,7 @@ export default async function AdminApplicationFormDetailPage({ params }: Props) 
           formId={parsedId.data}
           formTitle={form.title}
           initialRevision={form.questionsRevision}
-          initialQuestions={questionsData.map(q => ({
+          initialQuestions={questionsData.map((q) => ({
             id: q.id,
             title: q.title,
             description: q.description,
@@ -105,7 +108,11 @@ export default async function AdminApplicationFormDetailPage({ params }: Props) 
             isRequired: q.isRequired,
             order: q.order,
             // 저장에 필요한 기존 ID와 순서는 유지하고 DB의 부모 참조는 전달하지 않습니다.
-            options: (q.options || []).map(option => ({ id: option.id, value: option.value, order: option.order })),
+            options: (q.options || []).map((option) => ({
+              id: option.id,
+              value: option.value,
+              order: option.order,
+            })),
           }))}
         />
       </div>
