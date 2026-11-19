@@ -254,3 +254,77 @@ export type AttendanceRecord = z.infer<typeof recordRow>;
 export type AttendanceCorrection = z.infer<typeof correctionRow>;
 export type AttendanceEventSheet = z.infer<typeof eventSheetSchema>;
 export type OwnAttendanceEntry = z.infer<typeof ownAttendanceSchema>[number];
+
+// ── #160 화면용 읽기 DTO ──────────────────────────────────────────────────────
+
+// 운영 인력의 배정 기수 CLASS 수업일 목록. 해당 기수의 유효 배정이 없으면 저장소가 null을 돌려줍니다.
+export const classSessionsSchema = z
+  .array(
+    z.object({
+      id: z.uuid(),
+      title: z.string(),
+      weekNumber: z.int().nullable(),
+      classDate: classDate,
+      windowOpensAt: timestamp,
+      windowClosesAt: timestamp,
+    }),
+  )
+  .nullable();
+
+// 학사 운영 관리자의 대기 중 정정 목록. 요청자 신원 대신 본인 요청 여부만 내보냅니다.
+export const managerCorrectionsSchema = z
+  .array(
+    z
+      .object({
+        id: z.uuid(),
+        scheduleEventId: z.uuid(),
+        cohortName: z.string(),
+        eventTitle: z.string(),
+        classDate: classDate,
+        displayName: z.string(),
+        previousStatus: status.nullable(),
+        requestedStatus: status,
+        reason: z.string(),
+        excuseVerificationMethod: z.enum(["DOCUMENT_SIGHTED", "VERIFIED_CONTACT"]).nullable(),
+        requestedAt: timestamp,
+        requestedBySelf: z.boolean(),
+      })
+      .transform((entry) => ({
+        ...entry,
+        previousStatus: (entry.previousStatus ?? "UNMARKED") as AttendanceCellStatus,
+      })),
+  )
+  .nullable();
+
+// 학생 본인 화면 보조 정보: 본인 학적의 기수 이름과 정정 요약(사유·운영 인력 식별자 제외, P9).
+export const ownContextSchema = z.object({
+  cohorts: z.array(z.object({ id: z.uuid(), name: z.string() })),
+  corrections: z.array(
+    z
+      .object({
+        id: z.uuid(),
+        cohortId: z.uuid(),
+        classDate: classDate,
+        previousStatus: status.nullable(),
+        requestedStatus: status,
+        status: z.enum(["PENDING", "APPROVED", "REJECTED"]),
+        requestedAt: timestamp,
+        decidedAt: timestamp.nullable(),
+      })
+      .transform((entry) => ({
+        ...entry,
+        previousStatus: (entry.previousStatus ?? "UNMARKED") as AttendanceCellStatus,
+      })),
+  ),
+});
+
+// 메뉴 노출 판정. 실제 권한은 각 화면·액션이 서비스에서 다시 확인합니다.
+export const attendanceAccessSchema = z.object({
+  manager: z.boolean(),
+  staff: z.boolean(),
+  student: z.boolean(),
+});
+
+export type ClassSession = NonNullable<z.infer<typeof classSessionsSchema>>[number];
+export type ManagerCorrection = NonNullable<z.infer<typeof managerCorrectionsSchema>>[number];
+export type OwnAttendanceContext = z.infer<typeof ownContextSchema>;

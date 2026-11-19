@@ -7,6 +7,11 @@ import Link from "next/link";
 import { canManageAcademics } from "@/lib/academic-access";
 import { requireMember } from "@/lib/member";
 import { getDisplayEmail } from "@/lib/auth-email";
+import { logServerError } from "@/lib/errors";
+import {
+  getAttendanceNavigation,
+  type AttendanceNavigation,
+} from "@/features/academics/attendance/service";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -23,6 +28,20 @@ export default async function MyPage() {
 
   const { user } = session;
   const displayEmail = getDisplayEmail(user.email);
+  // #160 학사 출결 메뉴. 플래그가 꺼져 있으면 DB 조회 없이 숨기고, 켜져 있어도 관리자 지정·유효 배정·본인 학적이
+  // 있는 경우에만 보입니다. 표시용 판정이며 각 화면·액션이 서비스에서 다시 확인합니다. 조회 실패는 메뉴만 숨깁니다.
+  let attendanceNav: AttendanceNavigation = {
+    operations: false,
+    staffAttendance: false,
+    ownAttendance: false,
+  };
+  try {
+    attendanceNav = await getAttendanceNavigation({ userId: user.id, role: user.role });
+  } catch (error) {
+    logServerError("mypage/attendance-navigation", error);
+  }
+  const hasAttendanceNav =
+    attendanceNav.operations || attendanceNav.staffAttendance || attendanceNav.ownAttendance;
 
   return (
     <div className="mx-auto max-w-4xl px-4 sm:px-6 py-12 md:py-20">
@@ -36,14 +55,51 @@ export default async function MyPage() {
       </div>
 
       {canManageAcademics(user) && (
-        <Link href="/admin/academics/students" className="mb-8 inline-block rounded bg-[#2563EB] px-5 py-3 text-white">학사관리</Link>
+        <Link
+          href="/admin/academics/students"
+          className="mb-8 inline-block rounded bg-[#2563EB] px-5 py-3 text-white"
+        >
+          학사관리
+        </Link>
       )}
 
       <div className="grid grid-cols-1 gap-8">
-        {user.role === "MEMBER" && process.env.ACADEMIC_ENABLED === "true" && <section>
-          <h2 className="mb-3 text-2xl font-bold">내 과제</h2>
-          <Link href="/member/assignments" className="text-[#2563EB] underline">과제와 제출 결과 확인</Link>
-        </section>}
+        {user.role === "MEMBER" && process.env.ACADEMIC_ENABLED === "true" && (
+          <section>
+            <h2 className="mb-3 text-2xl font-bold">내 과제</h2>
+            <Link href="/member/assignments" className="text-[#2563EB] underline">
+              과제와 제출 결과 확인
+            </Link>
+          </section>
+        )}
+        {hasAttendanceNav && (
+          <section>
+            <h2 className="mb-3 text-2xl font-bold">학사 출결</h2>
+            <ul className="flex flex-wrap gap-x-6 gap-y-2">
+              {attendanceNav.ownAttendance && (
+                <li>
+                  <Link href="/member/attendance" className="text-[#2563EB] underline">
+                    내 출결 확인
+                  </Link>
+                </li>
+              )}
+              {attendanceNav.staffAttendance && (
+                <li>
+                  <Link href="/member/attendance/staff" className="text-[#2563EB] underline">
+                    출결 입력
+                  </Link>
+                </li>
+              )}
+              {attendanceNav.operations && (
+                <li>
+                  <Link href="/member/academic-operations" className="text-[#2563EB] underline">
+                    학사 운영 관리
+                  </Link>
+                </li>
+              )}
+            </ul>
+          </section>
+        )}
         <section>
           <h2 className="text-2xl font-bold text-[#1a1a1a] mb-6 flex items-center gap-2">
             <User className="w-6 h-6 text-blue-600" />
@@ -53,7 +109,11 @@ export default async function MyPage() {
             <CardContent className="p-8 sm:p-10">
               <div className="flex flex-col sm:flex-row items-center sm:items-start gap-8">
                 <Avatar className="w-24 h-24 sm:w-32 sm:h-32 border-2 border-[#D9D9D9] rounded-2xl shadow-[var(--shadow-soft)]">
-                  <AvatarImage src={user.image || undefined} alt={user.name || "사용자 프로필"} className="object-cover" />
+                  <AvatarImage
+                    src={user.image || undefined}
+                    alt={user.name || "사용자 프로필"}
+                    className="object-cover"
+                  />
                   <AvatarFallback className="bg-gray-100 text-3xl font-bold text-[#666666] rounded-2xl">
                     {user.name?.[0] || "?"}
                   </AvatarFallback>
@@ -62,19 +122,23 @@ export default async function MyPage() {
                 <div className="flex-1 space-y-6 w-full text-center sm:text-left">
                   <div>
                     <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-2 justify-center sm:justify-start">
-                      <h3 className="text-2xl sm:text-3xl font-bold text-[#1a1a1a]">
-                        {user.name}
-                      </h3>
-                      <Badge 
-                        variant="secondary" 
+                      <h3 className="text-2xl sm:text-3xl font-bold text-[#1a1a1a]">{user.name}</h3>
+                      <Badge
+                        variant="secondary"
                         className={`w-fit mx-auto sm:mx-0 ${
-                          user.role === "ADMIN" 
-                            ? "bg-indigo-50 text-indigo-600 hover:bg-indigo-50 border border-indigo-200" 
+                          user.role === "ADMIN"
+                            ? "bg-indigo-50 text-indigo-600 hover:bg-indigo-50 border border-indigo-200"
                             : "bg-blue-50 text-blue-600 hover:bg-blue-50 border border-blue-200"
                         }`}
                       >
                         <Shield className="w-3 h-3 mr-1.5" />
-                        {user.role === "ADMIN" ? "관리자" : user.role === "FACULTY" ? "교수진" : user.role === "PENDING" ? "승인 대기" : "회원"}
+                        {user.role === "ADMIN"
+                          ? "관리자"
+                          : user.role === "FACULTY"
+                            ? "교수진"
+                            : user.role === "PENDING"
+                              ? "승인 대기"
+                              : "회원"}
                       </Badge>
                     </div>
                   </div>

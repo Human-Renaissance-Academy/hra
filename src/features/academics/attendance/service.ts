@@ -16,13 +16,18 @@ import {
   isAcademicStaffPrincipal,
   type AcademicStaffPrincipal,
 } from "@/features/academics/staff/contracts";
+import { isAcademicStaffEnabled } from "@/features/academics/staff/service";
 import {
   AcademicAttendanceError,
+  attendanceAccessSchema,
+  classSessionsSchema,
   correctionResultSchema,
   decideCorrectionSchema,
   decisionResultSchema,
   eventSheetSchema,
+  managerCorrectionsSchema,
   ownAttendanceSchema,
+  ownContextSchema,
   recordAttendanceSchema,
   recordResultSchema,
   requestCorrectionSchema,
@@ -32,8 +37,12 @@ import {
   insertCorrectionRequest,
   saveAttendance,
   saveCorrectionDecision,
+  selectAttendanceAccess,
+  selectClassSessions,
   selectEventSheet,
   selectOwnAttendance,
+  selectOwnAttendanceContext,
+  selectPendingCorrectionsForManager,
 } from "./repository";
 
 /** 정책 운영 승인 전에는 false입니다. 세 플래그가 모두 정확히 "true"일 때만 켭니다. */
@@ -140,4 +149,63 @@ export async function listForCohortSession(principal: unknown, scheduleEventId: 
 export async function listOwn(principal: unknown) {
   const actor = requireActor(principal);
   return run(ownAttendanceSchema, () => selectOwnAttendance(actor.userId));
+}
+
+// ── #160 화면용 읽기 ─────────────────────────────────────────────────────────
+
+/** 운영 인력이 고른 기수의 CLASS 수업일 목록. 그 기수의 유효 배정이 없으면 FORBIDDEN입니다(P10). */
+export async function listClassSessions(principal: unknown, cohortId: unknown) {
+  const actor = requireActor(principal);
+  const cohort = parse(z.uuid(), cohortId);
+  const sessions = await run(classSessionsSchema, () => selectClassSessions(actor.userId, cohort));
+  if (!sessions) throw new AcademicAttendanceError("FORBIDDEN");
+  return sessions;
+}
+
+/** 학사 운영 관리자의 대기 중 정정 목록. 관리자 지정이 없으면(홈페이지 ADMIN 포함) FORBIDDEN입니다. */
+export async function listPendingCorrectionsForManager(principal: unknown) {
+  const actor = requireActor(principal);
+  const corrections = await run(managerCorrectionsSchema, () =>
+    selectPendingCorrectionsForManager(actor.userId),
+  );
+  if (!corrections) throw new AcademicAttendanceError("FORBIDDEN");
+  return corrections;
+}
+
+/** 학생 본인 출결 화면: 본인 출결(미입력 포함)과 기수 이름, 정정 요약. 다른 사람 기록은 받을 수 없습니다(P9). */
+export async function getOwnAttendanceOverview(principal: unknown) {
+  const actor = requireActor(principal);
+  const [records, context] = await Promise.all([
+    run(ownAttendanceSchema, () => selectOwnAttendance(actor.userId)),
+    run(ownContextSchema, () => selectOwnAttendanceContext(actor.userId)),
+  ]);
+  return { records, ...context };
+}
+
+export type AttendanceNavigation = {
+  operations: boolean;
+  staffAttendance: boolean;
+  ownAttendance: boolean;
+};
+const hiddenNavigation: AttendanceNavigation = {
+  operations: false,
+  staffAttendance: false,
+  ownAttendance: false,
+};
+
+/**
+ * 메뉴 노출 판정. 플래그가 꺼져 있거나 주체가 형식 오류·PENDING이면 DB 조회 없이 모두 숨깁니다.
+ * 운영 인력 관리 메뉴는 `ACADEMIC_STAFF_ENABLED`, 출결 메뉴는 `ACADEMIC_ATTENDANCE_ENABLED`까지 켜져야 보입니다.
+ * 이 결과는 표시용이며 권한 토큰이 아닙니다. 각 화면·액션이 서비스에서 다시 판정합니다.
+ */
+export async function getAttendanceNavigation(principal: unknown): Promise<AttendanceNavigation> {
+  if (!isAcademicStaffPrincipal(principal) || principal.role === "PENDING") return hiddenNavigation;
+  if (!isAcademicStaffEnabled()) return hiddenNavigation;
+  const access = await run(attendanceAccessSchema, () => selectAttendanceAccess(principal.userId));
+  const attendance = isAcademicAttendanceEnabled();
+  return {
+    operations: access.manager,
+    staffAttendance: attendance && access.staff,
+    ownAttendance: attendance && access.student,
+  };
 }
