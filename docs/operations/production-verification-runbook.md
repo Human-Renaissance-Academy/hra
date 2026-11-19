@@ -2,19 +2,21 @@
 
 이 문서는 열린 운영 이슈를 닫는 데 필요한 **실제 운영 증거**를 운영자가 직접 모으는 방법입니다. 저장소 작업자·에이전트는 운영 자격정보를 갖지 않으며 운영 DB·Blob·Vercel에 접속하지 않습니다. 운영자가 아래 명령을 자신의 자격정보로 실행하고, **정해진 형식의 결과만** 이슈 검토에 붙여 넣습니다.
 
-관련 이슈: [#280](https://github.com/Human-Renaissance-Academy/hra-website/issues/280) · [#279](https://github.com/Human-Renaissance-Academy/hra-website/issues/279) · [#268](https://github.com/Human-Renaissance-Academy/hra-website/issues/268) · [#267](https://github.com/Human-Renaissance-Academy/hra-website/issues/267) · [#507](https://github.com/Human-Renaissance-Academy/hra-website/issues/507) · [#178](https://github.com/Human-Renaissance-Academy/hra-website/issues/178) · [#287](https://github.com/Human-Renaissance-Academy/hra-website/issues/287) · [#413](https://github.com/Human-Renaissance-Academy/hra-website/issues/413) · [#494](https://github.com/Human-Renaissance-Academy/hra-website/issues/494)
+관련 이슈: [#280](https://github.com/Human-Renaissance-Academy/hra-website/issues/280) · [#279](https://github.com/Human-Renaissance-Academy/hra-website/issues/279) · [#268](https://github.com/Human-Renaissance-Academy/hra-website/issues/268) · [#267](https://github.com/Human-Renaissance-Academy/hra-website/issues/267) · [#507](https://github.com/Human-Renaissance-Academy/hra-website/issues/507) · [#178](https://github.com/Human-Renaissance-Academy/hra-website/issues/178) · [#287](https://github.com/Human-Renaissance-Academy/hra-website/issues/287) · [#413](https://github.com/Human-Renaissance-Academy/hra-website/issues/413) · [#494](https://github.com/Human-Renaissance-Academy/hra-website/issues/494) · [#516](https://github.com/Human-Renaissance-Academy/hra-website/issues/516)
 
 ## 0. 공통 규칙
 
 ### 무엇을 실행하는가
 
-| 도구                                                  | 접속 대상                        | 쓰기                                                             | 출력                                               |
-| ----------------------------------------------------- | -------------------------------- | ---------------------------------------------------------------- | -------------------------------------------------- |
-| `scripts/ops/prod-db-readonly-report.mjs`             | `DATABASE_URL`의 PostgreSQL      | 없음. 첫 문장 `BEGIN ... READ ONLY`, 마지막 문장 항상 `ROLLBACK` | 집계 숫자·불리언·고정 코드·저장소 상수 이름의 JSON |
-| `scripts/ops/vercel-env-scope-report.mjs`             | 없음(stdin JSON만 읽음)          | 없음                                                             | 환경변수 이름·적용 대상·판정 코드 JSON             |
-| `scripts/ops/blob-protected-prefix-report.mjs`        | 공개 Blob 저장소의 `list`만 호출 | 없음                                                             | 보호 접두사별 개수·바이트 JSON                     |
-| `scripts/migrate-protected-resource-blobs.mjs` (기존) | DB 조회                          | **인자 없이 실행할 때만** 없음                                   | 공개/비공개/확인 필요 참조 개수                    |
-| `npm run verify:production-smoke` (기존)              | 공개 운영 주소 GET 6회           | 없음                                                             | 경로별 상태·고정 코드 JSON                         |
+| 도구                                                  | 접속 대상                                          | 쓰기                                                             | 출력                                               |
+| ----------------------------------------------------- | -------------------------------------------------- | ---------------------------------------------------------------- | -------------------------------------------------- |
+| `scripts/ops/prod-db-readonly-report.mjs`             | `DATABASE_URL`의 PostgreSQL                        | 없음. 첫 문장 `BEGIN ... READ ONLY`, 마지막 문장 항상 `ROLLBACK` | 집계 숫자·불리언·고정 코드·저장소 상수 이름의 JSON |
+| `scripts/ops/vercel-env-scope-report.mjs`             | 없음(stdin JSON만 읽음)                            | 없음                                                             | 환경변수 이름·적용 대상·판정 코드 JSON             |
+| `scripts/ops/blob-protected-prefix-report.mjs`        | 공개 Blob 저장소의 `list`만 호출                   | 없음                                                             | 보호 접두사별 개수·바이트 JSON                     |
+| `scripts/ops/academic-artifact-read-benchmark.mjs`    | **비운영** 비공개 Blob의 `head`·`get`만 호출 (8절) | 없음                                                             | 파일별 크기·시간·형식 판정, 최종화 여유 판정 JSON  |
+| `scripts/ops/hancom-sample-check.mjs`                 | 없음(로컬 샘플 파일만 읽음, 8절)                   | 없음                                                             | 케이스별 판정표·Scripts 스트림 크기                |
+| `scripts/migrate-protected-resource-blobs.mjs` (기존) | DB 조회                                            | **인자 없이 실행할 때만** 없음                                   | 공개/비공개/확인 필요 참조 개수                    |
+| `npm run verify:production-smoke` (기존)              | 공개 운영 주소 GET 6회                             | 없음                                                             | 경로별 상태·고정 코드 JSON                         |
 
 `prod-db-readonly-report`의 안전 경계:
 
@@ -328,10 +330,98 @@ DB 보고서의 다음 섹션을 확인합니다.
 
 ---
 
+## 8. #516 실제 저장소·샘플 검증
+
+**목적:** 텍스트·발표자료 분리 제출을 켜기 전에 (1) 최종화가 두 파일을 순차로 읽는 시간이 `maxDuration`(120초)에 충분히 못 미치는지, (2) 실제 한컴·오피스 파일이 서버 형식 검증을 기대대로 통과·거부하는지, (3) HWP 기본 `Scripts` 스트림의 실제 크기를 확인합니다. 이 절의 도구는 **운영 저장소·운영 DB에 접속하지 않습니다.** 기능 플래그(`ACADEMIC_UPLOADS_ENABLED` 등)는 이 절의 결과만으로 켜지 않습니다.
+
+### 8.1 읽기 시간 측정 (비운영 비공개 Blob)
+
+**선행 조건**
+
+- **운영이 아닌** 비공개 Blob 저장소(예: 개인 Vercel 프로젝트의 테스트 저장소)와 그 저장소의 서버 토큰. 운영 `ACADEMIC_SUBMISSION_READ_WRITE_TOKEN`은 쓰지 않습니다.
+- 합성·샘플 파일 **최대 2개**를 그 저장소에 운영자가 직접 올려 둡니다(실제 학생 파일 금지). 가장 불리한 경우를 보려면 50MiB에 가까운 파일(예: 일반 PDF 두 개)을 권장합니다. 20MiB 미만만 올리면 결과의 `representativeSize`가 `false`로 표시되고 처리량 외삽 오차가 큽니다.
+- 토큰 파일: 권한 600(`chmod 600`), 예 `~/.config/hra/blob-test.token`. 권한이 넓으면 도구가 거부합니다.
+
+```bash
+! out="$(mktemp)"; node scripts/ops/academic-artifact-read-benchmark.mjs --store-token-file ~/.config/hra/blob-test.token --allow-store <테스트저장소ID>.private.blob.vercel-storage.com --confirm-non-production --pathname <경로1> --pathname <경로2> > "$out"; echo "exit=$?"; cat "$out"; rm -f "$out"
+```
+
+- `--allow-store`는 테스트 저장소의 비공개 호스트(`*.private.blob.vercel-storage.com`)입니다. 응답 URL의 호스트가 이 값과 다르면 본문을 읽지 않고 `WRONG_STORE`로 끝납니다. 호스트·토큰·경로는 출력되지 않습니다(`file1`·`file2`로만 표시).
+- 토큰 파일 대신 환경변수 `ACADEMIC_SUBMISSION_READ_WRITE_TOKEN`을 쓸 수 있으나 명령 앞에 붙이면 대화에 남으므로 토큰 파일을 권장합니다.
+- 호출은 SDK `head`와 `get`(비공개·캐시 미사용)뿐입니다. 쓰기·삭제·목록 함수는 코드에 없습니다.
+- 경로는 합성 객체의 pathname입니다(예: `bench/sample-a.pdf`). 이 값도 결과에 나오지 않으므로 그대로 둡니다.
+
+**붙여 넣을 것:** JSON 전체(`files[].bytes`·`timingsMs`·`throughputMiBps`·`detected`, `finalize.*`).
+
+**판정 기준**
+
+| `finalize.verdict` | 기준(예상 시간 ÷ 120초) | 의미                                                                                    |
+| ------------------ | ----------------------- | --------------------------------------------------------------------------------------- |
+| `PASS`             | 50% 이하                | 순차 최종화에 충분한 여유. 한도 유지 가능                                               |
+| `WARN`             | 50% 초과 80% 이하       | 여유 부족. 파일별 상한 축소·최종화 병렬화·`maxDuration` 상향 중 하나를 결정한 뒤 재측정 |
+| `FAIL`             | 80% 초과 또는 측정 실패 | 현재 설계로 활성화 불가. 설계 변경 후 재측정                                            |
+
+- 예상 시간은 `measuredSequentialMs`(측정한 두 파일의 합, 파일 1개면 2배)와 `worstCase2x50MiBMs`(두 파일 모두 50MiB일 때 측정 속도로 외삽) 중 큰 값입니다(`projectedMs`).
+- `files[].detected`가 합성 샘플의 알려진 형식과 같아야 합니다(그렇지 않으면 샘플 준비 문제이므로 8.2의 케이스로 먼저 확인). `sizeMatchesHead`는 `true`여야 합니다.
+- 종료 코드: 0=`PASS`·`WARN`, 1=`FAIL`·읽기 실패(`NOT_FOUND`·`WRONG_STORE`·`TOO_LARGE`·`GET_FAILED` 등), 2=입력 오류.
+- 권장: 시간대를 바꿔 3회 이상 실행해 최악 값을 기록합니다. Vercel 함수 안의 지연은 로컬과 다르므로(리전·콜드 스타트) `WARN`이면 같은 저장소 리전의 Preview 배포로도 확인합니다.
+
+**해제하는 결정:** 분리 제출 활성화 전 `maxDuration` 유지 여부, 파일별 50MiB 상한 유지·축소, 최종화 순차 읽기 유지 여부(#516 정책 질문 1).
+
+### 8.2 한컴·오피스 샘플 검증 (오프라인)
+
+**선행 조건:** 아래 파일을 한 디렉터리(저장소 밖, 예: `~/hra-samples`)에 아래 파일명으로 준비합니다. 없는 파일은 `SKIPPED`로 표시되며 실패가 아닙니다. 실제 학생 문서는 쓰지 말고 샘플용으로 새로 만든 문서만 사용합니다.
+
+| 파일명                    | 만드는 방법                                   | 기대 결과                                   |
+| ------------------------- | --------------------------------------------- | ------------------------------------------- |
+| `hwp-plain.hwp`           | 한글에서 문서 작성 후 일반 저장               | 허용(HWP)                                   |
+| `hwp-password.hwp`        | 저장 시 문서 암호 설정                        | `ENCRYPTED`                                 |
+| `hwp-script.hwp`          | 스크립트(매크로)를 넣어 저장                  | `MACRO`                                     |
+| `hwpx-plain.hwpx`         | 한글에서 HWPX로 저장                          | 허용(HWPX)                                  |
+| `hwpx-encrypted.hwpx`     | 암호를 설정한 HWPX                            | `ENCRYPTED`                                 |
+| `pptx-plain.pptx`         | PowerPoint에서 PPTX 저장                      | 허용(PPTX)                                  |
+| `pptx-macro-renamed.pptx` | 매크로 포함 `.pptm`을 확장자만 `.pptx`로 변경 | `MACRO`                                     |
+| `ppt-plain.ppt`           | PowerPoint 97-2003 형식 저장                  | 허용(PPT)                                   |
+| `ppt-encrypted.ppt`       | 암호를 설정한 PPT                             | `ENCRYPTED` (다른 사유로 거부되면 `REVIEW`) |
+| `pdf-plain.pdf`           | 일반 PDF 내보내기                             | 허용(PDF)                                   |
+| `pdf-encrypted.pdf`       | 암호를 설정한 PDF                             | `ENCRYPTED`                                 |
+
+```bash
+! node scripts/ops/hancom-sample-check.mjs --dir ~/hra-samples
+```
+
+JSON이 필요하면 `--json`을 붙입니다. 네트워크·DB·Blob 접속이 없으며, 출력에는 케이스 ID·크기·판정 코드만 있고 파일 이름·내용은 없습니다.
+
+**붙여 넣을 것:** 판정표 전체(케이스별 `실제`·`기대`·`판정`)와 하단 "HWP 기본 Scripts 스트림 크기" 두 줄. 한글·오피스 버전(예: 한컴오피스 2024, Microsoft 365)도 함께 적습니다.
+
+**판정 기준**
+
+| 판정     | 의미                                                 | 다음 행동                                                                                                                                 |
+| -------- | ---------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| `PASS`   | 기대와 일치                                          | 없음                                                                                                                                      |
+| `REVIEW` | 거부했지만 사유가 기대와 다름                        | 사유 코드를 확인해 사유 매핑·안내 문구를 조정할지 판단(거부 자체는 안전)                                                                  |
+| `FAIL`   | 정상 파일을 거부했거나 위험 파일(암호·매크로)을 허용 | **활성화 금지.** 위험 파일 허용은 보안 문제이므로 0절 "악용 가능한 상태"처럼 공개 이슈에 원 파일을 붙이지 않고 형식 규칙 수정 PR을 만든다 |
+
+- 정상 샘플 4종(`hwp-plain`·`hwpx-plain`·`pptx-plain`·`ppt-plain`)이 모두 `PASS`여야 합니다. 하나라도 `FAIL`이면 해당 한컴·오피스 버전의 구조가 현재 규칙과 다른 것이므로 `zip.ts`·`cfb.ts` 규칙을 샘플 기준으로 고쳐야 합니다.
+- **Scripts 한도 조정:** 현재 한도는 `DefaultJScript` 1024바이트, `JScriptVersion` 64바이트(`cfb.ts`의 가정값)입니다. `hwp-plain`·`hwp-password`의 측정 최댓값이 한도의 절반 이하이면 한도를 측정 최댓값의 2배 안팎으로 줄일 수 있습니다. 측정값이 한도에 가깝거나 "허용 목록 밖 스트림 이름"이 나오면 한도를 올리지 말고 스트림 이름·내용을 먼저 조사합니다. 한 버전의 값으로만 정하지 말고 가능한 한 여러 한글 버전의 최댓값을 모읍니다.
+
+**해제하는 결정:** 형식 검증 규칙의 실제 샘플 적합 확인(#516 "HWP/HWPX 구조 규칙은 실제 한컴 샘플로 미확인" 위험 해소), `Scripts` 한도 축소, 암호·매크로 거부 사유 안내 문구.
+
+### 8.3 이 절 결과로 결정할 수 있는 것
+
+| 결과                                                   | 결정                                                                                                                             |
+| ------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------- |
+| 8.1 `PASS` + 8.2 정상 4종 `PASS`·위험 샘플 `FAIL` 없음 | 형식 검증·읽기 시간 측면의 활성화 차단 사유 없음. 활성화 자체는 #280 migration gate·#142 보존 정책·독립 리뷰 승인 이후 별도 결정 |
+| 8.1 `WARN`·`FAIL`                                      | 파일별 상한·최종화 방식·`maxDuration`을 바꾸는 PR을 만들고 8.1을 재측정. 그 전에는 활성화 금지                                   |
+| 8.2 `FAIL`                                             | 형식 규칙 수정 PR 후 8.2 재실행. 그 전에는 활성화 금지                                                                           |
+| 8.2 `Scripts` 측정 여유 충분                           | `HWP_DEFAULT_SCRIPT_LIMITS` 축소 PR(근거로 측정표 첨부)                                                                          |
+
+---
+
 ## 결과를 받은 뒤
 
 먼저 0절의 "악용 가능한 상태" 표에 해당하는 값이 있는지 확인합니다. 해당하면 원 결과는 비공개 보안 권고·비공개 채널에서만 다루고, 공개 이슈에는 `비공개 검토 중`만 남깁니다.
 
 검토자는 붙여 넣은 결과에 개인정보·비밀값이 없는지 먼저 확인하고, 이슈 댓글에는 숫자와 판정만 요약합니다. 이 문서의 도구는 운영 DB·Blob·설정을 바꾸지 않으며, 결과가 곧 적용 승인이나 완료 증거가 되지 않습니다. 적용·삭제·설정 변경은 각 이슈와 [DB 변경 절차](../developer/database-change-procedure.md)의 별도 승인으로 진행합니다.
 
-근거 코드: `scripts/ops/prod-db-readonly-report.mjs`, `scripts/ops/vercel-env-scope-report.mjs`, `scripts/ops/blob-protected-prefix-report.mjs`, `scripts/tests/ops-readonly-report.test.mjs`, `scripts/db/installation-contract.json`.
+근거 코드: `scripts/ops/prod-db-readonly-report.mjs`, `scripts/ops/vercel-env-scope-report.mjs`, `scripts/ops/blob-protected-prefix-report.mjs`, `scripts/tests/ops-readonly-report.test.mjs`, `scripts/ops/academic-artifact-read-benchmark.mjs`, `scripts/ops/hancom-sample-check.mjs`, `scripts/tests/academic-artifact-measurement.test.mjs`, `scripts/db/installation-contract.json`.
