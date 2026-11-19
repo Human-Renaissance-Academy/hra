@@ -44,7 +44,11 @@ export const LOGIN_RATE_LIMIT = {
 
 // 조합 키를 바꿔도 한 IP 또는 한 계정에 대한 대량 시도를 제한합니다 (#121).
 export const LOGIN_IP_RATE_LIMIT = { windowMs: 15 * 60 * 1000, maxAttempts: 50 } as const;
-export const LOGIN_EMAIL_RATE_LIMIT = { windowMs: 15 * 60 * 1000, maxAttempts: 15 } as const;
+// 이메일 축은 분산 IP의 password spraying 을 막는 계정 단위 상한입니다.
+// 15회에서 30회로 완화(#508): 타인이 실패를 유발해 정당한 사용자를 막는 비용을 두 배로 올리되,
+// 조합(5회)·IP(50회) 축과 원자적 예약·성공 시 해제는 그대로 유지해 계정 보호를 제거하지 않습니다.
+// 트레이드오프: 분산 공격자가 한 계정에 시도할 수 있는 비밀번호 수가 15분당 15개에서 30개로 늘어납니다.
+export const LOGIN_EMAIL_RATE_LIMIT = { windowMs: 15 * 60 * 1000, maxAttempts: 30 } as const;
 
 /**
  * 이미지 업로드 rate limit 정책 (/api/upload-image, /api/editor-image-uploads).

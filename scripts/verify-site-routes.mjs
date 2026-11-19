@@ -321,6 +321,7 @@ async function verifyCspApiBoundaries(origin, sessions) {
         attachment.headers.get("content-security-policy") ===
           "sandbox; default-src 'none'; frame-ancestors 'self'" &&
         attachment.headers.get("x-frame-options") === "SAMEORIGIN" &&
+        attachment.headers.get("cache-control") === "private, no-store" &&
         attachment.headers.get("content-disposition")?.startsWith("attachment;") &&
         attachment.headers.get("x-content-type-options") === "nosniff",
       "SITE_ROUTE_CSP_ATTACHMENT_HEADERS",
