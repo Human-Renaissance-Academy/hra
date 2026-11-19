@@ -16,7 +16,7 @@
 
 - [개발 문서 시작 페이지](docs/index.md)
 - [운영 Web](https://hra-website-theta.vercel.app)
-- [문서 사이트](https://human-renaissance-academy.github.io/hra-website/)
+- [문서 사이트](https://human-renaissance-academy.github.io/hra-platform/)
 - [전체 작업 우선순위](https://github.com/Human-Renaissance-Academy/hra-website/issues/300)
 
 ## 1. 지금 구현된 것과 앞으로 할 것
@@ -53,8 +53,8 @@
 2. 저장소를 내려받고, 버전이 기록된 `package-lock.json`을 기준으로 의존성을 설치합니다.
 
    ```bash
-   git clone https://github.com/Human-Renaissance-Academy/hra-website.git
-   cd hra-website
+   git clone https://github.com/Human-Renaissance-Academy/hra-platform.git
+   cd hra-platform
    node --version
    npm ci
    ```

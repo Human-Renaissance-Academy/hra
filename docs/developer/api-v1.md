@@ -1,6 +1,6 @@
 # API v1 현재 제공 범위
 
-공용 HTTP 계약의 정본은 [`packages/contracts/openapi.json`](https://github.com/Human-Renaissance-Academy/hra-website/blob/main/packages/contracts/openapi.json)입니다. 이 파일은 OpenAPI 3.1.1 JSON 형식이며 기존 공지·본인 프로필·공개 일정·가이드북 목록, 강의자료·주차별 텍스트 목록/상세와 자료 파일, 학사 MVP와 모바일 인증 계약을 기록합니다. 모바일 인증과 기존 경로의 Bearer 수용은 서버 작업 반영 후 사용할 수 있으며 계약 추가만으로 배포 완료를 뜻하지 않습니다. 수업일지·보고서 양식 등 나머지 자료 유형과 모바일 소셜 로그인은 후속 범위입니다.
+공용 HTTP 계약의 정본은 [`packages/contracts/openapi.json`](https://github.com/Human-Renaissance-Academy/hra-platform/blob/main/packages/contracts/openapi.json)입니다. 이 파일은 OpenAPI 3.1.1 JSON 형식이며 기존 공지·본인 프로필·공개 일정·가이드북 목록, 강의자료·주차별 텍스트 목록/상세와 자료 파일, 학사 MVP와 모바일 인증 계약을 기록합니다. 모바일 인증과 기존 경로의 Bearer 수용은 서버 작업 반영 후 사용할 수 있으며 계약 추가만으로 배포 완료를 뜻하지 않습니다. 수업일지·보고서 양식 등 나머지 자료 유형과 모바일 소셜 로그인은 후속 범위입니다.
 
 ## 모바일 인증
 

@@ -87,7 +87,7 @@ node --test scripts/tests/release-policy.test.mjs scripts/tests/required-checks-
 4. **실제 GitHub 설정 대조**: YAML 변경만으로 GitHub 보호 규칙이 적용되지는 않습니다. 저장소 관리자는 아래 읽기 전용 명령으로 실제 `main` 보호 설정이 정본 6개(`context` + `app_id`, `strict: true`, `enforce_admins: true`)와 일치하는지 확인합니다.
 
 ```bash
-gh api repos/Human-Renaissance-Academy/hra-website/branches/main/protection > /tmp/hra-main-protection.json
+gh api repos/Human-Renaissance-Academy/hra-platform/branches/main/protection > /tmp/hra-main-protection.json
 node scripts/check-required-checks-config.mjs --protection-file /tmp/hra-main-protection.json
 ```
 

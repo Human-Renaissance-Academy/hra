@@ -118,12 +118,12 @@ G1은 첫 학사 기능 묶음으로, 학생·수강 이력, 과제 대상, 개�
 | [전체 경로 감사](developer/site-route-audit.md) | 2026-10-17의 특정 코드·합성 환경 검증 기록 |
 | [문서별 검토 기록](developer/document-review-ledger.md) | PR #301의 기존 문서별 수정·보존 이유와 코드·운영 경계 |
 | [언론 기사 조사](PRESS-ARTICLES.md) | 과거 기사 조사 목록. 등록 전 원문과 현재 링크를 다시 확인 |
-| [CHANGELOG](https://github.com/Human-Renaissance-Academy/hra-website/blob/main/CHANGELOG.md) | 이미 기록된 버전 변경 이력 |
-| [README](https://github.com/Human-Renaissance-Academy/hra-website/blob/main/README.md) | 저장소에서 처음 만나는 안내 |
-| [AGENTS.md](https://github.com/Human-Renaissance-Academy/hra-website/blob/main/AGENTS.md) | 사람과 AI가 함께 지킬 프로젝트 규칙 |
-| [GitHub 작업 규칙](https://github.com/Human-Renaissance-Academy/hra-website/blob/main/.github/AGENTS.md) | 이슈·PR·CI 관련 작업의 추가 규칙 |
-| [PR 템플릿](https://github.com/Human-Renaissance-Academy/hra-website/blob/main/.github/PULL_REQUEST_TEMPLATE.md) | 리뷰에 필요한 설명과 검증 결과의 형식 |
-| [CLAUDE.md](https://github.com/Human-Renaissance-Academy/hra-website/blob/main/CLAUDE.md) | `AGENTS.md`를 참조하는 AI 도구 진입 파일 |
+| [CHANGELOG](https://github.com/Human-Renaissance-Academy/hra-platform/blob/main/CHANGELOG.md) | 이미 기록된 버전 변경 이력 |
+| [README](https://github.com/Human-Renaissance-Academy/hra-platform/blob/main/README.md) | 저장소에서 처음 만나는 안내 |
+| [AGENTS.md](https://github.com/Human-Renaissance-Academy/hra-platform/blob/main/AGENTS.md) | 사람과 AI가 함께 지킬 프로젝트 규칙 |
+| [GitHub 작업 규칙](https://github.com/Human-Renaissance-Academy/hra-platform/blob/main/.github/AGENTS.md) | 이슈·PR·CI 관련 작업의 추가 규칙 |
+| [PR 템플릿](https://github.com/Human-Renaissance-Academy/hra-platform/blob/main/.github/PULL_REQUEST_TEMPLATE.md) | 리뷰에 필요한 설명과 검증 결과의 형식 |
+| [CLAUDE.md](https://github.com/Human-Renaissance-Academy/hra-platform/blob/main/CLAUDE.md) | `AGENTS.md`를 참조하는 AI 도구 진입 파일 |
 
 ## 7. 사이트에서 사용하는 기본 문서
 
@@ -131,8 +131,8 @@ G1은 첫 학사 기능 묶음으로, 학생·수강 이력, 과제 대상, 개�
 
 | 구분 | 기본 문서 |
 | --- | --- |
-| 사용 안내 | [Markdown 작성](https://github.com/Human-Renaissance-Academy/hra-website/blob/main/content/member/guides/markdown-guide.md), [보고서 작성](https://github.com/Human-Renaissance-Academy/hra-website/blob/main/content/member/guides/report-writing-guide.md), [보고서 제출](https://github.com/Human-Renaissance-Academy/hra-website/blob/main/content/member/guides/submission-guide.md) |
-| 보고서 양식 | [고전 독후감](https://github.com/Human-Renaissance-Academy/hra-website/blob/main/content/member/templates/classic-book-template.md), [경영 서적 독후감](https://github.com/Human-Renaissance-Academy/hra-website/blob/main/content/member/templates/management-book-template.md), [경영 실습](https://github.com/Human-Renaissance-Academy/hra-website/blob/main/content/member/templates/business-practice-template.md) |
+| 사용 안내 | [Markdown 작성](https://github.com/Human-Renaissance-Academy/hra-platform/blob/main/content/member/guides/markdown-guide.md), [보고서 작성](https://github.com/Human-Renaissance-Academy/hra-platform/blob/main/content/member/guides/report-writing-guide.md), [보고서 제출](https://github.com/Human-Renaissance-Academy/hra-platform/blob/main/content/member/guides/submission-guide.md) |
+| 보고서 양식 | [고전 독후감](https://github.com/Human-Renaissance-Academy/hra-platform/blob/main/content/member/templates/classic-book-template.md), [경영 서적 독후감](https://github.com/Human-Renaissance-Academy/hra-platform/blob/main/content/member/templates/management-book-template.md), [경영 실습](https://github.com/Human-Renaissance-Academy/hra-platform/blob/main/content/member/templates/business-practice-template.md) |
 
 운영진이 정한 양식의 항목·순서를 문장 정리만을 이유로 바꾸지 않는다. 제출 위치·마감은 현재 기수와 과제 공지를 우선하며, 안내 문서만 수정해서 새로운 운영 정책을 만들지 않는다.
 
