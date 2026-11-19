@@ -167,3 +167,14 @@ export function assertAcademicSubmissionArtifactsEnabled(): void {
   if (process.env.ACADEMIC_SUBMISSION_ARTIFACTS_ENABLED !== "true")
     throw new AcademicUploadError("DISABLED");
 }
+/**
+ * 화면 분기용 V2 기능 gate 조회입니다(서버 컴포넌트에서만 호출). 예외 대신 boolean을 돌려주며,
+ * 실제 쓰기·업로드 경로는 각 서비스가 assertAcademicSubmissionArtifactsEnabled로 다시 확인합니다.
+ */
+export function isAcademicSubmissionArtifactsEnabled(): boolean {
+  return (
+    process.env.ACADEMIC_ENABLED === "true" &&
+    process.env.ACADEMIC_UPLOADS_ENABLED === "true" &&
+    process.env.ACADEMIC_SUBMISSION_ARTIFACTS_ENABLED === "true"
+  );
+}
