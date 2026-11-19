@@ -106,6 +106,7 @@ nav:
           - G1 통합 품질 검사: developer/academic-g1-quality-gate.md
       - 개인정보 정책 초안: ACADEMIC-PRIVACY-RETENTION-POLICY.md
   - 앞으로의 플랫폼:
+      - 모바일·API v1 동결 결정: decisions/2026-11-19-mobile-api-freeze.md
       - 목표 아키텍처: developer/platform-architecture.md
       - 전환 로드맵: PLATFORM-ROADMAP.md
       - 공용 API v1 계약: developer/api-v1.md

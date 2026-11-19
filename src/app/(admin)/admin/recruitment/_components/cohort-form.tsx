@@ -38,17 +38,30 @@ type CohortFormProps = {
   defaultValues?: CohortFormValues;
 };
 
+// 서버 검증(src/features/recruitment/actions)과 같은 이미지 상한입니다.
+// Vercel 수신 한도(4.5MB)를 넘기면 앱 이전 단계에서 영문 플랫폼 오류가 나므로 클라이언트에서 먼저 안내합니다(#511).
+const MAX_IMAGE_BYTES = 4 * 1024 * 1024;
+
 const initialState: CohortActionState = {
   success: false,
   message: "",
 };
 
-export function CohortForm({ title, description, submitLabel, action, defaultValues }: CohortFormProps) {
+export function CohortForm({
+  title,
+  description,
+  submitLabel,
+  action,
+  defaultValues,
+}: CohortFormProps) {
   // ⚙️ 서버 액션 호출 - 기수 정보를 서버로 전송하여 DB 저장/수정
-  const [state, formAction, isPending] = useActionState(async (_prevState: CohortActionState, formData: FormData) => {
-    const result = await action(formData);
-    return result ?? initialState;
-  }, initialState);
+  const [state, formAction, isPending] = useActionState(
+    async (_prevState: CohortActionState, formData: FormData) => {
+      const result = await action(formData);
+      return result ?? initialState;
+    },
+    initialState,
+  );
 
   const isActive = defaultValues?.isActive ?? true;
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -57,6 +70,8 @@ export function CohortForm({ title, description, submitLabel, action, defaultVal
   const [objectUrl, setObjectUrl] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [selectedFileName, setSelectedFileName] = useState<string | null>(null);
+  // 클라이언트 사전 검증 오류 (이미지 크기 초과)
+  const [sizeError, setSizeError] = useState<string | null>(null);
   const hasImage = Boolean(previewUrl);
 
   useEffect(() => {
@@ -68,6 +83,17 @@ export function CohortForm({ title, description, submitLabel, action, defaultVal
   }, [objectUrl]);
 
   const processFile = (file: File | undefined) => {
+    // 4MB 초과 파일은 전송하지 않고 선택을 비웁니다. 서버 검증은 그대로 유지합니다.
+    if (file && file.size > MAX_IMAGE_BYTES) {
+      setSizeError("이미지 파일은 4MB 이하여야 합니다.");
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+      file = undefined;
+    } else {
+      setSizeError(null);
+    }
+
     if (!file) {
       if (objectUrl) {
         URL.revokeObjectURL(objectUrl);
@@ -126,7 +152,7 @@ export function CohortForm({ title, description, submitLabel, action, defaultVal
     if (!window.confirm("이미지를 삭제하시겠습니까?")) {
       return;
     }
-    
+
     if (objectUrl) {
       URL.revokeObjectURL(objectUrl);
       setObjectUrl(null);
@@ -148,6 +174,12 @@ export function CohortForm({ title, description, submitLabel, action, defaultVal
         </CardHeader>
         <CardContent className="py-6">
           <form action={formAction} encType="multipart/form-data" className="space-y-6">
+            {sizeError ? (
+              <div className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                <AlertCircle className="mt-0.5 size-4" />
+                <span>{sizeError}</span>
+              </div>
+            ) : null}
             {state.message ? (
               <div className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
                 <AlertCircle className="mt-0.5 size-4" />
@@ -195,14 +227,16 @@ export function CohortForm({ title, description, submitLabel, action, defaultVal
                     {isPending ? (
                       <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-white/80 backdrop-blur-sm">
                         <Loader2 className="mb-2 size-8 animate-spin text-slate-900" />
-                        <span className="text-sm font-medium text-slate-900">이미지 업로드 중...</span>
+                        <span className="text-sm font-medium text-slate-900">
+                          이미지 업로드 중...
+                        </span>
                       </div>
                     ) : null}
-                    
+
                     {hasImage ? (
                       <button
                         type="button"
-                        className="group relative block w-full cursor-pointer overflow-hidden p-0 text-left" 
+                        className="group relative block w-full cursor-pointer overflow-hidden p-0 text-left"
                         onClick={() => fileInputRef.current?.click()}
                         onDragOver={handleDragOver}
                         onDragLeave={handleDragLeave}
@@ -250,18 +284,30 @@ export function CohortForm({ title, description, submitLabel, action, defaultVal
                       onChange={handleImageChange}
                     />
                     <div className="flex flex-wrap items-center gap-2">
-                      <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()}>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => fileInputRef.current?.click()}
+                      >
                         <ImagePlus className="mr-2 size-4" />
                         이미지 선택
                       </Button>
                       {hasImage ? (
-                        <Button type="button" variant="outline" onClick={handleRemoveImage} className="text-red-600 hover:bg-red-50 hover:text-red-700">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={handleRemoveImage}
+                          className="text-red-600 hover:bg-red-50 hover:text-red-700"
+                        >
                           <Trash2 className="mr-2 size-4" />
                           이미지 삭제
                         </Button>
                       ) : null}
                       {selectedFileName ? (
-                        <span className="text-sm text-slate-500 truncate max-w-[200px]" title={selectedFileName}>
+                        <span
+                          className="text-sm text-slate-500 truncate max-w-[200px]"
+                          title={selectedFileName}
+                        >
                           {selectedFileName}
                         </span>
                       ) : null}
@@ -317,7 +363,11 @@ export function CohortForm({ title, description, submitLabel, action, defaultVal
               <Button variant="outline" render={<Link href="/admin/recruitment" />}>
                 취소
               </Button>
-              <Button type="submit" disabled={isPending} className="bg-slate-900 text-white hover:bg-slate-700">
+              <Button
+                type="submit"
+                disabled={isPending}
+                className="bg-slate-900 text-white hover:bg-slate-700"
+              >
                 {isPending ? "저장 중..." : submitLabel}
               </Button>
             </div>
