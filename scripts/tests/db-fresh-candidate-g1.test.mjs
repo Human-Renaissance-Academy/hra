@@ -79,7 +79,7 @@ const reviewed = [
   {
     id: "submission-artifacts",
     begin: 3,
-    commit: 940,
+    commit: 1086,
     statement: 6,
     expected: "SET LOCAL statement_timeout = '60s';",
   },

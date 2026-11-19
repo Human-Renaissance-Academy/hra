@@ -1787,11 +1787,13 @@
         "academic-artifact-functions",
         "academic-submission-functions",
         "academic-upload-functions",
-        "academic-complete-function"
+        "academic-complete-function",
+        "academic-action-functions"
       ],
       "requires": [
         "web-base",
         "academic-assignments",
+        "academic-actions",
         "academic-submissions",
         "academic-upload-auth",
         "academic-file-reads"
@@ -1799,7 +1801,8 @@
       "checks": [
         "적용 전 v1 구조(새 타입·컬럼 없음, 교체할 CHECK·UNIQUE·활성 인덱스가 원문과 동일)만 변경하고, 이미 v2이면 함수만 다시 정의하며 그 밖의 부분·변형 구조는 전체 롤백한다.",
         "기존 행을 UPDATE하지 않고 상수 기본값의 ADD COLUMN으로 LEGACY 값만 보이게 하며 xmin·체크섬 보존을 격리 PostgreSQL에서 확인한다.",
-        "v1 발급·검증·최종화 진입점이 V2 과제에서 실패로 닫히고, 새 _v2 진입점의 PUBLIC EXECUTE가 회수되는지 확인한다."
+        "v1 발급·검증·최종화 진입점이 V2 과제에서 실패로 닫히고, 새 _v2 진입점의 PUBLIC EXECUTE가 회수되는지 확인한다.",
+        "과제 변경 함수가 먼저 없으면 롤백하고, 제출 형식 키 세 개를 함께 보낸 CREATE/UPDATE_DRAFT만 형식을 지정하며 키가 없으면 기존 동작과 같은지 확인한다."
       ],
       "evidence": [
         {
@@ -1844,11 +1847,13 @@
         "academic-artifact-functions",
         "academic-submission-functions",
         "academic-upload-functions",
-        "academic-complete-function"
+        "academic-complete-function",
+        "academic-action-functions"
       ],
       "requires": [
         "web-base",
         "academic-assignments",
+        "academic-actions",
         "academic-submissions",
         "academic-upload-auth",
         "academic-file-reads"
@@ -2883,6 +2888,16 @@
           "source": "scripts/db/candidates/db-fresh/g1-assignment-actions.sql",
           "relationship": "unresolved",
           "reason": "원본 scripts/migrate-academic-assignment-actions.sql의 외부 BEGIN/COMMIT과 승인된 statement timeout 행만 후보에서 제외하고 함수 본문·search_path·ACL·trigger를 보존한다. 전체 engine prefix와 동작·실패 gate의 동등/대체 판정은 미완료다."
+        },
+        {
+          "source": "scripts/migrate-academic-submission-artifacts.sql",
+          "relationship": "replacement",
+          "reason": "#516 추가형 SQL이 과제 생성·초안 수정 payload에 제출 형식 키 세 개(함께 보낼 때만)를 받도록 다시 정의한다. 키가 없으면 기존 payload·감사 요약·동작과 같고 공개 후 변경은 기존처럼 거부한다."
+        },
+        {
+          "source": "scripts/db/candidates/db-fresh/g1-submission-artifacts.sql",
+          "relationship": "unresolved",
+          "reason": "원본 scripts/migrate-academic-submission-artifacts.sql의 외부 BEGIN/COMMIT과 승인된 statement timeout 행만 후보에서 제외하고 함수 본문·search_path·ACL·trigger를 보존한다. 전체 engine prefix와 동작·실패 gate의 동등/대체 판정은 미완료다."
         }
       ],
       "requires": ["academic-actions","academic-assignment-functions"],
