@@ -91,7 +91,7 @@ npm run seed-admin -- --confirm-promote=operator@example.invalid
 
 승격 시 역할·비밀번호 해시·세션 버전이 함께 변경됩니다. 기존 ADMIN 계정에 대해서는 이 스크립트가 비밀번호를 바꾸지 않습니다. **비밀번호 재설정 도구로 반복 실행하지 말고** 담당자의 계정 복구 절차를 따릅니다.
 
-### 이메일 식별 규칙과 운영 적용 전 준비 (#507)
+### 이메일 식별 규칙과 운영 적용 전 준비 (#507) {#email-identity-507}
 
 인증·요청 제한·seed는 하나의 순수 JS 정규화 구현을 공유합니다. 별칭·Gmail 점/plus 제거·Unicode NFKC·새 ASCII 제한을 추가하지 않습니다. credentials·OAuth·seed 조회는 DB 컬럼과 정규화된 입력 양쪽에 `lower(btrim(...))`를 적용하고 최대 2행까지만 확인합니다. 복수 결과는 없음과 구분해 거부하며 이메일이 같다는 이유로 다른 계정의 권한을 인계하지 않습니다.
 
@@ -106,6 +106,16 @@ npm run seed-admin -- --confirm-promote=operator@example.invalid
 `scripts/migrate-507-email-identity-unique.sql`은 `lower(btrim(email))`에 `users_email_identity_unique`를 추가하는 **검토 후보**입니다. 기존 `users_email_unique`와 OAuth tuple 제약은 남기며 데이터를 고치거나 병합하지 않습니다. 충돌 또는 동명 인덱스가 있으면 실패하고 `IF NOT EXISTS`로 기존 정의를 신뢰하지 않습니다. 동명 객체가 이미 있으면 반복 실행하기 전에 실제 catalog와 적용 이력을 별도 확인합니다. 잠금 5초·문장 30초 제한을 둔 일반 인덱스 생성이므로 실제 쓰기 부하·잠금·실패 후 상태는 운영 적용 검토 대상입니다.
 
 이 후보는 소유한 격리 PostgreSQL에서만 검사합니다. source inventory와 설치 대응표의 등록은 적용 이력이 아니며 운영 manifest는 계속 `unset`입니다. `schema.ts`의 기존 exact UNIQUE 선언이나 현재 fresh export/bundle이 새 식별 인덱스의 설치를 보증하는 것도 아닙니다. 준비 코드와 앱 배포만으로 기존 DB의 동시 생성까지 casefold UNIQUE가 보장됐다고 판단하지 않습니다. [#280](https://github.com/Human-Renaissance-Academy/hra-website/issues/280)의 실제 대상·collation/catalog·충돌 확인·백업/복구·승인·배포 gate를 거친 뒤 별도 적용해야 합니다. 충돌이 있으면 자동 병합하지 않고 개별 소유권·바인딩·권한을 확인하는 수동 처리 계획을 검토합니다.
+
+**적용 후 확인:** [읽기 전용 DB 보고서](operations/production-verification-runbook.md#db-report)의 `sections.emailIdentityIndex.data`에서 `present`·`usable`·`expression_matches`가 모두 `true`이고, 기존 보호 제약 `exact_email_unique`·`oauth_binding_unique`·`oauth_binding_check`도 `true`인지 확인합니다. 적용 순서는 [DB 변경 배포 게이트](developer/database-change-procedure.md#db-change-gate)의 플래그 없는 경로(SQL 먼저 적용)를 따릅니다.
+
+**롤백(운영자 승인 후 수동):** 인덱스를 제거해야 할 때는 transaction 밖에서 다음 한 문장만 실행합니다. `CONCURRENTLY`는 `BEGIN` 블록 안에서 실행할 수 없으므로 SQL 파일처럼 `BEGIN`/`COMMIT`으로 감싸지 않습니다.
+
+```sql
+DROP INDEX CONCURRENTLY IF EXISTS public.users_email_identity_unique;
+```
+
+실행 후 같은 보고서에서 `emailIdentityIndex.present`가 `false`이고 기존 보호 제약 세 항목이 여전히 `true`인지 확인합니다. 이 롤백은 **DB의 대소문자 무관 UNIQUE 강제만 제거**합니다. 앱의 이메일 정규화·조회 규칙은 코드에 그대로 남으며, 기존 `users_email_unique`·OAuth tuple 제약과 계정 데이터는 바뀌지 않습니다. 인덱스가 없는 동안에는 동시 생성 경합을 DB가 막지 않는다는 점을 기록합니다.
 
 앱 rollback과 DB index 제거는 별개입니다. rollback을 이유로 인덱스나 기존 계정을 자동 삭제하지 않으며 구·신 앱 writer의 호환성과 forward fix를 검토합니다. read-only 집계가 0이거나 일부 가시 행에서 이상이 없더라도 전체 DB 가시성·제약·backup/baseline 준비 또는 #507/#280 완료를 뜻하지 않습니다.
 

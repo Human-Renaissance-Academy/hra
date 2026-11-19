@@ -112,7 +112,10 @@ DB 변경이 필요하면 **앱 배포보다 먼저 적용해야 할 항목**을
 1. PR 마지막 커밋에서 필수 CI, 위험에 따른 리뷰, 관련 테스트/build가 성공했는지 확인합니다. [변경 위험별 검증 규칙](https://github.com/Human-Renaissance-Academy/hra-platform/blob/main/AGENTS.md#11-변경-위험에-따른-검증독립-리뷰)은 유지합니다.
 2. **Preview는 선택 사항**입니다. 필요한 화면·로그인·업로드 통합 확인이 있을 때만 사용하고, [#279](https://github.com/Human-Renaissance-Academy/hra-website/issues/279)에 따라 격리 테스트 DB/Blob과 합성 계정을 준비합니다. 자원이 없으면 해당 기능을 비활성화합니다. 기존 Vercel Preview가 필수 체크라면 #408/#492 검증 없이 체크나 브랜치 보호를 끄지 않습니다.
 3. DB 변경이 없다면 승인된 PR을 main에 병합하고 Production 배포 완료를 확인합니다. 최근 성공 배포 SHA와 이번 배포 SHA를 구분합니다.
-4. DB 구조·데이터 변경이 있을 때만 [DB 변경 절차](developer/database-change-procedure.md) 및 [#280](https://github.com/Human-Renaissance-Academy/hra-website/issues/280)의 실제 대상·백업·복구·호환성 검사를 선행합니다. Vercel build에서 자동 migration을 하지 않습니다.
+4. DB 구조·데이터 변경이 있을 때만 [DB 변경 배포 게이트](developer/database-change-procedure.md#db-change-gate)(#280, 2026-11-20 채택)를 따릅니다. Vercel build에서 자동 migration을 하지 않습니다.
+    - **기능 플래그가 있는 변경:** 추가형 SQL과 기본값이 꺼진 플래그를 함께 병합 → [백업 확인(운영 확인 절차 §1)](operations/production-verification-runbook.md#db-catalog-backup) → SQL 적용 → [읽기 전용 DB 보고서](operations/production-verification-runbook.md#db-report)에서 해당 기능 객체의 catalog `missing` 0 확인 → 그다음에만 플래그를 켭니다. 실패하면 플래그를 끈 채 forward-fix하고 자동 `DROP`하지 않습니다.
+    - **플래그 없이 DB에 의존하는 변경:** 현재 코드와 호환되는 SQL을 먼저 적용·확인한 뒤 PR을 병합합니다.
+    - 병합됐지만 운영 적용 여부가 확인되지 않은 학사·#507 SQL과 해당 플래그는 게이트 절의 표를 봅니다.
 5. Production 배포의 정확한 커밋 SHA와 공개 [smoke 점검](operations/production-smoke.md), 장애 알림을 확인합니다. 배포가 실패·대기·횟수 제한 상태라면 다음 PR을 서둘러 병합하지 말고 마지막 성공 배포를 기준으로 복구합니다.
 6. 변경·장애 대응은 [1인 운영 체크리스트](operations/solo-operations.md)에 짧게 남깁니다. 매일 Preview·DB·스토리지를 수동 확인하는 체계를 만들지 않습니다.
 

@@ -87,4 +87,6 @@ HRA는 Auth.js 저장 어댑터를 설정하지 않고 `handleOAuthSignIn`에서
 - 실제 Google·Kakao 로그인: 운영 또는 승인된 검증 환경에서 각 콘솔의 callback URI·동의 항목·앱 설정과 함께 별도로 확인합니다.
 
 격리 테스트의 성공이 실제 제공자 콘솔 설정이나 운영 로그인 성공을 증명하지는 않습니다.
+
+**Google 로그인은 "비활성 확인"으로 대체합니다 (2026-11-20 소유자 결정).** 운영 `/api/auth/providers`가 `credentials`와 `kakao`만 반환하는 것을 2026-11-20에 확인했으므로, 운영에서 Google 정상 로그인 검증은 수행하지 않고 Google이 꺼져 있다는 확인으로 대신합니다. 나중에 Google을 켜면 이 대체는 무효이며, 활성화한 배포에서 [운영 확인 절차 §4](../operations/production-verification-runbook.md)의 제공자 목록·Google 로그인·기존 `(provider, providerAccountId)` 바인딩·placeholder 이메일 확인을 **다시 실행**해야 합니다.
 실제 제공자 확인이 남으면 PR에 `Refs #267`을 사용하고, 패키지 병합만으로 이슈를 닫지 않습니다.
