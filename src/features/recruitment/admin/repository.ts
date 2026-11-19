@@ -5,7 +5,12 @@
 import "server-only";
 import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { applicationForms, applicationSubmissions, cohorts, legacyApplications } from "@/lib/db/schema";
+import {
+  applicationForms,
+  applicationSubmissions,
+  cohorts,
+  legacyApplications,
+} from "@/lib/db/schema";
 import { cohortNumberDesc } from "@/lib/db/cohort-order";
 import { isConstraintViolation } from "@/lib/db/constraint-errors";
 import { hasSubmissionDeleteGuards } from "@/lib/db/submission-delete-guards";
@@ -81,24 +86,51 @@ export async function hasDeleteGuards(): Promise<boolean> {
 /** 사전 검사는 안내용이며 검사 뒤 경합은 RESTRICT 외래키가 최종 차단합니다. */
 export async function getDeletionReferences(id: string): Promise<boolean> {
   const [legacy, submission] = await Promise.all([
-    db.select({ id: legacyApplications.id }).from(legacyApplications)
-      .where(eq(legacyApplications.cohortId, id)).limit(1),
-    db.select({ id: applicationSubmissions.id }).from(applicationSubmissions)
+    db
+      .select({ id: legacyApplications.id })
+      .from(legacyApplications)
+      .where(eq(legacyApplications.cohortId, id))
+      .limit(1),
+    db
+      .select({ id: applicationSubmissions.id })
+      .from(applicationSubmissions)
       .innerJoin(applicationForms, eq(applicationSubmissions.formId, applicationForms.id))
-      .where(eq(applicationForms.cohortId, id)).limit(1),
+      .where(eq(applicationForms.cohortId, id))
+      .limit(1),
   ]);
   return legacy.length > 0 || submission.length > 0;
 }
 
 /** 실제 삭제된 행으로 누락 대상을 구분합니다. */
 export async function deleteCohort(id: string): Promise<boolean> {
-  const [deleted] = await db.delete(cohorts).where(eq(cohorts.id, id))
+  const [deleted] = await db
+    .delete(cohorts)
+    .where(eq(cohorts.id, id))
     .returning({ id: cohorts.id });
   return Boolean(deleted);
 }
 
+// 학사 운영 이력(#165 운영 인력 배정, #159 출결, #163 수료)이 기수를 RESTRICT로 참조하는 외래키 이름입니다.
+// 이 이력은 보존기간 동안 지우지 않으므로 기수 삭제를 거절하고 안내 문구로 바꿉니다.
+const ACADEMIC_HISTORY_COHORT_REFERENCES = [
+  "academic_cohort_staff_assignments_cohort_fk",
+  "academic_attendance_corrections_cohort_fk",
+  "academic_attendance_records_cohort_fk",
+  "completion_criteria_versions_cohort_fk",
+  "completion_decisions_cohort_fk",
+];
+
+/** 학사 운영 이력 외래키 위반만 분류합니다. RESTRICT 위반은 PostgreSQL 18에서 23001, 이전 서버에서 23503입니다. */
+export function isAcademicHistoryReferenceError(error: unknown): boolean {
+  return ACADEMIC_HISTORY_COHORT_REFERENCES.some((constraint) =>
+    ["23001", "23503"].some((code) => isConstraintViolation(error, code, constraint)),
+  );
+}
+
 /** DB 오류 원문은 변환하지 않고 기존 두 외래키 이름만 분류합니다. */
 export function isSubmissionReferenceError(error: unknown): boolean {
-  return isConstraintViolation(error, "23503", "applications_cohort_id_cohorts_id_fk") ||
-    isConstraintViolation(error, "23503", "application_submissions_form_id_application_forms_id_fk");
+  return (
+    isConstraintViolation(error, "23503", "applications_cohort_id_cohorts_id_fk") ||
+    isConstraintViolation(error, "23503", "application_submissions_form_id_application_forms_id_fk")
+  );
 }

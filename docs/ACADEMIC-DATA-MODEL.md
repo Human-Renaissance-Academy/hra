@@ -197,6 +197,8 @@
 
 **구현 상태(#162, 2026-11-19) — 기능 비활성·운영 미적용:** 과제 검토·피드백은 [과제 검토·피드백 이력과 담당 검토자 평가 화면](developer/academic-assignment-reviews.md)으로 구현했다. 제출물·검토자별 현재 행 `academic_assignment_reviews`(`DRAFT`·`SUBMITTED`, `PRIVATE`·`PUBLISHED_TO_STUDENT`, 낙관적 `version`), 버전별 내용·행위자·사유의 추가 전용 이력 `academic_assignment_review_events`, 검토자 파일 열람 감사 `academic_assignment_review_file_reads`를 두고, 검토는 `can_review_assignment`와 자기 제출물 거부를 같은 트랜잭션에서 확인하며 학생 공개는 작성자가 아닌 학사 운영 관리자만 한다. 숫자 성적·순위는 없다.
 
+**구현 상태(#163, 2026-11-19) — 기능 비활성·운영 미적용:** 위 수료 제안은 [수료 기준 버전과 수료 확정 이력](developer/academic-completion.md)으로 구현했다. 실제 이름은 `completion_criteria_versions(cohort_id, version, criteria jsonb, status DRAFT|PUBLISHED, change_reason, published_at, …)`(공개 후 불변, 기수당 초안 1개), `completion_decisions(enrollment_id, cohort_id, criteria_version_id, decision_sequence, supersedes_decision_id, decision COMPLETED|NOT_COMPLETED|REVOKED, reason, snapshot, decided_by_user_id, decided_at, …)`(추가 전용, 순번 대체로 취소·정정 이력 보존), 추가 전용 감사 `completion_events`이며 제안의 확정/취소 시각 컬럼 대신 결정 행마다 `decided_at`을 둔다. 결정은 출결 표를 참조하지 않고 확정 당시 지표 건수 요약만 저장한다.
+
 관련 작업: [#165 수업 Advisor 배정 및 권한](https://github.com/Human-Renaissance-Academy/hra-website/issues/165), [#159 출결 모델](https://github.com/Human-Renaissance-Academy/hra-website/issues/159), [#160 출결 UI](https://github.com/Human-Renaissance-Academy/hra-website/issues/160).
 
 - `attendance_records(enrollment_id, schedule_event_id, state, recorded_by_user_id, updated_at)` 제안: `UNIQUE(enrollment_id, schedule_event_id)`. 실제 기록 행 부재(`UNMARKED`/미입력에 해당)와 명시적 `ABSENT`/결석은 다르다. 학생의 기수는 수업 기수와 일치해야 한다. `recorded_by_user_id`가 교수의 `facultyId`와 같다고 추정하지 않는다.
