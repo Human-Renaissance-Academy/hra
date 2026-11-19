@@ -91,7 +91,9 @@ function signal() {
 beforeEach(() => {
   vi.clearAllMocks();
   mocks.requireReader.mockResolvedValue({ user: { id: "member-1", role: "MEMBER" } });
-  mocks.select.mockReturnValue({ from: () => ({ where: () => ({ limit: mocks.limit }) }) });
+  // 사진 조회는 소속 텍스트의 기수 범위(#441)를 위해 weekly_texts와 조인합니다.
+  const where = () => ({ limit: mocks.limit });
+  mocks.select.mockReturnValue({ from: () => ({ where, innerJoin: () => ({ where }) }) });
   mocks.limit.mockResolvedValue([{ fileUrl: blobUrl, fileName: "수업 자료.pdf" }]);
   mocks.get.mockResolvedValue(
     blobResult(
