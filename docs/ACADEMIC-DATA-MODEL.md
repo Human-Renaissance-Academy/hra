@@ -189,6 +189,8 @@
 - 수료: `completion_criteria_versions`(기수·버전·공개 시각, 공개 후 불변)와 `completion_decisions`(적용 버전·확정자·사유·확정/취소 시각)로 분리한다.
 - 보존: 개별 출결·피드백은 수료 판정 확정일 후 1년, 수료 기록은 5년 권장([보존·파기 정책 초안](ACADEMIC-PRIVACY-RETENTION-POLICY.md) 2-1절). 출결 파기가 수료 결과를 지우지 않도록 참조를 분리한다.
 
+**구현 상태(#165, 2026-11-19) — 기능 비활성·운영 미적용:** 위 배정 제안은 [운영 인력 배정과 출결 권한 판정](developer/academic-staff-assignments.md)으로 구현했다. 실제 이름은 `academic_cohort_staff_assignments(cohort_id, user_id, staff_role, valid_from, valid_to, assigned_by_user_id, replaces_assignment_id, ended_by_user_id, ended_at, end_reason, …)`, `academic_operations_managers`, 추가 전용 감사 `academic_staff_events`이며 제안의 `starts_at`·`ends_at` 대신 반열린 구간 `[valid_from, valid_to)`를 쓴다. 동시 유효 상한(`ADVISOR` 1명·`ASSISTANT` 2명)과 같은 계정·기수의 기간 중복 금지는 트리거와 기수 단위 잠금으로 보장하고, 출결 권한 판정은 `can_record_academic_attendance(user, cohort, at)`·서비스 `canRecordAttendance`로 제공한다. 출결 기록(`attendance_records`)과 화면은 아직 없다.
+
 관련 작업: [#165 수업 Advisor 배정 및 권한](https://github.com/Human-Renaissance-Academy/hra-website/issues/165), [#159 출결 모델](https://github.com/Human-Renaissance-Academy/hra-website/issues/159), [#160 출결 UI](https://github.com/Human-Renaissance-Academy/hra-website/issues/160).
 
 - `attendance_records(enrollment_id, schedule_event_id, state, recorded_by_user_id, updated_at)` 제안: `UNIQUE(enrollment_id, schedule_event_id)`. 실제 기록 행 부재(`UNMARKED`/미입력에 해당)와 명시적 `ABSENT`/결석은 다르다. 학생의 기수는 수업 기수와 일치해야 한다. `recorded_by_user_id`가 교수의 `facultyId`와 같다고 추정하지 않는다.

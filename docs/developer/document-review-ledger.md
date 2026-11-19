@@ -82,5 +82,6 @@
 | `docs/getting-started/project-tour.md` | PR #301 추가. 화면→서버→DB의 현재 파일 경로를 따라간다. | 현재 예시 |
 | `docs/developer/github-actions-security.md` | 후속 `main`에서 도입된 별도 CI 보안 안내. 원래 66개 집계에 넣지 않았고 원문 정책을 유지한다. | 현재 CI 규칙 |
 | `docs/developer/rate-limit-reservation-index.md` | #320의 로컬 통합 안내. 범위 SQL과 인덱스 카탈로그·합성 성능 증거를 설명하며 운영 적용은 미확인이다. | 로컬 코드·운영 미적용 |
+| `docs/developer/academic-staff-assignments.md` | #165 추가. G2 운영 인력 배정·학사 운영 관리자 지정 SQL과 출결 권한 판정 서비스를 설명하며 기능은 비활성, 운영 적용은 미확인이다. | 로컬 코드·운영 미적용 |
 
 `mkdocs.yml`의 메뉴와 `.env.example`은 Markdown 66개 집계 밖의 설정 파일이다. PR #301은 새 안내의 탐색 경로와 안전한 합성 설정 예시를 보강하지만 실제 환경값을 저장하지 않는다. 이 표의 근거 경로는 리뷰 시 실제 저장소와 다시 대조하고, 새 코드·SQL·정책이 병합되면 해당 행의 상태도 갱신한다.

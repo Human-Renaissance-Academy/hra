@@ -192,6 +192,13 @@
       ]
     },
     {
+      "path": "scripts/migrate-academic-staff-assignments.sql",
+      "role": "versioned_candidate",
+      "sha256": "539aafe7ee2375f4b0ea1eab76d825b156831ca40d07e330e2fdfe9db2d6a6c2",
+      "id": "g2-staff-assignments",
+      "predecessors": []
+    },
+    {
       "path": "scripts/migrate-academic-students.sql",
       "role": "versioned_candidate",
       "sha256": "2ca8845821ccf17c5f5268c1975ec025837e5e1f268e4ffd39d7bf191dd1c378",

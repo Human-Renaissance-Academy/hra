@@ -283,6 +283,15 @@ export const environmentInventory = {
       active("false"),
     ),
     variable(
+      "ACADEMIC_STAFF_ENABLED",
+      "application",
+      "기수별 운영 인력 배정·출결 권한 판정(#165)",
+      false,
+      "학사 운영 정책 초안(#143) 운영 승인과 SQL 적용 후 ACADEMIC_ENABLED와 함께 true",
+      "정확한 true가 아니면 배정·지정 변경 DISABLED, 출결 권한 판정 항상 false; DB 조회 없음",
+      active("false"),
+    ),
+    variable(
       "ADMIN_EMAIL",
       "operator",
       "초기 관리자 생성/승격 대상; 값 공개 금지",
