@@ -12,7 +12,7 @@ import {
   validateReleaseFiles,
 } from "../_lib/release-policy.mjs";
 
-const repository = "Human-Renaissance-Academy/hra-website";
+const repository = "Human-Renaissance-Academy/hra-platform";
 const repo = { full_name: repository };
 const files = RELEASE_FILES.map((filename) => ({ filename, status: "modified" }));
 
@@ -116,10 +116,12 @@ test("조직 이전 후에도 release-please와 보안 신고가 현재 저장�
     new URL("../../.github/ISSUE_TEMPLATE/config.yml", import.meta.url),
     "utf8",
   );
-  assert.ok(workflow.includes("github.repository == 'Human-Renaissance-Academy/hra-website'"));
+  assert.ok(workflow.includes("github.repository == 'Human-Renaissance-Academy/hra-platform'"));
   assert.equal(workflow.includes("github.repository == 'yeongseon/hra-website'"), false);
-  assert.ok(issues.includes("Human-Renaissance-Academy/hra-website/security/advisories/new"));
+  assert.ok(issues.includes("Human-Renaissance-Academy/hra-platform/security/advisories/new"));
   assert.equal(issues.includes("yeongseon/hra-website"), false);
+  assert.equal(workflow.includes("Human-Renaissance-Academy/hra-website"), false);
+  assert.equal(issues.includes("Human-Renaissance-Academy/hra-website"), false);
 });
 test("문서·운영 설정에서 이전 계정의 저장소 주소로 돌아가지 않는다", () => {
   const docsRoot = new URL("../../docs/", import.meta.url);

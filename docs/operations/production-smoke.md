@@ -41,7 +41,7 @@ node --test scripts/tests/production-smoke*.test.mjs
 
 ## 알림 채널과 담당자
 
-최소 채널은 [운영 가용성 점검 Actions](https://github.com/Human-Renaissance-Academy/hra-website/actions/workflows/production-smoke.yml)의 **실패 상태·작업 요약·정제 JSON artifact**입니다. 운영 확인 담당은 저장소 관리자(현재 `yeongseon`)이며 기수별 출결 담당 권한과는 관계없습니다. 스크립트의 실패 종료는 실제 job/run failure로 전파합니다. [종료 코드 계약](https://docs.github.com/en/actions/how-tos/create-and-publish-actions/set-exit-codes), [작업 요약 계약](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-commands#adding-a-job-summary).
+최소 채널은 [운영 가용성 점검 Actions](https://github.com/Human-Renaissance-Academy/hra-platform/actions/workflows/production-smoke.yml)의 **실패 상태·작업 요약·정제 JSON artifact**입니다. 운영 확인 담당은 저장소 관리자(현재 `yeongseon`)이며 기수별 출결 담당 권한과는 관계없습니다. 스크립트의 실패 종료는 실제 job/run failure로 전파합니다. [종료 코드 계약](https://docs.github.com/en/actions/how-tos/create-and-publish-actions/set-exit-codes), [작업 요약 계약](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-commands#adding-a-job-summary).
 
 이메일·웹 알림은 개인 구독·설정에 따라 달라집니다. 저장소 소유자에게 자동 이메일이 도착한다고 보장하지 않습니다. 예약 알림 수신은 일정 작성/수정자와 재활성화 사용자에 영향을 받으므로 담당자 교체 시 cron·개인 알림 설정을 함께 점검합니다. 개인 이메일 수신 완료는 이 구현의 검증 범위가 아닙니다. [실행 알림](https://docs.github.com/en/actions/concepts/workflows-and-actions/notifications-for-workflow-runs), [개인 알림 설정](https://docs.github.com/en/subscriptions-and-notifications/how-tos/managing-github-actions-notifications).
 

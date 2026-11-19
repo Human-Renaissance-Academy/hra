@@ -108,7 +108,7 @@ DB 변경이 필요하면 **앱 배포보다 먼저 적용해야 할 항목**을
 
 ## 5. 1인 운영 기준으로 배포하기
 
-1. PR 마지막 커밋에서 필수 CI, 위험에 따른 리뷰, 관련 테스트/build가 성공했는지 확인합니다. [변경 위험별 검증 규칙](https://github.com/Human-Renaissance-Academy/hra-website/blob/main/AGENTS.md#11-변경-위험에-따른-검증독립-리뷰)은 유지합니다.
+1. PR 마지막 커밋에서 필수 CI, 위험에 따른 리뷰, 관련 테스트/build가 성공했는지 확인합니다. [변경 위험별 검증 규칙](https://github.com/Human-Renaissance-Academy/hra-platform/blob/main/AGENTS.md#11-변경-위험에-따른-검증독립-리뷰)은 유지합니다.
 2. **Preview는 선택 사항**입니다. 필요한 화면·로그인·업로드 통합 확인이 있을 때만 사용하고, [#279](https://github.com/Human-Renaissance-Academy/hra-website/issues/279)에 따라 격리 테스트 DB/Blob과 합성 계정을 준비합니다. 자원이 없으면 해당 기능을 비활성화합니다. 기존 Vercel Preview가 필수 체크라면 #408/#492 검증 없이 체크나 브랜치 보호를 끄지 않습니다.
 3. DB 변경이 없다면 승인된 PR을 main에 병합하고 Production 배포 완료를 확인합니다. 최근 성공 배포 SHA와 이번 배포 SHA를 구분합니다.
 4. DB 구조·데이터 변경이 있을 때만 [DB 변경 절차](developer/database-change-procedure.md) 및 [#280](https://github.com/Human-Renaissance-Academy/hra-website/issues/280)의 실제 대상·백업·복구·호환성 검사를 선행합니다. Vercel build에서 자동 migration을 하지 않습니다.
