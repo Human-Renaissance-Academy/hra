@@ -102,11 +102,21 @@ describe.skipIf(!bin)("#165 운영 인력 배정과 출결 권한(격리 Postgre
     if (result.status === 0) return { ok: true, out: result.stdout.trim() };
     return { ok: false, code: /ERROR:\s+([0-9A-Z]{5}):/.exec(result.stderr)?.[1] ?? "UNKNOWN" };
   };
-  const runAsync = async (statement: string): Promise<Outcome> => {
+  // 문장 배열은 한 세션에서 -c로 차례로 보내 각 결과를 출력합니다(트랜잭션 중간 결과 확인용).
+  const runAsync = async (statement: string | string[]): Promise<Outcome> => {
     try {
       const { stdout } = await execFileAsync(
         join(bin!, "psql"),
-        ["-X", "-q", "-At", "-v", "ON_ERROR_STOP=1", "-v", "VERBOSITY=verbose", "-c", statement],
+        [
+          "-X",
+          "-q",
+          "-At",
+          "-v",
+          "ON_ERROR_STOP=1",
+          "-v",
+          "VERBOSITY=verbose",
+          ...[statement].flat().flatMap((part) => ["-c", part]),
+        ],
         { env: { LC_ALL: "C", NODE_ENV: "test", ...cluster.environment }, timeout: 30_000 },
       );
       return { ok: true, out: stdout.trim() };
@@ -146,10 +156,9 @@ describe.skipIf(!bin)("#165 운영 인력 배정과 출결 권한(격리 Postgre
     role: string,
     options?: Parameters<typeof assignSql>[3],
   ) => run(assignSql(cohort, user, role, options));
-  const canRecord = (user: string, cohort: string, offset = "0 seconds") =>
-    value(
-      `SELECT public.can_record_academic_attendance('${user}','${cohort}', now() + interval ${lit(offset)});`,
-    ) === "t";
+  // 판정 함수는 시각 인자를 받지 않고 DB now()만 사용합니다.
+  const canRecord = (user: string, cohort: string) =>
+    value(`SELECT public.can_record_academic_attendance('${user}','${cohort}');`) === "t";
 
   beforeAll(() => {
     cluster = createQaPostgres(bin);
@@ -226,6 +235,33 @@ describe.skipIf(!bin)("#165 운영 인력 배정과 출결 권한(격리 Postgre
         "ALTER TABLE academic_cohort_staff_assignments ADD CONSTRAINT academic_cohort_staff_assignments_role_check CHECK (staff_role IN ('ADVISOR','ASSISTANT'));",
       );
       expect(run(migration)).toMatchObject({ ok: true });
+    });
+
+    it("보호 트리거 비활성·남은 EXECUTE 권한을 거부하고 이전 시각 인자 판정 함수를 제거합니다", () => {
+      // 비활성 상태로 숨겨 둔 다른 트리거도 쓰기 의미를 바꿀 수 있으므로 거부합니다.
+      value(`CREATE TRIGGER staff_probe_hidden BEFORE INSERT ON academic_staff_events
+        FOR EACH ROW EXECUTE FUNCTION public.guard_academic_staff_events();
+        ALTER TABLE academic_staff_events DISABLE TRIGGER staff_probe_hidden;`);
+      expect(run(migration)).toMatchObject({ ok: false });
+      value("DROP TRIGGER staff_probe_hidden ON academic_staff_events;");
+      value(
+        "DO $$BEGIN IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='staff_probe') THEN CREATE ROLE staff_probe NOLOGIN; END IF; END$$;",
+      );
+      value(
+        "GRANT EXECUTE ON FUNCTION public.close_academic_cohort_staff(uuid,uuid,timestamptz,text) TO staff_probe;",
+      );
+      expect(run(migration)).toMatchObject({ ok: false });
+      value(
+        "REVOKE EXECUTE ON FUNCTION public.close_academic_cohort_staff(uuid,uuid,timestamptz,text) FROM staff_probe;",
+      );
+      value(`CREATE FUNCTION public.can_record_academic_attendance(uuid, uuid, timestamptz) RETURNS boolean
+        LANGUAGE sql AS 'SELECT true';`);
+      expect(run(migration)).toMatchObject({ ok: true });
+      expect(
+        value(
+          "SELECT string_agg(pg_get_function_identity_arguments(oid), ';') FROM pg_proc WHERE proname='can_record_academic_attendance';",
+        ),
+      ).toBe("p_user_id uuid, p_cohort_id uuid");
     });
 
     it("PUBLIC에는 함수 실행 권한이 없습니다", () => {
@@ -359,6 +395,41 @@ describe.skipIf(!bin)("#165 운영 인력 배정과 출결 권한(격리 Postgre
       expect(results.filter((result) => result.ok)).toHaveLength(2);
       expect(results.filter((result) => !result.ok)).toEqual([{ ok: false, code: "23P01" }]);
     });
+
+    it("REPEATABLE READ·SERIALIZABLE 트랜잭션의 배정은 HRA07로 거부합니다", () => {
+      const cohort = newCohort();
+      for (const level of ["REPEATABLE READ", "SERIALIZABLE"])
+        expect(
+          run(
+            `BEGIN ISOLATION LEVEL ${level}; ${assignSql(cohort, ids.advisor, "ADVISOR")} COMMIT;`,
+          ),
+        ).toEqual({ ok: false, code: "HRA07" });
+      expect(
+        value(
+          `SELECT count(*) FROM academic_cohort_staff_assignments WHERE cohort_id='${cohort}';`,
+        ),
+      ).toBe("0");
+    });
+
+    it("같은 요청 ID·같은 입력을 두 연결이 동시에 보내면 배정·감사 1건이고 하나는 재생 응답입니다", async () => {
+      const cohort = newCohort();
+      const request = randomUUID();
+      const statement = assignSql(cohort, ids.advisor, "ADVISOR", { request }).replace(
+        "->'assignment'->>'id'",
+        "->>'replayed'",
+      );
+      const race = () => runAsync(["BEGIN", statement, "SELECT pg_sleep(0.4)", "COMMIT"]);
+      const results = await Promise.all([race(), race()]);
+      expect(results.every((result) => result.ok)).toBe(true);
+      expect(results.map((result) => (result.ok ? result.out.split("\n")[0] : "")).sort()).toEqual([
+        "false",
+        "true",
+      ]);
+      expect(
+        value(`SELECT concat_ws('|', (SELECT count(*) FROM academic_cohort_staff_assignments WHERE cohort_id='${cohort}'),
+          (SELECT count(*) FROM academic_staff_events WHERE request_id='${request}'));`),
+      ).toBe("1|1");
+    });
   });
 
   describe("출결 권한 판정", () => {
@@ -393,22 +464,33 @@ describe.skipIf(!bin)("#165 운영 인력 배정과 출결 권한(격리 Postgre
 
     it("학기 중 교체는 기존 행 종료 + 새 행 추가이며 교체 시각을 경계로 권한이 넘어갑니다", () => {
       const cohort = newCohort();
+      // 1시간 뒤 교체 예약: 지금은 기존 조교만 권한이 있습니다.
+      const scheduled = assign(cohort, ids.assistantC, "ASSISTANT");
+      const scheduledId = scheduled.ok ? scheduled.out : "";
+      value(`SELECT public.replace_academic_cohort_staff('${randomUUID()}','${ids.manager}','${randomUUID()}',
+        '${scheduledId}','${ids.advisorB}',now() + interval '1 hour','합성 교체 예약','IN_PERSON','${evidence}');`);
+      expect(canRecord(ids.assistantC, cohort)).toBe(true);
+      expect(canRecord(ids.advisorB, cohort)).toBe(false);
+      // 즉시 교체: 교체 직후부터 기존 조교는 거부되고 새 조교가 권한을 가집니다.
       const original = assign(cohort, ids.assistantA, "ASSISTANT", { to: "30 days" });
       const originalId = original.ok ? original.out : "";
+      expect(canRecord(ids.assistantA, cohort)).toBe(true);
       const replaced =
         value(`SELECT (public.replace_academic_cohort_staff('${randomUUID()}','${ids.manager}','${randomUUID()}',
-        '${originalId}','${ids.assistantB}',now() + interval '1 hour','합성 교체','IN_PERSON','${evidence}'))->'assignment'->>'id';`);
-      expect(canRecord(ids.assistantA, cohort, "30 minutes")).toBe(true);
-      expect(canRecord(ids.assistantB, cohort, "30 minutes")).toBe(false);
-      expect(canRecord(ids.assistantA, cohort, "2 hours")).toBe(false);
-      expect(canRecord(ids.assistantB, cohort, "2 hours")).toBe(true);
-      expect(canRecord(ids.assistantB, cohort, "31 days")).toBe(false);
+        '${originalId}','${ids.assistantB}',NULL,'합성 교체','IN_PERSON','${evidence}'))->'assignment'->>'id';`);
+      expect(canRecord(ids.assistantA, cohort)).toBe(false);
+      expect(canRecord(ids.assistantB, cohort)).toBe(true);
       expect(
         value(`SELECT concat_ws('|', o.user_id = '${ids.assistantA}', o.valid_to = n.valid_from, o.ended_by_user_id = '${ids.manager}',
         n.replaces_assignment_id = o.id, n.staff_role, n.valid_to IS NOT NULL)
         FROM academic_cohort_staff_assignments o JOIN academic_cohort_staff_assignments n ON n.id='${replaced}'
         WHERE o.id='${originalId}';`),
       ).toBe("t|t|t|t|ASSISTANT|t");
+      // 계획 종료 시각(30일)은 새 배정이 이어받습니다.
+      expect(
+        value(`SELECT n.valid_to = o.valid_from + interval '30 days' FROM academic_cohort_staff_assignments o
+        JOIN academic_cohort_staff_assignments n ON n.id='${replaced}' WHERE o.id='${originalId}';`),
+      ).toBe("t");
       expect(
         value(`SELECT count(*) FROM academic_staff_events WHERE action='STAFF_REPLACE'
         AND assignment_id='${originalId}' AND replacement_assignment_id='${replaced}' AND actor_user_id='${ids.manager}';`),
@@ -446,6 +528,11 @@ describe.skipIf(!bin)("#165 운영 인력 배정과 출결 권한(격리 Postgre
       expect(
         run(`DELETE FROM academic_operations_managers WHERE id='${managerDesignation}';`),
       ).toEqual({ ok: false, code: "HRA04" });
+      // 함수 밖 직접 UPDATE로도 현재 이전 시각으로 소급 종료할 수 없습니다.
+      expect(
+        run(`UPDATE academic_cohort_staff_assignments SET valid_to=now() - interval '1 hour',
+          ended_by_user_id='${ids.manager}', ended_at=now(), end_reason='소급' WHERE id='${id}';`),
+      ).toEqual({ ok: false, code: "HRA07" });
       value(
         `SELECT public.end_academic_cohort_staff('${randomUUID()}','${ids.manager}','${randomUUID()}','${id}',NULL,'합성 해제');`,
       );

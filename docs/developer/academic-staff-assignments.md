@@ -33,7 +33,8 @@
 - **같은 계정 중복:** 같은 기수에서 같은 계정의 배정 기간은 역할과 무관하게 겹칠 수 없다(`23P01`).
 - **동시성:** `btree_gist` 확장 없이, 신규 행마다 기수 단위 advisory lock을 잡은 뒤 최신 커밋을 다시 조회한다. 이 보장은 READ COMMITTED에서만 성립하므로 다른 격리 수준의 신규 행은 거부한다(`HRA07`). 관리자 지정은 계정 단위 잠금으로 같은 계정의 기간 중복을 막는다.
 - **불변성:** 종료(`valid_to`를 앞당기고 종료자·시각·사유를 한 번 기록) 외의 UPDATE, 모든 DELETE·TRUNCATE를 거부한다(`HRA04`). 감사 표는 추가만 허용한다. 보존기간 종료 후 파기는 [보존·파기 정책 초안](../ACADEMIC-PRIVACY-RETENTION-POLICY.md)의 별도 승인 함수가 생길 때까지 지원하지 않는다.
-- **소급 금지:** 배정 시작과 종료·교체 시각은 DB 현재 시각 이후만 받는다. 과거 출결의 권한 근거를 사후에 바꾸지 않기 위해서다.
+- **소급 금지:** 배정 시작과 종료·교체 시각은 DB 현재 시각 이후만 받는다. 과거 출결의 권한 근거를 사후에 바꾸지 않기 위해서다. 함수 밖 직접 UPDATE로 현재 이전 시각에 종료하는 것도 트리거가 거부한다(`HRA07`).
+- **설치 검사:** 재적용 시 이 파일이 만든 것 외의 사용자 트리거(비활성 포함)나 꺼진 보호 트리거, 소유자 외 EXECUTE 권한이 남은 함수가 있으면 전체를 롤백한다. 이전 초안의 시각 인자 판정 함수 `can_record_academic_attendance(uuid, uuid, timestamptz)`는 제거한다.
 
 SQL 함수(모두 `REVOKE ALL ... FROM PUBLIC`, 앱 DB 소유 역할로 실행):
 
@@ -43,7 +44,7 @@ SQL 함수(모두 `REVOKE ALL ... FROM PUBLIC`, 앱 DB 소유 역할로 실행):
 | `assign_academic_cohort_staff` | 관리자의 배정 | `HRA01` 관리자 아님·자기 배정, `HRA03` 기수·대상 없음, `23P01` 상한·중복 |
 | `end_academic_cohort_staff` | 관리자의 배정 종료(해제) | `HRA04` 이미 종료 |
 | `replace_academic_cohort_staff` | 기존 행 종료 + 같은 기수·역할의 새 행 추가(기존 계획 종료 시각 승계) | 위와 같음 |
-| `can_record_academic_attendance(user, cohort, at)` | 출결 권한 판정 | — |
+| `can_record_academic_attendance(user, cohort)` | 출결 권한 판정. **DB `now()`(트랜잭션 시작 시각) 기준**이며 시각 인자를 받지 않는다 | — |
 
 공통으로 `HRA02`는 같은 요청 ID를 다른 입력에 재사용한 경우, `HRA07`은 입력 오류다. G1과 같이 SECURITY DEFINER는 쓰지 않는다. 앱이 소유 역할로 접속하므로 권한 상승 경로만 늘리기 때문이다.
 
@@ -55,17 +56,23 @@ SQL 함수(모두 `REVOKE ALL ... FROM PUBLIC`, 앱 DB 소유 역할로 실행):
 | `repository.ts` | 위 SQL 함수 호출만 담당하는 저장소 |
 | `service.ts` | Application Service. 주체 확인 → 기능 플래그 → 입력 검증 → 저장소 호출 |
 
-- `canRecordAttendance(principal, cohortId, at = new Date())`: #159·#160의 **모든 출결 경로가 호출해야 하는 중앙 판정**이다. 플래그가 꺼져 있거나 주체가 `PENDING`이면 DB 조회 없이 `false`, DB 장애는 `false`로 숨기지 않고 `UNAVAILABLE` 오류를 던진다. `at`은 서버가 정한 기록 시각이어야 한다.
+- `canRecordAttendance(principal, cohortId)`: #159·#160의 **모든 출결 경로가 호출해야 하는 중앙 판정**이다. 판정 시각은 DB 현재 시각으로 고정되어 배정 종료 즉시 권한이 끝난다(P10). 과거 시점의 배정 이력 조회가 필요하면 권한 판정과 이름이 다른 별도 조회 함수로 만든다. 플래그가 꺼져 있거나 주체가 `PENDING`이면 DB 조회 없이 `false`, DB 장애는 `false`로 숨기지 않고 `UNAVAILABLE` 오류를 던진다.
 - `assignCohortStaff`·`endCohortStaffAssignment`·`replaceCohortStaff`: 학사 운영 관리자 변경. 관리자 여부는 DB가 호출마다 다시 확인한다.
 - `designateOperationsManager`·`endOperationsManagerDesignation`: 주체가 설정된 지정 승인자와 같을 때만 DB를 호출한다.
 - 주체(`{ userId, role }`)는 호출자(향후 Server Action·`/api/v1` 어댑터)가 실제 세션·모바일 토큰에서 확정해 넘긴다. 배정 종료·계정 `PENDING` 전환은 세션에 권한을 저장하지 않으므로 다음 호출부터 즉시 반영된다.
 - **#159 구현 시 주의:** 출결 쓰기 SQL은 같은 트랜잭션 안에서 `can_record_academic_attendance`를 다시 호출하고 배정 행을 잠가, 판정과 기록 사이에 배정이 종료되는 경합을 막는다.
 
-## 4. 기능 플래그
+## 4. 남은 위험
+
+- **앱 DB 역할이 표 소유자다.** 소유 역할로 직접 `INSERT`하거나 `ALTER TABLE ... DISABLE TRIGGER`를 실행하면 관리자 인가·자기 배정 금지·감사 기록을 우회할 수 있다. 인가와 감사는 **SQL 함수 경로로만 보장**되며 이는 G1과 같은 한계다. 트리거는 함수 밖 쓰기에도 상한·불변성·소급 금지를 적용하지만 인가 주체는 확인하지 않는다. 역할 분리(소유자와 실행 역할 분리)는 #280 운영 권한 검토에서 다룬다.
+- **종료 사유(`end_reason`)는 개인정보를 적지 않는다.** 진단명·연락처 같은 민감 정보를 사유에 쓰지 않도록 #160 화면에서 안내하고, 응답 DTO에도 사유 원문은 내보내지 않는다.
+- 배정은 READ COMMITTED 트랜잭션에서만 기록한다(REPEATABLE READ·SERIALIZABLE은 `HRA07`로 거부). Neon HTTP와 앱 함수 호출의 기본값이다.
+
+## 5. 기능 플래그
 
 `ACADEMIC_STAFF_ENABLED`(기본 `false`)와 `ACADEMIC_ENABLED`가 **모두 정확히 `true`**일 때만 동작한다. 꺼져 있으면 변경은 `DISABLED`, 판정은 항상 `false`이며 학사 표에 접속하지 않는다. 변수 설명은 [환경변수 목록](environment-inventory.md)에 생성된다.
 
-## 5. 검증
+## 6. 검증
 
 ```bash
 HRA_TEST_PG_BIN=/usr/lib/postgresql/14/bin npx vitest run tests/unit/academic-staff-assignments-postgres.test.ts
@@ -73,9 +80,9 @@ node scripts/check-db-source-inventory.mjs && node scripts/check-db-installation
 node scripts/check-environment-contract.mjs
 ```
 
-격리 테스트는 SQL 2회 적용·구조 불일치 롤백·PUBLIC 실행 권한 없음, 관리자 지정·종료와 자기 지정 거부, 미지정 `ADMIN`·`FACULTY`의 배정 거부, 자기 배정·`PENDING`·소급 시작 거부, 상한·기간 중복, 두 번째 어드바이저·세 번째 조교의 **동시 배정 경합**(기수 잠금 제거 시 실패함을 확인), 다른 기수·미배정 역할의 판정 거부, 배정 종료·`PENDING` 전환 후 권한 상실, 학기 중 교체 경계, 행·감사 불변성, 요청 멱등성, 서비스 플래그·오류 변환을 확인한다.
+격리 테스트는 SQL 2회 적용·구조 불일치 롤백·PUBLIC 실행 권한 없음, 관리자 지정·종료와 자기 지정 거부, 미지정 `ADMIN`·`FACULTY`의 배정 거부, 자기 배정·`PENDING`·소급 시작 거부, 상한·기간 중복, 두 번째 어드바이저·세 번째 조교의 **동시 배정 경합**(기수 잠금 제거 시 실패함을 확인), 같은 요청 ID 동시 재시도(배정·감사 1건, 한쪽 재생 응답), REPEATABLE READ·SERIALIZABLE 거부, 숨긴 트리거·남은 EXECUTE 권한 거부와 옛 판정 함수 제거, 직접 소급 종료 거부, 다른 기수·미배정 역할의 판정 거부, 배정 종료·`PENDING` 전환 후 권한 상실, 학기 중 교체 경계, 행·감사 불변성, 요청 멱등성, 서비스 플래그·오류 변환을 확인한다.
 
-## 6. 남은 작업
+## 7. 남은 작업
 
 - [ ] #143 운영 승인(정책 초안 4절)과 학사 운영 관리자 실제 지정, 운영 DB 적용 절차·백업 확인
 - [ ] #159 출결 모델에서 `canRecordAttendance`·`can_record_academic_attendance` 사용, #160 배정·현황 화면과 Server Action

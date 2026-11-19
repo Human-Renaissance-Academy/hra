@@ -194,7 +194,7 @@
     {
       "path": "scripts/migrate-academic-staff-assignments.sql",
       "role": "versioned_candidate",
-      "sha256": "539aafe7ee2375f4b0ea1eab76d825b156831ca40d07e330e2fdfe9db2d6a6c2",
+      "sha256": "6fdbca4b7ba9ebc7f93d565d98d3cfe3b5390d93efedf41fa4d4cad437616370",
       "id": "g2-staff-assignments",
       "predecessors": []
     },

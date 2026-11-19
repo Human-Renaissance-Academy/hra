@@ -69,21 +69,16 @@ async function run<T>(schema: z.ZodType<T>, call: () => Promise<unknown>): Promi
 
 /**
  * 출결 기록 권한의 중앙 판정입니다(#159·#160의 모든 출결 경로가 사용).
- * 해당 기수에 시각 `at` 기준 유효한 ADVISOR·ASSISTANT 배정이 있고 계정이 승인 대기 상태가 아닐 때만 true입니다.
- * `at`은 서버가 정한 기록 시각이어야 하며 클라이언트 값을 그대로 넘기지 않습니다. 기본값은 현재 시각입니다.
+ * 해당 기수에 **DB 현재 시각** 기준 유효한 ADVISOR·ASSISTANT 배정이 있고 계정이 승인 대기 상태가 아닐 때만 true입니다.
+ * 호출자가 판정 시각을 넘길 수 없습니다. 배정 종료 즉시 권한이 끝나야 하기 때문입니다(P10).
  * 배정 종료·계정 PENDING 전환은 다음 호출부터 즉시 반영됩니다(세션에 권한을 저장하지 않음).
  */
-export async function canRecordAttendance(
-  principal: unknown,
-  cohortId: string,
-  at: Date = new Date(),
-): Promise<boolean> {
+export async function canRecordAttendance(principal: unknown, cohortId: string): Promise<boolean> {
   if (!isAcademicStaffPrincipal(principal) || principal.role === "PENDING") return false;
   if (!isAcademicStaffEnabled()) return false;
-  if (!z.uuid().safeParse(cohortId).success || !(at instanceof Date) || Number.isNaN(at.getTime()))
-    return false;
+  if (!z.uuid().safeParse(cohortId).success) return false;
   try {
-    return await hasActiveStaffAssignment(principal.userId, cohortId, at.toISOString());
+    return await hasActiveStaffAssignment(principal.userId, cohortId);
   } catch (error) {
     // 판정 불가를 거부(false)로 숨기지 않고 503 계열로 알립니다. 호출자는 실패 시 기록하지 않습니다.
     throw toAcademicStaffError(error);

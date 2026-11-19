@@ -236,6 +236,10 @@ BEGIN
       OR (OLD.valid_to IS NOT NULL AND NEW.valid_to > OLD.valid_to) THEN
       RAISE SQLSTATE 'HRA04' USING MESSAGE = '운영 인력 기록은 종료 시각 기록 외에 변경할 수 없습니다.';
     END IF;
+    -- 소급 종료는 과거 출결의 권한 근거를 사후에 바꾸므로 함수 밖 직접 UPDATE도 현재 시각 이전 종료를 거부합니다.
+    IF NEW.valid_to < now() THEN
+      RAISE SQLSTATE 'HRA07' USING MESSAGE = '종료 시각은 현재 이후여야 합니다.';
+    END IF;
     RETURN NEW;
   END IF;
   -- 신규 행: 앞선 커밋까지 보는 READ COMMITTED에서만 잠금 후 재조회가 상한을 보장합니다.
@@ -307,20 +311,21 @@ DROP TRIGGER IF EXISTS academic_staff_events_truncate_guard ON public.academic_s
 CREATE TRIGGER academic_staff_events_truncate_guard BEFORE TRUNCATE ON public.academic_staff_events
   FOR EACH STATEMENT EXECUTE FUNCTION public.guard_academic_staff_events();
 
--- 이 파일이 만든 트리거 외의 사용자 트리거가 쓰기 의미를 바꾸면 중단합니다.
+-- 이 파일이 만든 트리거 외의 사용자 트리거(비활성·replica·always 포함)가 있거나 보호 트리거가 꺼져 있으면 중단합니다.
 DO $triggers$
 BEGIN
-  IF (SELECT array_agg(c.relname::text || ':' || t.tgname::text || ':' || p.proname::text ORDER BY c.relname, t.tgname)
+  IF (SELECT array_agg(c.relname::text || ':' || t.tgname::text || ':' || p.proname::text || ':' || t.tgenabled::text
+        ORDER BY c.relname, t.tgname)
       FROM pg_trigger t JOIN pg_class c ON c.oid = t.tgrelid JOIN pg_proc p ON p.oid = t.tgfoid
-      WHERE NOT t.tgisinternal AND t.tgenabled = 'O' AND c.oid IN ('public.academic_operations_managers'::regclass,
+      WHERE NOT t.tgisinternal AND c.oid IN ('public.academic_operations_managers'::regclass,
         'public.academic_cohort_staff_assignments'::regclass, 'public.academic_staff_events'::regclass))
     IS DISTINCT FROM ARRAY[
-      'academic_cohort_staff_assignments:academic_cohort_staff_assignments_guard:guard_academic_staff_period',
-      'academic_cohort_staff_assignments:academic_cohort_staff_assignments_truncate_guard:guard_academic_staff_events',
-      'academic_operations_managers:academic_operations_managers_guard:guard_academic_staff_period',
-      'academic_operations_managers:academic_operations_managers_truncate_guard:guard_academic_staff_events',
-      'academic_staff_events:academic_staff_events_guard:guard_academic_staff_events',
-      'academic_staff_events:academic_staff_events_truncate_guard:guard_academic_staff_events'] THEN
+      'academic_cohort_staff_assignments:academic_cohort_staff_assignments_guard:guard_academic_staff_period:O',
+      'academic_cohort_staff_assignments:academic_cohort_staff_assignments_truncate_guard:guard_academic_staff_events:O',
+      'academic_operations_managers:academic_operations_managers_guard:guard_academic_staff_period:O',
+      'academic_operations_managers:academic_operations_managers_truncate_guard:guard_academic_staff_events:O',
+      'academic_staff_events:academic_staff_events_guard:guard_academic_staff_events:O',
+      'academic_staff_events:academic_staff_events_truncate_guard:guard_academic_staff_events:O'] THEN
     RAISE EXCEPTION 'staff_migration_trigger_mismatch';
   END IF;
 END;
@@ -590,17 +595,20 @@ BEGIN
 END;
 $replace$;
 
--- 출결 권한 판정(P2·P10). 해당 기수에 시각 p_at 기준 유효한 ADVISOR·ASSISTANT 배정과 PENDING이 아닌 계정만 참입니다.
+-- 출결 권한 판정(P2·P10). 해당 기수에 **DB 현재 시각(now(), 트랜잭션 시작 시각)** 기준 유효한 ADVISOR·ASSISTANT 배정과
+-- PENDING이 아닌 계정만 참입니다. 호출자가 시각을 넘길 수 없게 해 배정 종료 즉시 권한이 끝나도록 합니다.
 -- 홈페이지 ADMIN·FACULTY 역할, 학사 운영 관리자 지정, 일정의 담당 교수 정보는 판정 근거가 아닙니다.
 -- #159 출결 쓰기 SQL은 같은 트랜잭션에서 이 함수를 다시 호출해 판정과 기록 사이의 배정 종료 경합을 막아야 합니다.
-CREATE OR REPLACE FUNCTION public.can_record_academic_attendance(p_user_id uuid, p_cohort_id uuid, p_at timestamptz)
+-- 이전 초안의 시각 인자 버전이 남아 있으면 권한 판정 우회 경로가 되므로 먼저 제거합니다.
+DROP FUNCTION IF EXISTS public.can_record_academic_attendance(uuid, uuid, timestamptz);
+CREATE OR REPLACE FUNCTION public.can_record_academic_attendance(p_user_id uuid, p_cohort_id uuid)
 RETURNS boolean LANGUAGE sql STABLE SET search_path = pg_catalog, public AS $can_record$
-  SELECT p_user_id IS NOT NULL AND p_cohort_id IS NOT NULL AND p_at IS NOT NULL AND EXISTS (
+  SELECT p_user_id IS NOT NULL AND p_cohort_id IS NOT NULL AND EXISTS (
     SELECT 1 FROM public.academic_cohort_staff_assignments s
     JOIN public.users u ON u.id = s.user_id
     WHERE s.user_id = p_user_id AND s.cohort_id = p_cohort_id
       AND s.staff_role IN ('ADVISOR', 'ASSISTANT')
-      AND s.valid_from <= p_at AND (s.valid_to IS NULL OR p_at < s.valid_to)
+      AND s.valid_from <= now() AND (s.valid_to IS NULL OR now() < s.valid_to)
       AND u.role::text IN ('ADMIN', 'FACULTY', 'MEMBER'));
 $can_record$;
 
@@ -616,5 +624,24 @@ REVOKE ALL ON FUNCTION public.assign_academic_cohort_staff(uuid, uuid, uuid, uui
 REVOKE ALL ON FUNCTION public.close_academic_cohort_staff(uuid, uuid, timestamptz, text) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.end_academic_cohort_staff(uuid, uuid, uuid, uuid, timestamptz, text) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.replace_academic_cohort_staff(uuid, uuid, uuid, uuid, uuid, timestamptz, text, text, uuid) FROM PUBLIC;
-REVOKE ALL ON FUNCTION public.can_record_academic_attendance(uuid, uuid, timestamptz) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.can_record_academic_attendance(uuid, uuid) FROM PUBLIC;
+
+-- 함수를 교체해도 이전 GRANT가 남을 수 있으므로 소유자 외 EXECUTE 권한이 남아 있으면 중단합니다.
+DO $acl$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+    WHERE n.nspname = 'public' AND p.proname IN ('guard_academic_staff_period', 'guard_academic_staff_events',
+      'academic_staff_replay', 'require_academic_operations_manager', 'require_academic_staff_account',
+      'designate_academic_operations_manager', 'end_academic_operations_manager', 'assign_academic_cohort_staff',
+      'close_academic_cohort_staff', 'end_academic_cohort_staff', 'replace_academic_cohort_staff',
+      'can_record_academic_attendance')
+      AND (p.proacl IS NULL OR EXISTS (SELECT 1 FROM aclexplode(p.proacl) a
+        WHERE a.grantee <> p.proowner AND a.privilege_type = 'EXECUTE'))
+  ) OR (SELECT count(*) FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+    WHERE n.nspname = 'public' AND p.proname = 'can_record_academic_attendance') <> 1 THEN
+    RAISE EXCEPTION 'staff_migration_function_acl_mismatch';
+  END IF;
+END;
+$acl$;
 COMMIT;

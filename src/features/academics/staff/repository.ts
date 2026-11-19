@@ -17,14 +17,10 @@ async function single(query: SQL): Promise<unknown> {
   return result.rows[0]?.result;
 }
 
-/** 해당 기수의 시각 at 기준 유효한 어드바이저·조교 배정이 있는지 DB 함수로 판정합니다. */
-export async function hasActiveStaffAssignment(
-  userId: string,
-  cohortId: string,
-  at: string,
-): Promise<boolean> {
+/** 해당 기수에 DB 현재 시각 기준 유효한 어드바이저·조교 배정이 있는지 DB 함수로 판정합니다(시각 인자 없음). */
+export async function hasActiveStaffAssignment(userId: string, cohortId: string): Promise<boolean> {
   const result = await db.execute(sql`SELECT public.can_record_academic_attendance(
-    ${userId}::uuid, ${cohortId}::uuid, ${at}::timestamptz) AS result`);
+    ${userId}::uuid, ${cohortId}::uuid) AS result`);
   return result.rows[0]?.result === true;
 }
 
