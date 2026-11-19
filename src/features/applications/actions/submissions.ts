@@ -53,8 +53,12 @@ function isUniqueViolation(error: unknown, constraintName?: string): boolean {
   let current = error;
   while (typeof current === "object" && current !== null && !seen.has(current)) {
     seen.add(current);
-    if ("code" in current && current.code === "23505" &&
-        (constraintName === undefined || ("constraint" in current && current.constraint === constraintName))) {
+    if (
+      "code" in current &&
+      current.code === "23505" &&
+      (constraintName === undefined ||
+        ("constraint" in current && current.constraint === constraintName))
+    ) {
       return true;
     }
     current = "cause" in current ? current.cause : undefined;
@@ -68,10 +72,15 @@ function isFormRevisionError(error: unknown): boolean {
   let current = error;
   while (typeof current === "object" && current !== null && !seen.has(current)) {
     seen.add(current);
-    if ("code" in current && current.code === "P0001" &&
-        "message" in current && typeof current.message === "string" &&
-        (current.message.includes("application_form_questions_stale") ||
-         current.message.includes("application_form_unavailable"))) return true;
+    if (
+      "code" in current &&
+      current.code === "P0001" &&
+      "message" in current &&
+      typeof current.message === "string" &&
+      (current.message.includes("application_form_questions_stale") ||
+        current.message.includes("application_form_unavailable"))
+    )
+      return true;
     current = "cause" in current ? current.cause : undefined;
   }
   return false;
@@ -87,7 +96,7 @@ export type SubmitActionState = {
  */
 export async function submitApplicationForm(
   _prevState: SubmitActionState,
-  formData: FormData
+  formData: FormData,
 ): Promise<SubmitActionState> {
   // 숨김 필드(honeypot)에 값이 들어오면 봇으로 간주하고, 사용자에게는 성공처럼 응답해 재시도를 유도하지 않습니다.
   // 필드명은 브라우저/패스워드매니저 자동완성을 회피하기 위해 의미 없는 프로젝트 prefix 이름을 사용합니다.
@@ -99,13 +108,12 @@ export async function submitApplicationForm(
 
   const formId = formData.get("formId") as string;
 
-  // Oracle Phase D 5라운드 BLOCK 수정 — hidden 필드 formId 를 UUID 로 사전 검증.
-  // formData 로 전송되는 formId 는 라우트 파라미터와 달리 지금까지 zod 검증 없이 DB
-  // 쿼리(line 119: eq(applicationForms.id, formId))에 그대로 흘러갔다. UUID 형식이
-  // 아닌 값이 Postgres 로 도달하면 `invalid input syntax for type uuid: "..."` 캐스트
-  // 에러가 발생하고 raw ID 가 Vercel Logs 에 노출된다(logServerError 는 SQL/PII 패턴만
-  // 마스킹하고 UUID 문법 에러의 원본 텍스트는 통과시킴). 사용자 입력 오타가 아니라
-  // 폼 조작 시나리오이므로 일반 오류 메시지로 응답한다.
+  // hidden 필드 formId 는 라우트 파라미터와 달리 별도 검증 경로가 없으므로, DB 조회
+  // (eq(applicationForms.id, formId)) 전에 UUID 형식을 검증한다. UUID 형식이 아닌 값이
+  // Postgres 로 도달하면 `invalid input syntax for type uuid: "..."` 오류가 발생해
+  // 원본 ID 가 로그에 남는다(logServerError 는 SQL/PII 패턴만 마스킹하고 UUID 문법
+  // 오류의 원문은 통과시킨다). 사용자 입력 오타가 아니라 폼 조작 시나리오이므로
+  // 일반 오류 메시지로 응답한다.
   const parsedFormId = z.uuid().safeParse(formId);
   if (!parsedFormId.success) {
     return { success: false, message: "잘못된 요청입니다." };
@@ -117,24 +125,35 @@ export async function submitApplicationForm(
     const value = formData.get(name);
     return typeof value === "string" ? value : "";
   };
-  const basicInfo = z.object({
-    applicantName: z.string().trim()
-      .min(1, "이름을 입력해주세요.")
-      .max(applicationInputLimits.applicantName, "이름은 100자 이하여야 합니다."),
-    applicantEmail: z.string().trim()
-      .max(applicationInputLimits.applicantEmail, "이메일 주소는 255자 이하여야 합니다.")
-      .email("올바른 이메일 주소를 입력해주세요.")
-      .transform((value) => value.toLowerCase()),
-    applicantPhone: z.string().trim()
-      .min(1, "연락처를 입력해주세요.")
-      .max(applicationInputLimits.applicantPhone, "연락처는 20자 이하여야 합니다."),
-  }).safeParse({
-    applicantName: textField("applicantName"),
-    applicantEmail: textField("applicantEmail"),
-    applicantPhone: textField("applicantPhone"),
-  });
+  const basicInfo = z
+    .object({
+      applicantName: z
+        .string()
+        .trim()
+        .min(1, "이름을 입력해주세요.")
+        .max(applicationInputLimits.applicantName, "이름은 100자 이하여야 합니다."),
+      applicantEmail: z
+        .string()
+        .trim()
+        .max(applicationInputLimits.applicantEmail, "이메일 주소는 255자 이하여야 합니다.")
+        .email("올바른 이메일 주소를 입력해주세요.")
+        .transform((value) => value.toLowerCase()),
+      applicantPhone: z
+        .string()
+        .trim()
+        .min(1, "연락처를 입력해주세요.")
+        .max(applicationInputLimits.applicantPhone, "연락처는 20자 이하여야 합니다."),
+    })
+    .safeParse({
+      applicantName: textField("applicantName"),
+      applicantEmail: textField("applicantEmail"),
+      applicantPhone: textField("applicantPhone"),
+    });
   if (!basicInfo.success) {
-    return { success: false, message: basicInfo.error.issues[0]?.message ?? "입력값을 확인해주세요." };
+    return {
+      success: false,
+      message: basicInfo.error.issues[0]?.message ?? "입력값을 확인해주세요.",
+    };
   }
   const { applicantName, applicantEmail, applicantPhone } = basicInfo.data;
 
@@ -176,11 +195,18 @@ export async function submitApplicationForm(
         // 같은 항목을 여러 번 보낸 조작 요청도 선택 한 번으로 정규화합니다.
         const selectedValues = [...new Set(rawValues.map((item) => item.trim()).filter(Boolean))];
         if (selectedValues.length > 0) {
-          if (selectedValues.some((item) => !z.string().max(applicationInputLimits.optionValue).safeParse(item).success)) {
-            return { success: false, message: `[${question.title}] 선택지는 1000자 이하여야 합니다.` };
+          if (
+            selectedValues.some(
+              (item) => !z.string().max(applicationInputLimits.optionValue).safeParse(item).success,
+            )
+          ) {
+            return {
+              success: false,
+              message: `[${question.title}] 선택지는 1000자 이하여야 합니다.`,
+            };
           }
-          const allowedOptions = new Set(question.options.map(option => option.value));
-          if (selectedValues.some(item => !allowedOptions.has(item))) {
+          const allowedOptions = new Set(question.options.map((option) => option.value));
+          if (selectedValues.some((item) => !allowedOptions.has(item))) {
             return {
               success: false,
               message: `[${question.title}] 선택지가 올바르지 않습니다.`,
@@ -202,20 +228,21 @@ export async function submitApplicationForm(
           return { success: false, message: `[${question.title}] 항목은 필수입니다.` };
         }
 
-        const maxLength = question.type === "LONG_ANSWER"
-          ? applicationInputLimits.longAnswer
-          : question.type === "SHORT_ANSWER"
-            ? applicationInputLimits.shortAnswer
-            : applicationInputLimits.optionValue;
+        const maxLength =
+          question.type === "LONG_ANSWER"
+            ? applicationInputLimits.longAnswer
+            : question.type === "SHORT_ANSWER"
+              ? applicationInputLimits.shortAnswer
+              : applicationInputLimits.optionValue;
         if (!z.string().max(maxLength).safeParse(value).success) {
-          return { success: false, message: `[${question.title}] 답변은 ${maxLength}자 이하여야 합니다.` };
+          return {
+            success: false,
+            message: `[${question.title}] 답변은 ${maxLength}자 이하여야 합니다.`,
+          };
         }
 
-        if (
-          value &&
-          (question.type === "MULTIPLE_CHOICE" || question.type === "DROPDOWN")
-        ) {
-          const allowedOptions = new Set(question.options.map(option => option.value));
+        if (value && (question.type === "MULTIPLE_CHOICE" || question.type === "DROPDOWN")) {
+          const allowedOptions = new Set(question.options.map((option) => option.value));
           if (!allowedOptions.has(value)) {
             return {
               success: false,
@@ -257,18 +284,21 @@ export async function submitApplicationForm(
         applicantPhone,
       });
       // 예약을 지원서와 연결해 관리자 삭제 시 제한 로그도 FK 연쇄 삭제합니다.
-      const attachReservation = db.update(rateLimitEvents)
+      const attachReservation = db
+        .update(rateLimitEvents)
         .set({ submissionId })
         .where(eq(rateLimitEvents.reservationId, reservation.reservationId));
       if (answers.length > 0) {
         await db.batch([
           verifyRevision,
           insertSubmission,
-          db.insert(applicationAnswers).values(answers.map(answer => ({
-            submissionId,
-            questionId: answer.questionId,
-            value: answer.value,
-          }))),
+          db.insert(applicationAnswers).values(
+            answers.map((answer) => ({
+              submissionId,
+              questionId: answer.questionId,
+              value: answer.value,
+            })),
+          ),
           attachReservation,
         ]);
       } else {
@@ -276,7 +306,10 @@ export async function submitApplicationForm(
       }
     } catch (error) {
       if (isFormRevisionError(error)) {
-        return { success: false, message: "지원서가 변경되었습니다. 새로고침 후 다시 제출해주세요." };
+        return {
+          success: false,
+          message: "지원서가 변경되었습니다. 새로고침 후 다시 제출해주세요.",
+        };
       }
       if (isUniqueViolation(error, "application_submissions_form_applicant_unique")) {
         return {
@@ -293,12 +326,24 @@ export async function submitApplicationForm(
           .where(eq(applicationSubmissions.id, submissionId))
           .limit(1);
         if (!persisted) {
-          logServerError("application-submission/atomic-insert", error, { submissionId, formId: validFormId });
-          return { success: false, message: "제출 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요." };
+          logServerError("application-submission/atomic-insert", error, {
+            submissionId,
+            formId: validFormId,
+          });
+          return {
+            success: false,
+            message: "제출 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.",
+          };
         }
       } catch (verificationError) {
-        logServerError("application-submission/verify-commit", verificationError, { submissionId, formId: validFormId });
-        return { success: false, message: "제출 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요." };
+        logServerError("application-submission/verify-commit", verificationError, {
+          submissionId,
+          formId: validFormId,
+        });
+        return {
+          success: false,
+          message: "제출 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.",
+        };
       }
     }
 
@@ -353,10 +398,17 @@ export async function exportSubmissionsToCsv(formId: string) {
     });
 
     // 3. CSV 헤더 구성
-    const headers = ["이름", "이메일", "연락처", "제출일시", "상태", ...form.questions.map(q => q.title)];
+    const headers = [
+      "이름",
+      "이메일",
+      "연락처",
+      "제출일시",
+      "상태",
+      ...form.questions.map((q) => q.title),
+    ];
 
     // 4. 데이터 행 구성
-    const rows = submissions.map(sub => {
+    const rows = submissions.map((sub) => {
       const basicInfo = [
         sub.applicantName,
         sub.applicantEmail,
@@ -365,8 +417,8 @@ export async function exportSubmissionsToCsv(formId: string) {
         csvStatusLabels[sub.status],
       ];
 
-      const questionAnswers = form.questions.map(q => {
-        const answer = sub.answers.find(ans => ans.questionId === q.id);
+      const questionAnswers = form.questions.map((q) => {
+        const answer = sub.answers.find((ans) => ans.questionId === q.id);
         if (!answer) return "";
 
         const choices = parseCheckboxAnswerValue(answer.value, q.type);
@@ -378,8 +430,8 @@ export async function exportSubmissionsToCsv(formId: string) {
 
     // CSV 문자열 생성 (쉼표 구분, 따옴표 처리)
     const csvContent = [
-      headers.map(header => sanitizeCsvCell(header)).join(","),
-      ...rows.map(row => row.map(val => sanitizeCsvCell(val)).join(","))
+      headers.map((header) => sanitizeCsvCell(header)).join(","),
+      ...rows.map((row) => row.map((val) => sanitizeCsvCell(val)).join(",")),
     ].join("\n");
 
     // Excel에서 한글 깨짐 방지를 위한 BOM(Byte Order Mark) 추가
@@ -419,7 +471,7 @@ export async function exportSubmissionsToCsv(formId: string) {
  * 찍혀 감사 로그가 왜곡됩니다.
  */
 export async function deleteApplicationSubmission(
-  submissionId: string
+  submissionId: string,
 ): Promise<{ success: boolean; message: string }> {
   const session = await requireAdmin();
 
@@ -450,9 +502,11 @@ export async function deleteApplicationSubmission(
   try {
     // returning 으로 실제 삭제된 행 확인 → 동시 삭제 시 감사 로그 왜곡 방지
     const [, deleted] = await db.batch([
-      db.delete(applicationSubmissionsLog)
+      db
+        .delete(applicationSubmissionsLog)
         .where(eq(applicationSubmissionsLog.email, target.applicantEmail)),
-      db.delete(applicationSubmissions)
+      db
+        .delete(applicationSubmissions)
         .where(eq(applicationSubmissions.id, parsedId.data))
         .returning({ id: applicationSubmissions.id }),
     ]);
@@ -469,7 +523,7 @@ export async function deleteApplicationSubmission(
         submissionId: target.id,
         formId: target.formId,
         deletedAt: new Date().toISOString(),
-      })
+      }),
     );
 
     revalidatePath(`/admin/application-forms/${target.formId}/submissions`);
@@ -516,7 +570,7 @@ export async function deleteApplicationSubmission(
  */
 export async function updateSubmissionStatus(
   submissionId: string,
-  newStatus: "PENDING" | "ACCEPTED" | "REJECTED"
+  newStatus: "PENDING" | "ACCEPTED" | "REJECTED",
 ): Promise<{ success: boolean; message: string }> {
   const session = await requireAdmin();
 
@@ -528,9 +582,7 @@ export async function updateSubmissionStatus(
     };
   }
 
-  const parsedStatus = z
-    .enum(["PENDING", "ACCEPTED", "REJECTED"])
-    .safeParse(newStatus);
+  const parsedStatus = z.enum(["PENDING", "ACCEPTED", "REJECTED"]).safeParse(newStatus);
   if (!parsedStatus.success) {
     return { success: false, message: "잘못된 상태 값입니다." };
   }
@@ -565,14 +617,8 @@ export async function updateSubmissionStatus(
       return { success: false, message: "지원서를 찾을 수 없습니다." };
     }
 
-    const [
-      {
-        id: updatedId,
-        form_id: formId,
-        old_status: oldStatus,
-        new_status: newStatusValue,
-      },
-    ] = rows;
+    const [{ id: updatedId, form_id: formId, old_status: oldStatus, new_status: newStatusValue }] =
+      rows;
 
     console.info(
       "[audit][application-submission-status-changed]",
@@ -583,13 +629,11 @@ export async function updateSubmissionStatus(
         oldStatus,
         newStatus: newStatusValue,
         changedAt: new Date().toISOString(),
-      })
+      }),
     );
 
     revalidatePath(`/admin/application-forms/${formId}/submissions`);
-    revalidatePath(
-      `/admin/application-forms/${formId}/submissions/${updatedId}`
-    );
+    revalidatePath(`/admin/application-forms/${formId}/submissions/${updatedId}`);
 
     return { success: true, message: "지원서 상태가 변경되었습니다." };
   } catch (error) {

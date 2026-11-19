@@ -12,10 +12,7 @@ import { Separator } from "@/components/ui/separator";
 import { Label } from "@/components/ui/label";
 import { requireAdmin } from "@/lib/admin";
 import { db } from "@/lib/db";
-import {
-  applicationSubmissions,
-  applicationAnswers,
-} from "@/lib/db/schema";
+import { applicationSubmissions, applicationAnswers } from "@/lib/db/schema";
 import { DeleteSubmissionButton } from "./_components/delete-submission-button";
 import { StatusChangeButton } from "./_components/status-change-button";
 import { formatKstDateTimeWithSeconds } from "@/lib/date-time";
@@ -31,7 +28,7 @@ export default async function AdminSubmissionDetailPage({ params }: Props) {
   await requireAdmin();
   const { id, submissionId } = await params;
 
-  // Oracle Phase D BLOCK 수정 — z.uuid() 사전 검증으로 라우트 파라미터 leak 방지.
+  // z.uuid() 로 라우트 파라미터 형식을 DB 조회 전에 검증한다.
   // UUID 형식이 아닌 두 개의 파라미터(id, submissionId) 모두 DB 쿼리 전 차단한다.
   // Postgres cast error 로 raw ID 가 Vercel Logs 에 노출되는 것을 사전 방지.
   const parsedId = z.uuid().safeParse(id);
@@ -45,7 +42,7 @@ export default async function AdminSubmissionDetailPage({ params }: Props) {
     where: eq(applicationSubmissions.id, parsedSubmissionId.data),
     with: {
       form: true,
-    }
+    },
   });
 
   if (!submission || submission.formId !== parsedId.data) {
@@ -57,19 +54,19 @@ export default async function AdminSubmissionDetailPage({ params }: Props) {
     where: eq(applicationAnswers.submissionId, parsedSubmissionId.data),
     with: {
       question: true,
-    }
+    },
   });
 
   // 질문 순서대로 답변 정렬
-  const sortedAnswers = [...answers].sort((a, b) => 
-    (a.question?.order ?? 0) - (b.question?.order ?? 0)
+  const sortedAnswers = [...answers].sort(
+    (a, b) => (a.question?.order ?? 0) - (b.question?.order ?? 0),
   );
 
   return (
     <section className="mx-auto max-w-4xl px-4 sm:px-6 py-6 sm:py-10 space-y-8">
       <div>
-        <Link 
-          href={`/admin/application-forms/${parsedId.data}/submissions`} 
+        <Link
+          href={`/admin/application-forms/${parsedId.data}/submissions`}
           className="flex items-center gap-1 text-sm text-slate-500 hover:text-slate-900 transition-colors mb-2"
         >
           <ChevronLeft className="size-4" />
@@ -77,16 +74,15 @@ export default async function AdminSubmissionDetailPage({ params }: Props) {
         </Link>
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-xl sm:text-2xl font-semibold tracking-tight text-slate-900">지원서 상세 보기</h1>
+            <h1 className="text-xl sm:text-2xl font-semibold tracking-tight text-slate-900">
+              지원서 상세 보기
+            </h1>
             <p className="mt-1 text-sm text-slate-500">
               [{submission.form.title}] 양식에 제출된 답변 상세 내용입니다.
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <StatusChangeButton
-              submissionId={submission.id}
-              currentStatus={submission.status}
-            />
+            <StatusChangeButton submissionId={submission.id} currentStatus={submission.status} />
             <DeleteSubmissionButton
               submissionId={submission.id}
               formId={parsedId.data}
@@ -108,12 +104,16 @@ export default async function AdminSubmissionDetailPage({ params }: Props) {
             </CardHeader>
             <CardContent className="py-6 space-y-5">
               <div className="space-y-1">
-                <Label className="text-[11px] uppercase tracking-wider text-slate-400 font-bold">성함</Label>
+                <Label className="text-[11px] uppercase tracking-wider text-slate-400 font-bold">
+                  성함
+                </Label>
                 <p className="text-base font-bold text-slate-900">{submission.applicantName}</p>
               </div>
               <Separator className="bg-slate-100" />
               <div className="space-y-1">
-                <Label className="text-[11px] uppercase tracking-wider text-slate-400 font-bold">이메일</Label>
+                <Label className="text-[11px] uppercase tracking-wider text-slate-400 font-bold">
+                  이메일
+                </Label>
                 <div className="flex items-center gap-2 text-sm text-slate-600">
                   <Mail className="size-3.5" />
                   {submission.applicantEmail}
@@ -121,7 +121,9 @@ export default async function AdminSubmissionDetailPage({ params }: Props) {
               </div>
               <Separator className="bg-slate-100" />
               <div className="space-y-1">
-                <Label className="text-[11px] uppercase tracking-wider text-slate-400 font-bold">연락처</Label>
+                <Label className="text-[11px] uppercase tracking-wider text-slate-400 font-bold">
+                  연락처
+                </Label>
                 <div className="flex items-center gap-2 text-sm text-slate-600">
                   <Phone className="size-3.5" />
                   {submission.applicantPhone || "-"}
@@ -129,7 +131,9 @@ export default async function AdminSubmissionDetailPage({ params }: Props) {
               </div>
               <Separator className="bg-slate-100" />
               <div className="space-y-1">
-                <Label className="text-[11px] uppercase tracking-wider text-slate-400 font-bold">제출 일시</Label>
+                <Label className="text-[11px] uppercase tracking-wider text-slate-400 font-bold">
+                  제출 일시
+                </Label>
                 <div className="flex items-center gap-2 text-sm text-slate-500">
                   <Calendar className="size-3.5" />
                   {formatKstDateTimeWithSeconds(submission.submittedAt)}
@@ -165,7 +169,7 @@ export default async function AdminSubmissionDetailPage({ params }: Props) {
                         <p className="text-sm text-slate-500">{ans.question.description}</p>
                       )}
                     </div>
-                    
+
                     <div className="bg-slate-50/50 rounded-xl p-5 border border-slate-100">
                       <div className="text-slate-800 whitespace-pre-wrap leading-relaxed">
                         {(() => {
@@ -174,7 +178,9 @@ export default async function AdminSubmissionDetailPage({ params }: Props) {
                             return (
                               <ul className="list-disc list-inside space-y-1.5">
                                 {choices.map((v) => (
-                                  <li key={`${ans.id}-${v}`} className="text-slate-700 font-medium">{v}</li>
+                                  <li key={`${ans.id}-${v}`} className="text-slate-700 font-medium">
+                                    {v}
+                                  </li>
                                 ))}
                               </ul>
                             );
@@ -187,14 +193,12 @@ export default async function AdminSubmissionDetailPage({ params }: Props) {
                 ))}
 
                 {sortedAnswers.length === 0 && (
-                  <div className="py-20 text-center text-slate-400">
-                    답변 데이터가 없습니다.
-                  </div>
+                  <div className="py-20 text-center text-slate-400">답변 데이터가 없습니다.</div>
                 )}
               </div>
             </CardContent>
           </Card>
-          
+
           <div className="flex justify-center pt-4">
             <Link
               href={`/admin/application-forms/${parsedId.data}/submissions`}
