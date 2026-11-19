@@ -8,12 +8,12 @@ logout-all은 성공·400·401·503 모두 기존 Vary와 `Cookie, Authorization
 
 ## 엔드포인트
 
-| 요청 | 입력 | 성공 | 실패 |
-| --- | --- | --- | --- |
-| POST `/api/v1/auth/login` | 계약의 email, password, 선택 device | 200 `{ session, user }` | 400, 401, 413, 429, 503 |
-| POST `/api/v1/auth/refresh` | `{ refreshToken }` | 200 `{ session }` | 400, 401, 413, 429, 503 |
-| POST `/api/v1/auth/logout` | `{ refreshToken }` | 204, 미존재·회수 토큰도 동일 | 400, 413, 429(IP 예산), 503 |
-| POST `/api/v1/auth/logout-all` | 유효한 모바일 Bearer, 본문·query 없음 | 204, 해당 사용자의 모든 모바일 세션 회수 | 400, 401, 503 |
+| 요청                           | 입력                                  | 성공                                     | 실패                        |
+| ------------------------------ | ------------------------------------- | ---------------------------------------- | --------------------------- |
+| POST `/api/v1/auth/login`      | 계약의 email, password, 선택 device   | 200 `{ session, user }`                  | 400, 401, 413, 429, 503     |
+| POST `/api/v1/auth/refresh`    | `{ refreshToken }`                    | 200 `{ session }`                        | 400, 401, 413, 429, 503     |
+| POST `/api/v1/auth/logout`     | `{ refreshToken }`                    | 204, 미존재·회수 토큰도 동일             | 400, 413, 429(IP 예산), 503 |
+| POST `/api/v1/auth/logout-all` | 유효한 모바일 Bearer, 본문·query 없음 | 204, 해당 사용자의 모든 모바일 세션 회수 | 400, 401, 503               |
 
 JSON 명령은 `Content-Type: application/json`과 실제 스트림 기준 최대 16 KiB를 요구한다.
 미지원 미디어 타입(일반 HTTP의 415 상황)은 고정 계약에 따라 400 `INVALID_INPUT`으로 처리한다.
@@ -24,14 +24,14 @@ query·추가 키·깨진 JSON도 400이다. logout-all은 실제 스트림 EOF�
 ## 제한 정책과 근거
 
 로그인은 기존 `reserveLoginAttempt`의 세 축을 그대로 공유한다.
-`login-pair` 5회, `login-ip` 50회, `login-email` 15회 / 15분이다.
+`login-pair` 5회, `login-ip` 50회, `login-email` 30회 / 15분이다.
 예약이 막히면 사용자 조회·bcrypt 없이 즉시 429를 반환한다. 허용된 요청은 계정·해시가 없어도
 cost 12 dummy bcrypt를 실행한다. 성공한 요청은 해당 예약만 해제한다.
 로그인의 재시도 시간은 계정별 잔여 시간을 노출하지 않는 고정 900초다.
 
-| 상수 | scope | 제한 |
-| --- | --- | --- |
-| `MOBILE_REFRESH_IP_POLICY` | `mobile-refresh-ip` | IP당 120회 / 900초 |
+| 상수                            | scope                    | 제한                |
+| ------------------------------- | ------------------------ | ------------------- |
+| `MOBILE_REFRESH_IP_POLICY`      | `mobile-refresh-ip`      | IP당 120회 / 900초  |
 | `MOBILE_REFRESH_SESSION_POLICY` | `mobile-refresh-session` | 세션당 12회 / 900초 |
 
 정상 앱의 갱신은 시간당 몇 회이므로 세션당 15분 12회는 재개·일시적 경쟁을 충분히 허용한다.
@@ -45,13 +45,13 @@ Vercel에서는 기존 `extractClientIp`의 플랫폼 전용 헤더 신뢰 경�
 
 ## 오류 매핑
 
-| 상황 | 상태 / 코드 |
-| --- | --- |
-| 입력·미디어 타입 오류 | 400 / INVALID_INPUT |
-| 실제 본문 16 KiB 초과 | 413 / TOO_LARGE |
-| 로그인 실패·발급 전 버전 경합·THROTTLED 외 갱신 실패 사유 | 401 / UNAUTHENTICATED |
-| 제한 예산 소진 | 429 / RATE_LIMITED, 본문 retryAfterSeconds와 Retry-After 동일 |
-| 제한·세션·프로필 저장소 장애 | 503 / UNAVAILABLE |
+| 상황                                                      | 상태 / 코드                                                   |
+| --------------------------------------------------------- | ------------------------------------------------------------- |
+| 입력·미디어 타입 오류                                     | 400 / INVALID_INPUT                                           |
+| 실제 본문 16 KiB 초과                                     | 413 / TOO_LARGE                                               |
+| 로그인 실패·발급 전 버전 경합·THROTTLED 외 갱신 실패 사유 | 401 / UNAUTHENTICATED                                         |
+| 제한 예산 소진                                            | 429 / RATE_LIMITED, 본문 retryAfterSeconds와 Retry-After 동일 |
+| 제한·세션·프로필 저장소 장애                              | 503 / UNAVAILABLE                                             |
 
 갱신의 INVALID·EXPIRED·REVOKED·REUSE_DETECTED·WITHIN_LEEWAY·VERSION_MISMATCH는 동일한
 401 코드·고정 한국어 문구를 사용한다. requestId만 요청마다 달라진다.

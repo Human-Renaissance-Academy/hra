@@ -65,6 +65,41 @@ Vercel 전용 IP 헤더가 없거나 형식이 잘못되면 해당 요청들은 
 
 허용 요청은 예약 이벤트 두 행과 기존 UPDATE를 쓰고, 차단 요청도 DB 검사와 잠금을 사용합니다. UPDATE 감소가 전체 DB 비용 감소를 보장하지 않습니다. 같은 IP가 서로 다른 기사를 계속 호출하면 분당 최대 120행이 생기며 일일 정리 주기에 따라 48시간이 지난 이벤트도 다음 정리까지 남을 수 있습니다. 새 scope를 위해 별도 DDL이나 정리 작업을 추가하지 않습니다. 함수·인덱스·기존 Cron의 실제 운영 준비는 코드 검사와 별도로 확인합니다.
 
+## 5. 로그인 이메일 축 차단의 관측과 해제 (#508)
+
+로그인은 IP+이메일 조합 5회, IP 50회, 이메일 30회(각 15분)를 한 번에 예약합니다. 분산 IP가 특정 이메일의 이메일 축 예산(30회)을 소진하면 올바른 비밀번호도 15분 동안 일반 로그인 실패와 같은 응답을 받습니다. 사용자 화면에는 계정 존재 여부나 차단 축을 알리지 않으며, 웹과 모바일 로그인이 같은 정책을 씁니다.
+
+**관측.** 정책으로 차단되면 서버 로그에 `[rate-limit/login-blocked]` 이벤트가 남습니다. 필드는 `event`, `timestamp`, 설정된 `axes`, 축별 `keyPrefixes`(SHA-256 키의 앞 8자리)뿐이며 원본 이메일·IP는 없습니다. **한계:** DB 예약 함수가 어느 축이 차단했는지 돌려주지 않아 차단 축은 기록되지 않습니다. 같은 `login-email` 앞 8자리가 반복되면 특정 계정을 겨냥한 시도로 의심합니다. 해시는 익명성을 보장하지 않으므로 공개 이슈에 붙이지 않습니다.
+
+**해제.** 가장 안전한 방법은 **15분 기다리는 것**입니다. 가장 오래된 시도가 창 밖으로 나가면 자동으로 풀립니다. 급한 계정 복구가 필요할 때만 아래 절차로 해당 이메일 축의 이벤트를 지웁니다. 이는 **운영 DB 쓰기**이므로 [데이터베이스 변경 절차](../developer/database-change-procedure.md)에 따라 대상 확인·백업·승인을 먼저 받습니다.
+
+1. 정규화한 이메일의 이메일 축 키 해시를 계산합니다. 키는 `sha256("login-email" + "\0" + 정규화 이메일)`이며 서버 비밀(pepper)은 쓰지 않습니다. 정규화는 앞뒤 공백 제거와 소문자 변환입니다. 이메일은 환경 변수로 넘겨 명령 이력에 남기지 않습니다.
+
+```bash
+TARGET_EMAIL='user@example.com' node -e '
+const { createHash } = require("node:crypto");
+const email = String(process.env.TARGET_EMAIL ?? "").trim().toLowerCase();
+if (!email) process.exit(1);
+console.log(createHash("sha256").update("login-email").update("\0").update(email).digest("hex"));
+'
+```
+
+2. 계산한 64자리 값을 `<KEY_HASH>`에 넣어 먼저 대상 행 수를 확인합니다. 기대와 다르면(예: 30보다 훨씬 많은 값) 중단합니다.
+
+```sql
+SELECT count(*) FROM rate_limit_events
+WHERE scope = 'login-email' AND key_hash = '<KEY_HASH>';
+```
+
+3. 승인·백업 후 같은 조건으로만 삭제합니다. 다른 scope나 키는 지우지 않습니다. 삭제는 이메일 축만 풀며 같은 IP+이메일 조합(5회)·IP 축(50회)의 차단은 남습니다.
+
+```sql
+DELETE FROM rate_limit_events
+WHERE scope = 'login-email' AND key_hash = '<KEY_HASH>';
+```
+
+4. 로그인이 가능한지 확인하고, 해제 사유·시각·승인자를 운영 기록에 남깁니다(이메일 원문 제외). 반복되면 공격 여부를 확인하고 이 절차를 반복 우회 수단으로 쓰지 않습니다.
+
 ## 근거
 
 `src/lib/rate-limit.ts`, `src/lib/rate-limit-core.ts`, `scripts/migrate-rate-limit-reservations.mjs`, `scripts/sql/rate-limit-reservations.sql`, `src/app/api/cron/cleanup-rate-limits/route.ts`, `vercel.json`.
