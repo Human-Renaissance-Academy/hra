@@ -88,8 +88,7 @@ export type DocumentFormatReason = (typeof DOCUMENT_FORMAT_REASONS)[number];
 
 /** 탐지 결과. 실패해도 예외를 던지지 않고 사유 코드만 반환합니다. */
 export type DetectionResult =
-  | { ok: true; format: DocumentFormat }
-  | { ok: false; reason: DocumentFormatReason };
+  { ok: true; format: DocumentFormat } | { ok: false; reason: DocumentFormatReason };
 
 /** 내부 파서 사이에서 쓰는 실패 값 생성 도우미 */
 export function fail(reason: DocumentFormatReason): { ok: false; reason: DocumentFormatReason } {
