@@ -2,7 +2,7 @@
 
 이 문서는 HRA(통합 서비스)의 운영 대상인 Web을 **실행하고, 수정하고, 확인한 뒤 반영하는 방법**을 안내합니다. 개발을 전공하지 않았더라도 필요한 일을 순서대로 찾을 수 있도록 구성했습니다.
 
-[운영 Web](https://hra-website-theta.vercel.app) · [코드 저장소](https://github.com/Human-Renaissance-Academy/hra-platform) · [전체 문서 지도](documentation-map.md) · [작업 우선순위](https://github.com/Human-Renaissance-Academy/hra-website/issues/300)
+[운영 Web](https://hra-website-theta.vercel.app) · [코드 저장소](https://github.com/Human-Renaissance-Academy/hra) · [전체 문서 지도](documentation-map.md) · [작업 우선순위](https://github.com/Human-Renaissance-Academy/hra-website/issues/300)
 
 ## 처음 참여한다면
 
