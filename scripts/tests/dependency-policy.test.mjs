@@ -563,7 +563,7 @@ test("Blob SDK는 cli-config의 Zod 취약 버전을 수정본으로만 해석�
 
 // picomatch 권고 철회로 Next ESLint 경로는 다시 원장에서 빠지며, 재등장은 그대로 차단합니다.
 test("더는 취약하지 않은 Next ESLint 경로는 원장에서 빠지고 재등장은 차단한다", () => {
-  assert.equal(lock.packages["node_modules/eslint-config-next"].version, "16.4.5");
+  assert.equal(lock.packages["node_modules/eslint-config-next"].version, "16.4.6");
   assert.equal(
     policy.packages.some((item) =>
       ["eslint-config-next", "@next/eslint-plugin-next"].includes(item.name),

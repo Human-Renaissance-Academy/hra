@@ -28,8 +28,7 @@ export type NotificationEvent = {
 };
 
 export type DeliveryClaim =
-  | { kind: "claimed"; attempt: number }
-  | { kind: "sent" | "busy" | "exhausted" };
+  { kind: "claimed"; attempt: number } | { kind: "sent" | "busy" | "exhausted" };
 
 export interface NotificationDeliveryStore {
   /**
@@ -48,10 +47,7 @@ export interface NotificationDeliveryStore {
 }
 
 export type ProviderSendResult =
-  | "sent"
-  | "invalid-token"
-  | "transient-failure"
-  | "permanent-failure";
+  "sent" | "invalid-token" | "transient-failure" | "permanent-failure";
 
 export interface NotificationProvider {
   send(request: {
