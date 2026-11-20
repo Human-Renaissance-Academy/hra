@@ -10,13 +10,13 @@
 | Android 출시 준비 | 모바일 앱(`apps/mobile`)과 API v1(`/api/v1`) | 2026-11-20 [출시 재개 결정](docs/decisions/2026-11-20-android-play-release-resume.md)(#576)에 따라 Android 출시 필수 개발·API 보완·Play 준비를 진행합니다. **아직 스토어 미출시**이며 운영·실기기·정책 승인 게이트는 남아 있습니다. |
 | 장기 목표 | 모듈러 모놀리스·monorepo 전환, iOS 출시 | [플랫폼 아키텍처](docs/developer/platform-architecture.md)에 조건부 목표로만 기록했습니다. 현재 작업 계획이 아닙니다. |
 
-저장소·루트 패키지 이름 `hra-website`는 웹 앱의 식별자이고, 모바일은 `apps/mobile`, 공용 계약은 `@hra/contracts`로 서로 다릅니다. 저장소 이름 변경은 #557에서 따로 다룹니다.
+GitHub 저장소 이름은 `hra`(#575)입니다. 루트 패키지 이름 `hra-website`와 운영 주소 `hra-website-theta.vercel.app`은 웹 앱 식별자로 유지하며, 모바일은 `apps/mobile`, 공용 계약은 `@hra/contracts`로 서로 다릅니다.
 
 개발을 전공하지 않은 참여자도 **무엇을 수정할지 찾고, 내 컴퓨터에서 확인한 뒤, 다른 사람의 검토를 받아 반영하는 과정**을 따라갈 수 있도록 문서를 구성했습니다.
 
 - [개발 문서 시작 페이지](docs/index.md)
 - [운영 Web](https://hra-website-theta.vercel.app)
-- [문서 사이트](https://human-renaissance-academy.github.io/hra-platform/)
+- [문서 사이트](https://human-renaissance-academy.github.io/hra/)
 - [전체 작업 우선순위](https://github.com/Human-Renaissance-Academy/hra-website/issues/300)
 
 ## 1. 지금 구현된 것과 앞으로 할 것
@@ -53,8 +53,8 @@
 2. 저장소를 내려받고, 버전이 기록된 `package-lock.json`을 기준으로 의존성을 설치합니다.
 
    ```bash
-   git clone https://github.com/Human-Renaissance-Academy/hra-platform.git
-   cd hra-platform
+   git clone https://github.com/Human-Renaissance-Academy/hra.git
+   cd hra
    node --version
    npm ci
    ```

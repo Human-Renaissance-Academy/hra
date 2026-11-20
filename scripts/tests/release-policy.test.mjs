@@ -12,7 +12,7 @@ import {
   validateReleaseFiles,
 } from "../_lib/release-policy.mjs";
 
-const repository = "Human-Renaissance-Academy/hra-platform";
+const repository = "Human-Renaissance-Academy/hra";
 const repo = { full_name: repository };
 const files = RELEASE_FILES.map((filename) => ({ filename, status: "modified" }));
 
@@ -116,9 +116,9 @@ test("조직 이전 후에도 release-please와 보안 신고가 현재 저장�
     new URL("../../.github/ISSUE_TEMPLATE/config.yml", import.meta.url),
     "utf8",
   );
-  assert.ok(workflow.includes("github.repository == 'Human-Renaissance-Academy/hra-platform'"));
+  assert.ok(workflow.includes("github.repository == 'Human-Renaissance-Academy/hra'"));
   assert.equal(workflow.includes("github.repository == 'yeongseon/hra-website'"), false);
-  assert.ok(issues.includes("Human-Renaissance-Academy/hra-platform/security/advisories/new"));
+  assert.ok(issues.includes("Human-Renaissance-Academy/hra/security/advisories/new"));
   assert.equal(issues.includes("yeongseon/hra-website"), false);
   assert.equal(workflow.includes("Human-Renaissance-Academy/hra-website"), false);
   assert.equal(issues.includes("Human-Renaissance-Academy/hra-website"), false);
