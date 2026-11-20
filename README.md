@@ -7,8 +7,8 @@
 | 현재 운영 | 공개 Web, 회원 자료실, 관리자 화면 | 1인 저관여 **Web Production 우선** 원칙으로 운영합니다. |
 | 코드에 구현됨·비활성 | 학사 G1(명부·과제·개인 PDF 제출), G2(출결·운영 인력), G3(교수 과제 피드백), 과제 제출 V2(#516, 진행 중) | 코드와 격리 검증이 있으나 `ACADEMIC_*` 설정이 `.env.example`에서 기본 `false`입니다. |
 | 설정·운영 승인 대기 | 학사 기능의 운영 활성화 | 운영 DB 변경 게이트(#280), 보존·파기 정책(#142), 학사 운영 정책(#143) 승인과 SQL 적용 뒤에 설정을 켭니다. |
-| 동결 | 모바일 앱(`apps/mobile`)과 API v1(`/api/v1`) | 2026-11-19 [동결 결정](docs/decisions/2026-11-19-mobile-api-freeze.md)(#491)에 따라 미출시 상태로 보존하고 보안 패치·의존성 갱신만 합니다. |
-| 장기 목표 | 모듈러 모놀리스·monorepo 전환, Android/iOS 출시 | [플랫폼 아키텍처](docs/developer/platform-architecture.md)에 조건부 목표로만 기록했습니다. 현재 작업 계획이 아닙니다. |
+| Android 출시 준비 | 모바일 앱(`apps/mobile`)과 API v1(`/api/v1`) | 2026-11-20 [출시 재개 결정](docs/decisions/2026-11-20-android-play-release-resume.md)(#576)에 따라 Android 출시 필수 개발·API 보완·Play 준비를 진행합니다. **아직 스토어 미출시**이며 운영·실기기·정책 승인 게이트는 남아 있습니다. |
+| 장기 목표 | 모듈러 모놀리스·monorepo 전환, iOS 출시 | [플랫폼 아키텍처](docs/developer/platform-architecture.md)에 조건부 목표로만 기록했습니다. 현재 작업 계획이 아닙니다. |
 
 저장소·루트 패키지 이름 `hra-website`는 웹 앱의 식별자이고, 모바일은 `apps/mobile`, 공용 계약은 `@hra/contracts`로 서로 다릅니다. 저장소 이름 변경은 #557에서 따로 다룹니다.
 
@@ -29,9 +29,9 @@
 | 학사 G1 | 학생 명부, 검증된 계정 연결, 과제 공개, 개인 PDF 제출, 제출 현황, 비공개 파일 다운로드 | 별도 기능 설정, DB 적용, 지정된 학사 운영 책임자, 운영 정책 확인 |
 | 학사 G2/G3 | 출결 입력·운영 인력 관리·학생 본인 출결, 정정 승인, 교수 계정 연결과 담당 수업 과제 검토·피드백 (수료 처리는 설계 단계) | 기본 비활성. #143 정책 승인, #280 게이트, SQL 적용 후 설정 |
 | 과제 제출 V2 | 텍스트·발표자료 등 다중 산출물 제출(#516) | 구현 진행 중이며 기본 비활성 |
-| Android·iOS (동결) | 서버 인증·API v1 및 모바일 앱(MVP 화면·테스트·디버그 APK) 코드 | **동결.** 미출시이며 신규 기능·출시 작업을 하지 않음 |
+| Android (출시 준비), iOS (별도 보류) | 서버 인증·API v1 및 모바일 앱(MVP 화면·테스트·디버그 APK) 코드 | **Google Play 출시 준비 중.** iOS/Push는 별도 결정 전까지 추진하지 않으며, 앱은 아직 미출시 |
 
-**코드가 있다는 사실과 운영에서 사용할 준비가 끝났다는 사실은 다릅니다.** 학사 설정은 `.env.example`에서 기본 비활성이며, 실제 배포 환경의 상태는 운영 담당자가 별도로 확인합니다. 학사 단계는 [학사관리 로드맵](docs/ACADEMIC-MANAGEMENT-ROADMAP.md), 모바일·API 동결은 [동결 결정](docs/decisions/2026-11-19-mobile-api-freeze.md)을 참고하세요. [플랫폼 전환 로드맵](docs/PLATFORM-ROADMAP.md)은 재개 시의 참고 기록이며 현재 계획이 아닙니다.
+**코드가 있다는 사실과 운영에서 사용할 준비가 끝났다는 사실은 다릅니다.** 학사 설정은 `.env.example`에서 기본 비활성이며, 실제 배포 환경의 상태는 운영 담당자가 별도로 확인합니다. 학사 단계는 [학사관리 로드맵](docs/ACADEMIC-MANAGEMENT-ROADMAP.md), Android 출시 작업은 [최신 결정](docs/decisions/2026-11-20-android-play-release-resume.md)(#576)을, 이전 동결 이력은 [과거 결정](docs/decisions/2026-11-19-mobile-api-freeze.md)을 참고하세요. [플랫폼 전환 로드맵](docs/PLATFORM-ROADMAP.md)은 재개 시의 참고 기록이며 현재 계획이 아닙니다.
 
 ## 2. 내 작업에 맞는 읽기 순서
 

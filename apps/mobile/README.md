@@ -89,7 +89,7 @@ APK: `android/app/build/outputs/apk/debug/app-debug.apk`, 약 235MB, application
 
 ### 내부 설치 테스트용 release APK (#573)
 
-기기에 직접 설치해 운영 API로 한 번 확인할 때만 사용합니다. 스토어 출시·EAS·외부 배포가 아닙니다([동결 결정](../../docs/decisions/2026-11-19-mobile-api-freeze.md#내부-설치-테스트-예외)).
+기기에 직접 설치해 운영 API로 한 번 확인할 때만 사용합니다. **이 APK는 스토어 출시·EAS·외부 배포용이 아닙니다.** Android 출시 준비는 [2026-11-20 신규 결정](../../docs/decisions/2026-11-20-android-play-release-resume.md)(#576)에 따라 **서명된 AAB와 별도 테스트**로 진행합니다. 해당 APK의 기존 허용 근거는 [당시 동결 문서](../../docs/decisions/2026-11-19-mobile-api-freeze.md#내부-설치-테스트-예외)에 보존되어 있습니다.
 
 1. GitHub Actions → `모바일 Android` → **Run workflow**(브랜치 `main`) → `내부 설치 테스트용 release APK 만들기`를 켜고 실행합니다. main 외 브랜치에서는 작업이 건너뜁니다.
 2. `내부 테스트용 release APK` 작업이 끝나면 산출물 `hra-android-release-test`(7일 보관)의 `app-release.apk`를 내려받아 Android 기기에 설치합니다(출처를 알 수 없는 앱 설치 허용 필요).

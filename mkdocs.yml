@@ -115,7 +115,8 @@ nav:
       - G3 수료 기준·확정 이력(비활성): developer/academic-completion.md
       - 주차별 텍스트 열람 범위 초안: WEEKLY-TEXT-ACCESS-POLICY.md
   - 앞으로의 플랫폼:
-      - 모바일·API v1 동결 결정: decisions/2026-11-19-mobile-api-freeze.md
+      - Android Google Play 출시 재개 결정: decisions/2026-11-20-android-play-release-resume.md
+      - 모바일·API v1 동결 결정(2026-11-20 대체됨): decisions/2026-11-19-mobile-api-freeze.md
       - 목표 아키텍처: developer/platform-architecture.md
       - 전환 로드맵: PLATFORM-ROADMAP.md
       - 공용 API v1 계약: developer/api-v1.md
