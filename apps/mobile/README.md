@@ -93,11 +93,14 @@ APK: `android/app/build/outputs/apk/debug/app-debug.apk`, 약 235MB, application
 
 1. GitHub Actions → `모바일 Android` → **Run workflow**(브랜치 `main`) → `내부 설치 테스트용 release APK 만들기`를 켜고 실행합니다. main 외 브랜치에서는 작업이 건너뜁니다.
 2. `내부 테스트용 release APK` 작업이 끝나면 산출물 `hra-android-release-test`(7일 보관)의 `app-release.apk`를 내려받아 Android 기기에 설치합니다(출처를 알 수 없는 앱 설치 허용 필요).
-3. 운영 학생 계정 대신 테스트용 MEMBER 계정으로 확인하고, 확인 후 기기에서 앱을 삭제합니다.
+3. 운영 학생 계정 대신 테스트용 MEMBER 계정으로 확인합니다. 확인 후 앱의 **모든 모바일 기기에서 로그아웃**으로 모바일 세션을 폐기하고 기기에서 앱을 삭제합니다. 테스트 기간에는 다른 출처의 HRA APK를 설치하지 않습니다.
+4. 확인이 끝나면 Actions 실행 페이지에서 산출물을 즉시 삭제합니다.
+
+- 저장소가 공개이므로 산출물은 보관 기간 동안 GitHub 로그인 사용자 누구나 내려받을 수 있습니다. 비밀값은 없지만 링크를 외부에 공유하지 않습니다.
 
 - API 주소는 운영 HTTPS(`https://hra-website-theta.vercel.app`)로 고정되며 release는 평문 HTTP를 거부합니다.
 - arm64-v8a만 포함합니다(대부분의 실제 기기). x86 에뮬레이터에서는 설치되지 않습니다.
-- 서명은 Expo 템플릿 기본 **공개 debug keystore**입니다. 누구나 같은 키로 서명할 수 있으므로 스토어 업로드·외부 배포·장기 사용에 쓰지 않습니다. 실제 출시는 별도 배포 키와 재개 결정이 필요합니다.
+- 서명은 Expo 템플릿 기본 **공개 debug keystore**입니다. 누구나 같은 키·패키지 ID로 서명한 APK를 "업데이트"로 설치해 앱 데이터(저장된 세션 토큰 포함)에 접근할 수 있으므로 스토어 업로드·외부 배포·장기 사용에 쓰지 않습니다. 실제 출시는 별도 배포 키와 재개 결정이 필요합니다.
 - applicationId는 아직 placeholder(`com.hra.mobile`)입니다. Play 패키지 ID는 이후 변경할 수 없으므로 출시 전에 소유자가 확정합니다.
 - 운영 비밀값·`EXPO_TOKEN`을 사용하지 않습니다. 보호 파일 다운로드·제출 흐름은 출시 전 독립 보안 리뷰 대상입니다.
 
