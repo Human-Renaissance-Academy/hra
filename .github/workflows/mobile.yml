@@ -150,7 +150,8 @@ jobs:
           "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" 'platforms;android-37.0' 'build-tools;37.0.0' 'build-tools;36.0.0' 'ndk;27.1.12297006' 'cmake;3.22.1' < /dev/null
       - run: npm ci --no-audit --no-fund
       - run: npm run prebuild:android
-      - run: npm run build:android:release-test
+      # package.json은 의존성 원장의 manifest binding 대상이므로 npm 스크립트를 추가하지 않고 직접 호출합니다.
+      - run: node scripts/build-android.mjs release
       - name: 산출 APK의 평문 차단·비디버그·API 주소 확인
         # 소스 트리가 아니라 실제 APK를 검사합니다. debug 전용 평문 허용 리소스가 섞이거나,
         # debuggable이 켜지거나, 운영 API 주소가 번들에 인라인되지 않았으면 실패합니다.

@@ -88,7 +88,7 @@ describe("Android 빌드 실행 계약", () => {
       /if: \$\{\{ github\.event_name == 'workflow_dispatch' && inputs\.release_test_apk && github\.ref == 'refs\/heads\/main' \}\}/,
     );
     assert.match(job, /EXPO_PUBLIC_API_BASE_URL: https:\/\/hra-website-theta\.vercel\.app\n/);
-    assert.match(job, /run: npm run build:android:release-test/);
+    assert.match(job, /run: node scripts\/build-android\.mjs release\n/);
     // 소스 트리가 아니라 산출 APK에서 평문 차단·비디버그·API 주소 인라인을 확인합니다.
     assert.match(job, /dump xmltree "\$apk" --file res\/xml\/network_security_config\.xml/);
     assert.match(job, /grep -aq 'https:\/\/hra-website-theta\.vercel\.app'/);
