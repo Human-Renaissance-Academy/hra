@@ -21,6 +21,13 @@ on:
         ".github/workflows/mobile-eas-build.yml",
       ]
   workflow_dispatch:
+    inputs:
+      release_test_apk:
+        # 켜면 debug 컴파일 대신 운영 API를 내장한 내부 설치 테스트용 release APK를 만듭니다(#573).
+        description: "내부 설치 테스트용 release APK 만들기 (스토어 배포 아님)"
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -74,6 +81,8 @@ jobs:
 
   android-build:
     name: 실제 debug APK 컴파일
+    # release 테스트 APK를 요청한 수동 실행에서는 중복 Gradle 빌드를 생략합니다. PR·push에서는 항상 실행합니다.
+    if: ${{ !inputs.release_test_apk }}
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     steps:
@@ -104,5 +113,61 @@ jobs:
         with:
           name: hra-android-debug
           path: apps/mobile/android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 7
+
+  # 내부 설치 테스트 전용 release APK (#573, #491 동결 결정의 1회성 확인 범위).
+  # - main에서 수동 실행하고 입력을 켠 경우에만 동작합니다. PR·push에서는 실행되지 않습니다.
+  # - 운영 비밀값·EXPO_TOKEN을 쓰지 않으며 공개 운영 API 주소만 번들에 넣습니다.
+  # - 서명은 Expo 템플릿 기본(공개 debug keystore)입니다. 스토어 업로드·외부 배포에 쓰지 않습니다.
+  android-release-test:
+    name: 내부 테스트용 release APK
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.release_test_apk && github.ref == 'refs/heads/main' }}
+    needs: checks
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      # release 번들은 HTTPS만 허용합니다(src/config/env.ts). 운영 웹과 같은 공개 주소입니다.
+      EXPO_PUBLIC_API_BASE_URL: https://hra-website-theta.vercel.app
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: apps/mobile/package-lock.json
+      - name: JDK 17 선택
+        run: |
+          test -d "$JAVA_HOME_17_X64"
+          printf 'JAVA_HOME=%s\n' "$JAVA_HOME_17_X64" >> "$GITHUB_ENV"
+          printf '%s/bin\n' "$JAVA_HOME_17_X64" >> "$GITHUB_PATH"
+      - name: SDK 패키지 설치
+        # debug 작업과 같이 runner의 사전 승인 라이선스만 사용합니다.
+        run: |
+          test -x "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager"
+          "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" 'platforms;android-37.0' 'build-tools;37.0.0' 'build-tools;36.0.0' 'ndk;27.1.12297006' 'cmake;3.22.1' < /dev/null
+      - run: npm ci --no-audit --no-fund
+      - run: npm run prebuild:android
+      # package.json은 의존성 원장의 manifest binding 대상이므로 npm 스크립트를 추가하지 않고 직접 호출합니다.
+      - run: node scripts/build-android.mjs release
+      - name: 산출 APK의 평문 차단·비디버그·API 주소 확인
+        # 소스 트리가 아니라 실제 APK를 검사합니다. debug 전용 평문 허용 리소스가 섞이거나,
+        # debuggable이 켜지거나, 운영 API 주소가 번들에 인라인되지 않았으면 실패합니다.
+        run: |
+          apk=android/app/build/outputs/apk/release/app-release.apk
+          test -f "$apk"
+          aapt2="$ANDROID_SDK_ROOT/build-tools/36.0.0/aapt2"
+          "$aapt2" dump xmltree "$apk" --file res/xml/network_security_config.xml | grep -q 'cleartextTrafficPermitted.*=false'
+          if "$aapt2" dump xmltree "$apk" --file AndroidManifest.xml | grep -q 'debuggable.*=true'; then
+            echo 'release APK가 debuggable입니다.'
+            exit 1
+          fi
+          unzip -p "$apk" assets/index.android.bundle | grep -aq 'https://hra-website-theta.vercel.app'
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: hra-android-release-test
+          path: apps/mobile/android/app/build/outputs/apk/release/app-release.apk
           if-no-files-found: error
           retention-days: 7
