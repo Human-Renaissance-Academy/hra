@@ -6,7 +6,30 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    # 보안 업데이트와 다른 런타임 버전 갱신은 기존 주간 검토를 유지한다.
+    # routine 도구는 발표 직후 잦은 PR을 만들지 않도록 충분한 안정화 기간을 둔다.
+    # cooldown은 version updates 전용이므로 security updates를 지연하지 않는다.
+    cooldown:
+      default-days: 21
+      semver-minor-days: 21
+      semver-patch-days: 21
+      include:
+        - prettier
+        - tailwindcss
+        - "@tailwindcss/*"
     groups:
+      # 주기적 개발 도구 minor/patch를 한 PR로 검토하고 주요 런타임 버전과 분리한다.
+      routine-dev-tools:
+        applies-to: version-updates
+        dependency-type: development
+        update-types:
+          - minor
+          - patch
+        # tailwindcss와 @tailwindcss/postcss는 같은 버전으로 함께 올려야 lock에 다른 버전이 중첩되지 않는다(#586).
+        patterns:
+          - prettier
+          - tailwindcss
+          - "@tailwindcss/*"
       next-framework:
         patterns:
           - next
