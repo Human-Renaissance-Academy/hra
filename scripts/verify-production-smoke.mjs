@@ -11,7 +11,7 @@ export const productionSmokeOrigin = "https://hra-website-theta.vercel.app";
 const paths = ["/", "/login", "/favicon.ico", "/api/health", "/robots.txt", "/sitemap.xml"];
 const bodyLimit = 2 * 1024 * 1024;
 const procedure =
-  "https://github.com/Human-Renaissance-Academy/hra-platform/blob/main/docs/operations/production-smoke.md";
+  "https://github.com/Human-Renaissance-Academy/hra/blob/main/docs/operations/production-smoke.md";
 
 // 시험 서버도 숫자형 루프백 주소만 허용하여 외부 목적지로 전환하지 못하게 한다.
 function validateOptions({ origin, sha, shaKind, fixture, timeoutMs }) {
@@ -239,16 +239,14 @@ function validSitemap(value, origin) {
         if (Object.hasOwn(named, reference)) return named[reference];
         const numeric = /^(?:#([0-9]+)|#x([0-9a-fA-F]+))$/.exec(reference ?? "");
         const point = numeric ? Number.parseInt(numeric[1] ?? numeric[2], numeric[1] ? 10 : 16) : 0;
-        if (
-          !(
-            point === 9 ||
-            point === 10 ||
-            point === 13 ||
-            (point >= 32 && point <= 0xd7ff) ||
-            (point >= 0xe000 && point <= 0xfffd) ||
-            (point >= 0x10000 && point <= 0x10ffff)
-          )
-        ) {
+        if (!(
+          point === 9 ||
+          point === 10 ||
+          point === 13 ||
+          (point >= 32 && point <= 0xd7ff) ||
+          (point >= 0xe000 && point <= 0xfffd) ||
+          (point >= 0x10000 && point <= 0x10ffff)
+        )) {
           invalid = true;
           return "";
         }

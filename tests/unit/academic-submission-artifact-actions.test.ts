@@ -202,9 +202,8 @@ describe("분리 제출 V2 학생 서버 액션", () => {
   });
 
   it("미사용 항목 발급 거부는 사유 코드와 고정 한국어 문구로 전달한다", async () => {
-    const { AcademicUploadError } = await import(
-      "@/features/academics/assignment-uploads/contract"
-    );
+    const { AcademicUploadError } =
+      await import("@/features/academics/assignment-uploads/contract");
     mocks.issue.mockRejectedValue(new AcademicUploadError("INVALID_FILE"));
     const result = await issueArtifactUploadIntent(issueInput());
     expect(result).toMatchObject({

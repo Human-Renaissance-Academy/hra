@@ -53,10 +53,7 @@ export default async function EditResourceTemplatePage({ params }: Props) {
           title: target.title,
           category: target.category,
           reportCategory: target.reportCategory as
-            | "management-book"
-            | "classic-book"
-            | "business-practice"
-            | null,
+            "management-book" | "classic-book" | "business-practice" | null,
           description: target.description,
           version: target.version,
           body: target.body,

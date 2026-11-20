@@ -71,8 +71,7 @@ export function declaredArtifactFormat(
 }
 
 export type ArtifactFileCheck =
-  | { ok: true; format: DocumentFormat }
-  | { ok: false; message: string };
+  { ok: true; format: DocumentFormat } | { ok: false; message: string };
 
 /** 선택한 파일의 이름·확장자·크기를 업로드 전에 확인합니다. */
 export function checkArtifactFile(

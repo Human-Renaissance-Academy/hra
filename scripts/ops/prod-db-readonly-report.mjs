@@ -440,13 +440,13 @@ function shape(query, rows, catalog) {
 export function roleCanWrite(role) {
   return Boolean(
     role.superuser ||
-      role.create_role ||
-      role.create_db ||
-      role.bypass_rls ||
-      role.database_create ||
-      role.schema_create ||
-      (count(role.writable_tables) ?? 1) > 0 ||
-      (count(role.owned_relations) ?? 1) > 0,
+    role.create_role ||
+    role.create_db ||
+    role.bypass_rls ||
+    role.database_create ||
+    role.schema_create ||
+    (count(role.writable_tables) ?? 1) > 0 ||
+    (count(role.owned_relations) ?? 1) > 0,
   );
 }
 

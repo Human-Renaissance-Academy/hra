@@ -6,7 +6,7 @@ This version has breaking changes — APIs, conventions, and file structure may 
 
 # HRA — Agent Rules
 
-> **HRA**는 공개 Web·회원/관리자·학사 기능·API v1·모바일 코드를 포함하는 하나의 제품이다. 현재 운영은 **Web Production 우선**이며 모바일은 [2026-11-20 Android Google Play 출시 재개 결정](docs/decisions/2026-11-20-android-play-release-resume.md)(#576)에 따라 **Android 출시에 필요한 범위만** 개발한다(2026-11-19 [동결 결정](docs/decisions/2026-11-19-mobile-api-freeze.md)(#491)을 해당 범위에서 대체). 루트 패키지·저장소 이름 `hra-website`는 웹 앱 식별자이며 프로젝트 전체 이름이 아니다.
+> **HRA**는 공개 Web·회원/관리자·학사 기능·API v1·모바일 코드를 포함하는 하나의 제품이다. 현재 운영은 **Web Production 우선**이며 모바일은 [2026-11-20 Android Google Play 출시 재개 결정](docs/decisions/2026-11-20-android-play-release-resume.md)(#576)에 따라 **Android 출시에 필요한 범위만** 개발한다(2026-11-19 [동결 결정](docs/decisions/2026-11-19-mobile-api-freeze.md)(#491)을 해당 범위에서 대체). GitHub 저장소 이름은 `hra`이고, 루트 패키지 이름 `hra-website`는 웹 앱 식별자이며 프로젝트 전체 이름이 아니다.
 
 > **운영 우선 원칙 (2026-11-16):** HRA는 거의 1명이 개발·유지보수하고 항상 관여하기 어렵다. **Production 웹 1개만 상시 운영**하고, 개발은 로컬, 품질 검증은 필수 GitHub CI, Vercel Preview는 필요할 때만 사용한다. 별도 상시 Dev/QA/Staging과 PR별 Neon/Blob 생성은 기본 요구가 아니다. 운영 DB·PII·Private Blob·인증 보안과 복구 가능성은 축소하지 않는다. [환경 전략](docs/developer/environment-strategy.md), [1인 운영 체크리스트](docs/operations/solo-operations.md) 참조.
 >
@@ -212,7 +212,7 @@ src/app/(admin)/admin/[feature]/
 ## 10. 배포
 
 - **프로덕션**: Vercel (`https://hra-website-theta.vercel.app`)
-- **문서**: MkDocs GitHub Pages (`https://human-renaissance-academy.github.io/hra-platform/`)
+- **문서**: MkDocs GitHub Pages (`https://human-renaissance-academy.github.io/hra/`)
 - **DB 변경**: `npm run db:push`는 개발·운영 DB 모두에서 비활성화되어 있으며 DB에 접속하지 않는다. `npx drizzle-kit export`는 SQL 생성만 수행한다. 신규 DB 준비와 기존 DB 변경은 [데이터베이스 변경 절차](docs/developer/database-change-procedure.md)에 따라 대상·SQL·선행 조건·카탈로그를 검토한 뒤 별도 적용한다. 운영 DB 변경은 [DB 변경 배포 게이트](docs/developer/database-change-procedure.md#db-change-gate)(수동 순서)를 따르며 자동 차단 gate와 baseline은 미완료다(#280).
 - **빌드 확인**: `npm run build` (변경 후 반드시 실행)
 
