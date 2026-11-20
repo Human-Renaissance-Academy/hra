@@ -6,11 +6,11 @@ This version has breaking changes — APIs, conventions, and file structure may 
 
 # HRA — Agent Rules
 
-> **HRA**는 공개 Web·회원/관리자·학사 기능·API v1·모바일 코드를 포함하는 하나의 제품이다. 현재 운영은 **Web Production 우선**이며 모바일 앱과 API v1은 [2026-11-19 동결 결정](docs/decisions/2026-11-19-mobile-api-freeze.md)(#491)으로 보존·보안 패치·의존성 갱신만 한다. 루트 패키지·저장소 이름 `hra-website`는 웹 앱 식별자이며 프로젝트 전체 이름이 아니다.
+> **HRA**는 공개 Web·회원/관리자·학사 기능·API v1·모바일 코드를 포함하는 하나의 제품이다. 현재 운영은 **Web Production 우선**이며 모바일은 [2026-11-20 Android Google Play 출시 재개 결정](docs/decisions/2026-11-20-android-play-release-resume.md)(#576)에 따라 **Android 출시에 필요한 범위만** 개발한다(2026-11-19 [동결 결정](docs/decisions/2026-11-19-mobile-api-freeze.md)(#491)을 해당 범위에서 대체). 루트 패키지·저장소 이름 `hra-website`는 웹 앱 식별자이며 프로젝트 전체 이름이 아니다.
 
 > **운영 우선 원칙 (2026-11-16):** HRA는 거의 1명이 개발·유지보수하고 항상 관여하기 어렵다. **Production 웹 1개만 상시 운영**하고, 개발은 로컬, 품질 검증은 필수 GitHub CI, Vercel Preview는 필요할 때만 사용한다. 별도 상시 Dev/QA/Staging과 PR별 Neon/Blob 생성은 기본 요구가 아니다. 운영 DB·PII·Private Blob·인증 보안과 복구 가능성은 축소하지 않는다. [환경 전략](docs/developer/environment-strategy.md), [1인 운영 체크리스트](docs/operations/solo-operations.md) 참조.
 >
-> 2026-11-19 #491 결정: 모바일 앱·API v1은 **동결**한다([모바일·API v1 동결 결정](docs/decisions/2026-11-19-mobile-api-freeze.md)). 기존 `apps/mobile`·`/api/v1`·모바일 세션 어댑터와 CI는 보안 패치·의존성 갱신만 하고, 신규 기능·iOS·Push·EAS/CD·스토어 출시·monorepo `apps/web` 이동·전면 모듈 이동은 재개 결정 이슈 전까지 시작하지 않는다. 이미 구현된 API/모바일·보안/세션 데이터는 임의로 제거하지 않는다. 기존 설계의 예시는 조건부 장기 목표이며 현재 필수 선행조건이 아니다. 운영 품질·핵심 웹 기능·실제 위험 해결이 신규 아키텍처보다 우선한다.
+> 2026-11-20 #576 결정: 2026-11-19 #491 동결을 **Android Google Play 출시와 그에 필요한 API v1·모바일 세션 변경에 한해** 해제한다([Android 출시 재개 결정](docs/decisions/2026-11-20-android-play-release-resume.md)). 실행 순서·게이트는 #577~#583을 따른다. iOS·Push·무인 EAS CD·monorepo `apps/web` 이동·전면 모듈 이동은 계속 시작하지 않는다. Play 제출·외부 계정/서명키 생성·운영 DB 변경은 이 결정만으로 승인되지 않으며 각각 별도 승인과 #280·#142·#268·#279 게이트를 따른다. #573의 공개 debug keystore APK는 Play·외부 배포에 쓰지 않는다. 이미 구현된 API/모바일·보안/세션 데이터는 임의로 제거하지 않는다.
 
 ## 1. 언어 규칙
 
@@ -64,9 +64,9 @@ src/
 
 ### 목표 아키텍처 전환 규칙
 
-> **동결 주의(#491):** 아래 monorepo·모바일·Android/iOS 항목은 조건부 장기 목표이며 현재 작업 계획이 아니다. 신규 모바일 기능·API v1 엔드포인트·`apps/web` 이동은 동결 결정 갱신 전에 시작하지 않는다.
+> **범위 주의(#576):** Android 앱(`apps/mobile`)과 그 출시에 필요한 `/api/v1`·모바일 세션 변경은 [2026-11-20 결정](docs/decisions/2026-11-20-android-play-release-resume.md)에 따라 진행한다. 아래의 monorepo `apps/web` 이동·iOS·전면 모듈 이동은 조건부 장기 목표이며 현재 작업 계획이 아니다.
 
-> 아래 규칙은 이미 시작된 공용 Web/API 모듈과 **추가 구축을 승인한 경우**의 목표 구조다. 기존 웹 전체를 의무적으로 재배치하거나 mobile/iOS CI를 무조건 확대하지 않는다(#491 동결 결정/#492). 신규 기능에서 권한·저장·검증 경계를 명확히 하는 원칙은 계속 유효하다.
+> 아래 규칙은 이미 시작된 공용 Web/API 모듈과 **추가 구축을 승인한 경우**의 목표 구조다. 기존 웹 전체를 의무적으로 재배치하거나 mobile/iOS CI를 무조건 확대하지 않는다(Android 출시 범위는 #576·#578, CI 비용은 #492). 신규 기능에서 권한·저장·검증 경계를 명확히 하는 원칙은 계속 유효하다.
 
 현재 디렉터리 구조는 #277 전환 전의 legacy 구조다. 신규 기능과 구조 개편 대상은 [플랫폼 아키텍처](docs/developer/platform-architecture.md)를 따른다.
 

@@ -1,6 +1,6 @@
 # Android·iOS EAS 빌드 설정 및 운영 전 검증
 
-> **동결 안내(2026-11-19, #491):** 이 영역은 [동결 결정](../decisions/2026-11-19-mobile-api-freeze.md)에 따라 보안 패치·의존성 갱신만 합니다. 아래 미구현·출시 준비 항목은 재개 결정 전까지 진행하지 않습니다.
+> **Android 출시 개발 재개(2026-11-20, #576):** [최신 결정](../decisions/2026-11-20-android-play-release-resume.md)에 따라 Android EAS Production AAB 빌드 및 Play 출시 준비를 진행합니다. 현행 수동 빌드·GitHub protected environment·원격 값 일치 검사와 별도 제출 승인 게이트를 유지합니다. iOS·Push·자동 제출은 범위 밖이며, [기존 동결](../decisions/2026-11-19-mobile-api-freeze.md)은 과거 이력입니다.
 
 > 범위: #283의 **빌드 파이프라인 준비**. 실제 Expo 계정·Apple Developer·Google Play·GitHub Environment 설정, 스토어 제출, 운영 앱 출시가 완료됐다는 뜻이 아닙니다. 운영 환경 격리는 #279, 운영 도메인 및 Vercel 배포는 #281·#408을 따릅니다.
 
