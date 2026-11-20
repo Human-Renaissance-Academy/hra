@@ -8,7 +8,7 @@
 | 코드에 구현됨·비활성 | 학사 G1(명부·과제·개인 PDF 제출), G2(출결·운영 인력), G3(교수 과제 피드백), 과제 제출 V2(#516, 진행 중) | 코드와 격리 검증이 있으나 `ACADEMIC_*` 설정이 `.env.example`에서 기본 `false`입니다. |
 | 설정·운영 승인 대기 | 학사 기능의 운영 활성화 | 운영 DB 변경 게이트(#280), 보존·파기 정책(#142), 학사 운영 정책(#143) 승인과 SQL 적용 뒤에 설정을 켭니다. |
 | Android 출시 준비 | 모바일 앱(`apps/mobile`)과 API v1(`/api/v1`) | 2026-11-20 [출시 재개 결정](docs/decisions/2026-11-20-android-play-release-resume.md)(#576)에 따라 Android 출시 필수 개발·API 보완·Play 준비를 진행합니다. **아직 스토어 미출시**이며 운영·실기기·정책 승인 게이트는 남아 있습니다. |
-| 장기 목표 | 모듈러 모놀리스·monorepo 전환, Android/iOS 출시 | [플랫폼 아키텍처](docs/developer/platform-architecture.md)에 조건부 목표로만 기록했습니다. 현재 작업 계획이 아닙니다. |
+| 장기 목표 | 모듈러 모놀리스·monorepo 전환, iOS 출시 | [플랫폼 아키텍처](docs/developer/platform-architecture.md)에 조건부 목표로만 기록했습니다. 현재 작업 계획이 아닙니다. |
 
 저장소·루트 패키지 이름 `hra-website`는 웹 앱의 식별자이고, 모바일은 `apps/mobile`, 공용 계약은 `@hra/contracts`로 서로 다릅니다. 저장소 이름 변경은 #557에서 따로 다룹니다.
 

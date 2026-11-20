@@ -13,6 +13,10 @@ HRA 웹과 `apps/mobile`의 기존 React Native/Expo Android 앱을 함께 유�
 - iOS App Store, Push, 무인 CD, 무분별한 신규 API, monorepo 재편 및 `apps/web` 이동은 **이번 Android 출시의 선행조건 아님**. 별도 수요·비용·결정이 있을 때 진행
 - 운영 보안: #142 개인정보 보존·파기, #268 Private Blob, #279 Preview/Production 격리, #280 DB 백업/복구/마이그레이션 게이트를 우회하지 않음
 
+### 동결 기록의 재개 조건과의 관계
+
+2026-11-19 동결 기록은 재개 조건으로 (1) 문서화된 실제 수요, (2) 모바일 유지보수·출시 운영 여력, (3) 월간 유지 시간·비용 추정과 보안 갱신 계획을 요구했습니다. 이번 재개는 프로젝트 소유자의 직접 결정이며 결정 시점에 세 조건의 근거는 문서화되지 않았습니다. 따라서 이 결정은 **개발·검증 재개**에 한정하고, 세 조건의 근거를 #576에 기록하는 것을 **Play 프로덕션 제출(#583)의 선행 조건**으로 둡니다.
+
 ## 2. 과거 이슈의 의미
 
 - #491은 **2026-11-19 당시 동결 결정을 내린 완료 기록**으로 계속 닫아 둡니다.
@@ -26,6 +30,7 @@ HRA 웹과 `apps/mobile`의 기존 React Native/Expo Android 앱을 함께 유�
 | 결정·범위 | #576 | Android 출시만 재개; Web 우선·보안 유지 |
 | 계정·식별자 | #577 | Play Console/Expo 소유권, 영구 applicationId와 업로드 키 관리 주체 확정 |
 | AAB | #578 | EAS production 서명 AAB·버전코드·API origin·서명 및 갱신 검사 |
+| 운영 서버 준비 | #579·#583 | 운영 DB의 `mobile_sessions` 스키마 적용 여부를 [운영 점검 runbook](../operations/production-verification-runbook.md) §0으로 확인하고, 없으면 [DB 변경 배포 게이트](../developer/database-change-procedure.md#db-change-gate)(#280)로 적용. 모바일 세션 정리 cron 등록 여부를 [예약 작업](../operations/cron-jobs.md)·#494에서 결정 |
 | 실기기 품질 | #579 | 인증·로그아웃·보호 PDF·과제 업로드·세션/네트워크/권한 E2E |
 | 정책 | #580 | 앱 데이터 정책, 계정 삭제 해당 여부, 공개 개인정보처리방침, Play 심사용 접근 |
 | 등록정보 | #581 | HRA 앱명/설명/아이콘/스크린샷·검수 |
