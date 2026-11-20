@@ -17,7 +17,8 @@
     "export:android": "expo export --platform android",
     "export:ios": "expo export --platform ios",
     "prebuild:android": "expo prebuild --platform android --no-install",
-    "build:android:debug": "node scripts/build-android.mjs"
+    "build:android:debug": "node scripts/build-android.mjs",
+    "build:android:release-test": "node scripts/build-android.mjs release"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.2",
