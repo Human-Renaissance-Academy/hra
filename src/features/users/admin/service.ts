@@ -9,8 +9,7 @@ import * as repository from "./repository";
 export type UserAdminActor = { userId: string; role: string };
 type UserAdminResult = { readonly success: boolean; readonly message: string };
 type DeleteOutcome =
-  | { readonly kind: "result"; readonly result: UserAdminResult }
-  | { readonly kind: "delete-error" };
+  { readonly kind: "result"; readonly result: UserAdminResult } | { readonly kind: "delete-error" };
 
 /** Web 이외 진입에서도 모든 저장소 호출 전에 관리자 주체를 다시 확인합니다. */
 function assertAdmin(actor: UserAdminActor): void {

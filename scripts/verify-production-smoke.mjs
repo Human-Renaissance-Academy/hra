@@ -239,16 +239,14 @@ function validSitemap(value, origin) {
         if (Object.hasOwn(named, reference)) return named[reference];
         const numeric = /^(?:#([0-9]+)|#x([0-9a-fA-F]+))$/.exec(reference ?? "");
         const point = numeric ? Number.parseInt(numeric[1] ?? numeric[2], numeric[1] ? 10 : 16) : 0;
-        if (
-          !(
-            point === 9 ||
-            point === 10 ||
-            point === 13 ||
-            (point >= 32 && point <= 0xd7ff) ||
-            (point >= 0xe000 && point <= 0xfffd) ||
-            (point >= 0x10000 && point <= 0x10ffff)
-          )
-        ) {
+        if (!(
+          point === 9 ||
+          point === 10 ||
+          point === 13 ||
+          (point >= 32 && point <= 0xd7ff) ||
+          (point >= 0xe000 && point <= 0xfffd) ||
+          (point >= 0x10000 && point <= 0x10ffff)
+        )) {
           invalid = true;
           return "";
         }

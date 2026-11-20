@@ -21,11 +21,7 @@ export type InstallationInput = {
 };
 
 export type InstallationWriteResult =
-  | "created"
-  | "updated"
-  | "unchanged"
-  | "owner-mismatch"
-  | "revoked";
+  "created" | "updated" | "unchanged" | "owner-mismatch" | "revoked";
 
 export interface InstallationRegistry {
   /**
@@ -51,13 +47,7 @@ export interface InstallationRegistry {
 }
 
 export type InstallationActionResult =
-  | "created"
-  | "updated"
-  | "unchanged"
-  | "revoked"
-  | "forbidden"
-  | "invalid"
-  | "unavailable";
+  "created" | "updated" | "unchanged" | "revoked" | "forbidden" | "invalid" | "unavailable";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const APP_VERSION = /^(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)(?:\+[A-Za-z0-9.-]{1,40})?$/;

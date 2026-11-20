@@ -313,7 +313,7 @@ function readStreamPrefix(
   if (entry.size >= MINI_STREAM_CUTOFF) {
     const chain = followChain(context, entry.start);
     if (chain.length * context.sectorSize < entry.size) reject();
-    for (let copied = 0; copied < length; ) {
+    for (let copied = 0; copied < length;) {
       const sector = chain[Math.floor(copied / context.sectorSize)];
       const within = copied % context.sectorSize;
       const take = Math.min(context.sectorSize - within, length - copied);
@@ -350,7 +350,7 @@ function readStreamPrefix(
     miniChain.push(sector);
   }
   if (miniChain.length * MINI_SECTOR_BYTES < entry.size) reject();
-  for (let copied = 0; copied < length; ) {
+  for (let copied = 0; copied < length;) {
     const miniSector = miniChain[Math.floor(copied / MINI_SECTOR_BYTES)];
     const within = copied % MINI_SECTOR_BYTES;
     const take = Math.min(MINI_SECTOR_BYTES - within, length - copied);
