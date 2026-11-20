@@ -49,4 +49,4 @@ HRA 웹과 `apps/mobile`의 기존 React Native/Expo Android 앱을 함께 유�
 
 - [과거 동결 결정](2026-11-19-mobile-api-freeze.md), #491
 - [Android 출시 결정·작업](https://github.com/Human-Renaissance-Academy/hra-platform/issues/576), #577~#583
-- [기존 전체 우선순위](../../issues/300), #142, #268, #279, #280, #284
+- [기존 전체 우선순위](https://github.com/Human-Renaissance-Academy/hra-platform/issues/300), #142, #268, #279, #280, #284
