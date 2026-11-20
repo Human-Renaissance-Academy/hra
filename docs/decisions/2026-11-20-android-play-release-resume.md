@@ -1,6 +1,6 @@
 # 결정 기록: Android Google Play 출시 추진 재개 (2026-11-20)
 
-> **상태: 확정된 개발 방향** · 결정일: 2026-11-20 · 결정자: 프로젝트 소유자 · 후속 이슈: [#576](../../issues/576)
+> **상태: 확정된 개발 방향** · 결정일: 2026-11-20 · 결정자: 프로젝트 소유자 · 후속 이슈: [#576](https://github.com/Human-Renaissance-Academy/hra-platform/issues/576)
 >
 > 2026-11-19 [모바일·API 동결 결정](2026-11-19-mobile-api-freeze.md)(#491)을 **Android Google Play 출시와 그에 필요한 API 변경에 한정하여 대체(supersede)** 합니다. 해당 과거 결정의 배경과 당시 중단된 이슈 이력은 보존합니다. 본 결정은 Play 실제 공개·외부 계정/키 생성·운영 DB 변경의 자동 승인으로 간주하지 않습니다.
 
@@ -48,5 +48,5 @@ HRA 웹과 `apps/mobile`의 기존 React Native/Expo Android 앱을 함께 유�
 ## 관련 기록
 
 - [과거 동결 결정](2026-11-19-mobile-api-freeze.md), #491
-- [Android 출시 결정·작업](../../issues/576), #577~#583
+- [Android 출시 결정·작업](https://github.com/Human-Renaissance-Academy/hra-platform/issues/576), #577~#583
 - [기존 전체 우선순위](../../issues/300), #142, #268, #279, #280, #284
