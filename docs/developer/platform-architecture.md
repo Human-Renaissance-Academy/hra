@@ -1,8 +1,8 @@
 # HRA 멀티클라이언트 플랫폼 아키텍처
 
-> **동결 안내:** 모바일·API v1은 [2026-11-19 동결 결정(#491)](../decisions/2026-11-19-mobile-api-freeze.md)에 따라 보존·보안 패치만 하며, 이 문서의 확장 항목은 현재 작업 목표가 아니다.
+> **상태 안내:** 2026-11-19 [동결 결정(#491)](../decisions/2026-11-19-mobile-api-freeze.md)은 [2026-11-20 Android 출시 재개 결정(#576)](../decisions/2026-11-20-android-play-release-resume.md)이 Android Google Play 출시와 그에 필요한 API v1·모바일 세션 변경에 한해 대체했다. 이 문서의 iOS·monorepo `apps/web` 이동 등 확장 항목은 현재 작업 목표가 아니다.
 >
-> 상태: **수요 승인 시의 장기 목표 아키텍처(조건부)**. 현재 `main` 상태나 필수 웹 배포 선행조건이 아니다. 2026-11-16부터 기본은 1인 저관여 웹 운영이며 모바일·API v1은 2026-11-19 #491 결정으로 **동결**되어 보안 패치·의존성 갱신만 하며, monorepo 확대는 시작하지 않는다([결정 기록](../decisions/2026-11-19-mobile-api-freeze.md)). 현재 실행 정책은 [환경 전략](environment-strategy.md)을 우선한다.
+> 상태: **수요 승인 시의 장기 목표 아키텍처(조건부)**. 현재 `main` 상태나 필수 웹 배포 선행조건이 아니다. 2026-11-16부터 기본은 1인 저관여 웹 운영이며 모바일·API v1은 2026-11-19 #491 동결을 2026-11-20 #576 결정이 Android 출시와 그에 필요한 변경에 한해 대체했으며, iOS·monorepo 확대는 시작하지 않는다([Android 출시 재개 결정](../decisions/2026-11-20-android-play-release-resume.md), [과거 동결 결정](../decisions/2026-11-19-mobile-api-freeze.md)). 현재 실행 정책은 [환경 전략](environment-strategy.md)을 우선한다.
 
 HRA는 현재 **Web 운영 안정성**을 우선하며, 실수요·출시 책임·운영 여력이 확보된 경우에만 **Web + Android + iOS** 플랫폼 확장을 재개한다. 실서비스 전 구조 변경 비용이 낮은 시점을 활용하되, 이미 검증된 학사 도메인·DB 제약·인가·Private Blob·감사·테스트를 버리지 않는다.
 
@@ -266,9 +266,9 @@ NotificationService는 FCM/APNs/Expo provider와 application event를 분리한�
 - monorepo 전환 뒤 `apps/web`은 Vercel, `apps/mobile`은 Expo EAS가 담당한다.
 - Web/Android/iOS release는 서로 독립적으로 실행·롤백 가능해야 한다.
 
-## 11. CI 목표(모바일 확대 결정 이후에만 적용)
+## 11. CI 목표(Android 출시 범위 외 확대는 결정 이후에만 적용)
 
-현재는 필수 Web CI, 보안·권한/DB 회귀, Production 배포 SHA·smoke/장애 알림을 우선하고 #492에서 중복·수작업을 줄인다. **아래는 [동결 결정](../decisions/2026-11-19-mobile-api-freeze.md)을 재개하는 새 결정이 있을 때** monorepo PR에서 필요한 범위로 검증할 장기 목표다.
+현재는 필수 Web CI, 보안·권한/DB 회귀, Production 배포 SHA·smoke/장애 알림을 우선하고 #492에서 중복·수작업을 줄인다. Android 출시 범위의 build/E2E는 [Android 출시 재개 결정](../decisions/2026-11-20-android-play-release-resume.md)에 따라 #578·#492에서 정한다. **아래 전체 목표(iOS 포함)는 iOS·monorepo 확대를 결정하는 새 결정이 있을 때** monorepo PR에서 필요한 범위로 검증할 장기 목표다.
 
 - 코드 규칙과 타입 검사
 - 서버 단위 검사와 격리 PostgreSQL 통합 검사

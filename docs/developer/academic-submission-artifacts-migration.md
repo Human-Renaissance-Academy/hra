@@ -145,7 +145,7 @@ OpenAPI 추가 전용 검사(`scripts/check-openapi-compat.mjs`)는 기존 opera
 
 ## 활성화 체크리스트
 
-- **모바일 앱이 V2를 지원하기 전에는 `ACADEMIC_SUBMISSION_ARTIFACTS_ENABLED`를 켜지 않는다.** 동결된 모바일 앱(#491)은 기존 상세에서 `submission != null && file == null`인 V2 과제를 PDF 과제로 보고 "다시 제출" 버튼을 보여 준다. 서버가 `CONFLICT`로 거부하므로 보안 문제는 아니지만 사용자를 혼란스럽게 한다. 클라이언트는 이 조합을 분리 제출로 취급하고 `/artifacts`의 `files`로 제출물을 확인해야 한다(OpenAPI 설명에 명시).
+- **모바일 앱이 V2를 지원하기 전에는 `ACADEMIC_SUBMISSION_ARTIFACTS_ENABLED`를 켜지 않는다.** 현재 모바일 앱은(Android 출시에서 V2 지원이 필수인지는 [#579](https://github.com/Human-Renaissance-Academy/hra/issues/579)에서 결정하며 이 문서에서 정하지 않는다) 기존 상세에서 `submission != null && file == null`인 V2 과제를 PDF 과제로 보고 "다시 제출" 버튼을 보여 준다. 서버가 `CONFLICT`로 거부하므로 보안 문제는 아니지만 사용자를 혼란스럽게 한다. 클라이언트는 이 조합을 분리 제출로 취급하고 `/artifacts`의 `files`로 제출물을 확인해야 한다(OpenAPI 설명에 명시).
 - **V2 제출이 생긴 뒤 gate를 끄지 않는다(N-1).** gate가 꺼지면 학생 상세는 새 컬럼을 읽지 않는 기존 조회로 돌아간다. 이때 V2 제출의 텍스트가 PDF이면 기존 상세가 그 파일 하나를 PDF 단일 제출처럼 보여 줄 수 있고, 제출 현황도 항목 열 없이 표시된다. 끄기가 불가피하면 V2 과제가 없는지 먼저 확인하고 영향을 공지한다.
 - PR-H의 실제 비공개 Blob 2×50MiB 최종화 시간 측정이 `maxDuration` 안에 끝나는지 확인한다.
 

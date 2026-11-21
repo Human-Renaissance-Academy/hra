@@ -155,7 +155,7 @@ OpenAPI의 `Origin` 헤더는 쿠키 요청에서만 필수이며(`required: fal
 
 직접 업로드는 기존 `POST /api/v1/uploads`(SDK 토큰 교환)를 그대로 사용합니다. 새 실패 코드는 공개 코드를 늘리지 않고 대응합니다: 파일 검증 거부·필수 누락·미사용 항목 첨부·항목 중복·합계 초과는 400 `INVALID_INPUT`, 형식이 다른 과제·이미 제출함·다른 묶음에 쓴 키는 409 `CONFLICT`입니다.
 
-**클라이언트 주의:** 분리 제출 과제는 기존 `GET /api/v1/assignments/{id}`·`/submission`에서 `submission != null && file == null`로 보입니다. 이 조합을 PDF 미제출·재제출 대상으로 취급하지 말고 `/artifacts`의 `files`로 제출물을 확인해야 합니다. 현재 모바일 앱(#491 동결)은 이를 지원하지 않으므로 활성화 조건은 [분리 제출 마이그레이션 문서](academic-submission-artifacts-migration.md)의 활성화 체크리스트를 따릅니다.
+**클라이언트 주의:** 분리 제출 과제는 기존 `GET /api/v1/assignments/{id}`·`/submission`에서 `submission != null && file == null`로 보입니다. 이 조합을 PDF 미제출·재제출 대상으로 취급하지 말고 `/artifacts`의 `files`로 제출물을 확인해야 합니다. 현재 모바일 앱은 이를 지원하지 않습니다. Android 출시에서 분리 제출(V2) 지원이 필수인지는 [#579](https://github.com/Human-Renaissance-Academy/hra/issues/579)에서 결정하며(여기서 정하지 않음), 활성화 조건은 [분리 제출 마이그레이션 문서](academic-submission-artifacts-migration.md)의 활성화 체크리스트를 따릅니다.
 
 과제 목록은 `page`(기본 1, 최대 10,000)·`pageSize`(기본 20, 최대 50)만 받습니다. 중복·미등록 query는 400이고 범위를 넘으면 요청 번호와 빈 배열을 반환합니다. 응답은 `{ assignments, page: { page, pageSize, hasNextPage } }`입니다. 기존 학생 서비스는 다음 페이지 존재만 조회하므로 공지의 `PageMeta`와 달리 추정 `totalCount`·`totalPages`를 추가하지 않습니다. 상세·파일 및 모든 변경 경로는 query를 받지 않습니다. 시각은 UTC 밀리초 ISO 문자열이며 KST 표시 변환은 클라이언트 책임입니다.
 
