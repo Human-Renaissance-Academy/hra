@@ -15,11 +15,13 @@ import { spawnSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
+  BINDING_INPUT_TAGS,
   classifyDependencyDrift,
   dependencyDiagnosticLines,
   dependencySnapshot,
   lockRegistryViolations,
   regenerateDependencyPolicy,
+  reviewedInputDigest,
   verifyDependencyPolicy as verifyV3DependencyPolicy,
 } from "../_lib/dependency-policy.mjs";
 const policy = JSON.parse(
@@ -39,16 +41,15 @@ function verifyReviewedFixture(report, fixtureLock, fixturePolicy, today) {
   const lockBytes = Buffer.from(JSON.stringify(fixtureLock));
   const reviewed = structuredClone(fixturePolicy);
   if (reviewed && typeof reviewed === "object") {
-    const digest = (bytes) => createHash("sha256").update(bytes).digest("hex");
     reviewed.manifestBinding = {
       algorithm: "sha256",
-      input: "package-json.raw-bytes-v1",
-      digest: digest(manifestBytes),
+      input: BINDING_INPUT_TAGS.manifest,
+      digest: reviewedInputDigest("manifest", manifestBytes),
     };
     reviewed.lockBinding = {
       algorithm: "sha256",
-      input: "package-lock.raw-bytes-v1",
-      digest: digest(lockBytes),
+      input: BINDING_INPUT_TAGS.lock,
+      digest: reviewedInputDigest("lock", lockBytes),
     };
   }
   return verifyV3DependencyPolicy(report, { manifestBytes, lockBytes }, reviewed, today);
@@ -1139,13 +1140,13 @@ function bindFixture(fixture) {
   };
   fixture.policy.manifestBinding = {
     algorithm: "sha256",
-    input: "package-json.raw-bytes-v1",
-    digest: fixtureHash(fixture.inputs.manifestBytes),
+    input: BINDING_INPUT_TAGS.manifest,
+    digest: reviewedInputDigest("manifest", fixture.inputs.manifestBytes),
   };
   fixture.policy.lockBinding = {
     algorithm: "sha256",
-    input: "package-lock.raw-bytes-v1",
-    digest: fixtureHash(fixture.inputs.lockBytes),
+    input: BINDING_INPUT_TAGS.lock,
+    digest: reviewedInputDigest("lock", fixture.inputs.lockBytes),
   };
 }
 function identityFixture(
@@ -1162,9 +1163,11 @@ function identityFixture(
   const fixture = {
     manifest: { name: project, version: "1.0.0" },
     lock: {
+      name: project,
+      version: "1.0.0",
       lockfileVersion: 3,
       packages: Object.fromEntries([
-        ["", { name: project }],
+        ["", { name: project, version: "1.0.0" }],
         ...packages.map((pkg) => [pkg.nodes[0].path, { version: "1.0.0", dev: true }]),
       ]),
     },
@@ -2002,5 +2005,253 @@ test("재생성 CLI: 잘못된 인자는 npm을 실행하지 않고 실패한다
     assert.equal(result.status, 1);
     assert.match(result.stderr, /DEPENDENCY_ARGUMENTS_INVALID/);
     assert.deepEqual(result.calls, []);
+  }
+});
+
+// ---------------------------------------------------------------------------
+// release-please 제품 버전 경로 binding(#168, release PR #600)
+// - package.json `$.version`, package-lock.json `$.version`·`$.packages[""].version`만 가린다.
+// - 그 밖의 모든 byte 변화(의존성·범위·resolved·integrity·이름·scripts·중첩 버전·공백)는 계속 실패한다.
+// ---------------------------------------------------------------------------
+// 현재 제품 버전에서 출발하므로 release PR 병합 뒤(예: 0.2.0)에도 같은 회귀가 유지됩니다.
+const CURRENT_VERSION = JSON.parse(repositoryFile("package.json")).version;
+const NEXT_VERSION = "99.0.0";
+const VERSION_FIELD = `"version": "${CURRENT_VERSION}"`;
+/** n번째(0부터) 현재 제품 버전 필드만 바꿉니다. 대상 경로가 맞는지는 호출자가 parse로 확인합니다. */
+function replaceVersionOccurrence(text, occurrence, replacement) {
+  let index = -1;
+  for (let n = 0; n <= occurrence; n++) {
+    index = text.indexOf(VERSION_FIELD, index + 1);
+    assert.notEqual(index, -1);
+  }
+  return text.slice(0, index) + replacement + text.slice(index + VERSION_FIELD.length);
+}
+const bumpVersion = (bytes, occurrence) =>
+  Buffer.from(
+    replaceVersionOccurrence(bytes.toString("utf8"), occurrence, `"version": "${NEXT_VERSION}"`),
+  );
+// [입력, 몇 번째 현재 제품 버전 필드, JSON 경로]. 루트·모바일 lock 모두 최상위 → packages[""] 순서입니다.
+const releaseFieldEdits = [
+  ["manifestBytes", 0, ["version"]],
+  ["lockBytes", 0, ["version"]],
+  ["lockBytes", 1, ["packages", "", "version"]],
+];
+const bindingVerify = (input, ledger) =>
+  verifyV3DependencyPolicy(auditFromPolicy(ledger), input, ledger, regenerateToday);
+const bindingRegenerate = (input, ledger) =>
+  regenerateDependencyPolicy(auditFromPolicy(ledger), input, ledger, regenerateToday);
+for (const [targetName, target] of Object.entries(realTargets)) {
+  for (const [field, occurrence, path] of releaseFieldEdits)
+    test(`release 버전: ${targetName} ${field} ${path.join(".")}만 바뀌면 binding이 유지된다`, () => {
+      const ledger = JSON.parse(repositoryFile(target.policyPath));
+      const input = target.input();
+      const edited = { ...input, [field]: bumpVersion(input[field], occurrence) };
+      // 정확히 의도한 경로 하나만 바뀌었는지 parse 결과로 확인합니다.
+      const before = JSON.parse(input[field].toString("utf8"));
+      const after = JSON.parse(edited[field].toString("utf8"));
+      const owner = (value) => path.slice(0, -1).reduce((node, key) => node[key], value);
+      assert.equal(owner(before).version, CURRENT_VERSION);
+      assert.equal(owner(after).version, NEXT_VERSION);
+      owner(after).version = CURRENT_VERSION;
+      assert.deepEqual(after, before);
+      assert.doesNotThrow(() => bindingVerify(edited, ledger));
+      assert.equal(bindingRegenerate(edited, ledger).changed, false);
+    });
+  test(`release 버전: ${targetName} 세 경로를 함께 올린 release-please 변경도 통과한다`, () => {
+    const ledger = JSON.parse(repositoryFile(target.policyPath));
+    const input = target.input();
+    const edited = {
+      manifestBytes: bumpVersion(input.manifestBytes, 0),
+      lockBytes: bumpVersion(bumpVersion(input.lockBytes, 1), 0),
+    };
+    assert.equal(
+      reviewedInputDigest("manifest", edited.manifestBytes),
+      ledger.manifestBinding.digest,
+    );
+    assert.equal(reviewedInputDigest("lock", edited.lockBytes), ledger.lockBinding.digest);
+    assert.doesNotThrow(() => bindingVerify(edited, ledger));
+    assert.equal(bindingRegenerate(edited, ledger).changed, false);
+  });
+}
+// 버전 외 byte 변화와 비정상 버전 값은 gate·재생성 모두 기존 코드로 실패해야 합니다.
+const abnormalVersions = [
+  '"0.2.0-beta.1"',
+  '"v0.2.0"',
+  '"0.2"',
+  '"01.2.0"',
+  '"0.2.0+build"',
+  '"0\\u002e2.0"',
+  '"<hra-release-version>"',
+  "0.2",
+  "null",
+  '{"v":"0.2.0"}',
+];
+const nonReleaseEdits = [
+  ["manifest 의존성 범위", "manifestBytes", (t) => t.replace('": "^', '": "~')],
+  [
+    "manifest 새 의존성",
+    "manifestBytes",
+    (t) => t.replace('"dependencies": {', '"dependencies": {\n    "zz-fixture": "1.0.0",'),
+  ],
+  ["manifest name", "manifestBytes", (t) => t.replace('"name": "', '"name": "zz')],
+  [
+    "manifest scripts",
+    "manifestBytes",
+    (t) => t.replace('"scripts": {', '"scripts": {\n    "zz": "true",'),
+  ],
+  ["manifest overrides 추가", "manifestBytes", (t) => t.replace("{\n", '{\n  "overrides": {},\n')],
+  ['lock packages[""] 의존성 범위', "lockBytes", (t) => t.replace('": "^', '": "~')],
+  [
+    "lock resolved",
+    "lockBytes",
+    (t) =>
+      t.replace(
+        '"resolved": "https://registry.npmjs.org/',
+        '"resolved": "https://registry.npmjs.org/zz',
+      ),
+  ],
+  [
+    "lock integrity",
+    "lockBytes",
+    (t) => t.replace('"integrity": "sha512-', '"integrity": "sha512-A'),
+  ],
+  ["lock name", "lockBytes", (t) => t.replace('"name": "', '"name": "zz')],
+  [
+    "lock 중첩 node_modules version",
+    "lockBytes",
+    (t) =>
+      t.replace(
+        /("node_modules\/[^"]+": \{\s*"version": ")(\d+)/,
+        (_, head, major) => head + (Number(major) + 1),
+      ),
+  ],
+  [
+    "manifest version key 중복",
+    "manifestBytes",
+    (t) => t.replace(`${VERSION_FIELD},`, `${VERSION_FIELD},\n  ${VERSION_FIELD},`),
+  ],
+  [
+    "lock 최상위 version key 중복",
+    "lockBytes",
+    (t) => t.replace(`${VERSION_FIELD},`, `${VERSION_FIELD},\n  ${VERSION_FIELD},`),
+  ],
+  [
+    'lock packages[""] version key 중복',
+    "lockBytes",
+    (t) => replaceVersionOccurrence(t, 1, `${VERSION_FIELD},\n      ${VERSION_FIELD}`),
+  ],
+  ["manifest version key 삭제", "manifestBytes", (t) => t.replace(`  ${VERSION_FIELD},\n`, "")],
+  ["manifest 끝 LF 추가", "manifestBytes", (t) => t + "\n"],
+  ["lock CRLF", "lockBytes", (t) => t.replace(/\n/g, "\r\n")],
+  [
+    "manifest version 주변 공백",
+    "manifestBytes",
+    (t) => t.replace(VERSION_FIELD, '"version":  "0.2.0"'),
+  ],
+  [
+    "lock 들여쓰기",
+    "lockBytes",
+    (t) => t.replace('\n  "lockfileVersion"', '\n   "lockfileVersion"'),
+  ],
+  ...abnormalVersions.map((value) => [
+    `manifest 비정상 version ${value}`,
+    "manifestBytes",
+    (t) => t.replace(VERSION_FIELD, `"version": ${value}`),
+  ]),
+  ...abnormalVersions.map((value) => [
+    `lock packages[""] 비정상 version ${value}`,
+    "lockBytes",
+    (t) => replaceVersionOccurrence(t, 1, `"version": ${value}`),
+  ]),
+];
+for (const [targetName, target] of Object.entries(realTargets))
+  for (const [name, field, edit] of nonReleaseEdits)
+    test(`release 버전: ${targetName} ${name}은 binding 실패를 유지한다`, () => {
+      const ledger = JSON.parse(repositoryFile(target.policyPath));
+      const input = target.input();
+      const text = input[field].toString("utf8");
+      const changed = edit(text);
+      assert.notEqual(changed, text, "변이가 실제 입력에 적용되어야 합니다");
+      const edited = { ...input, [field]: Buffer.from(changed) };
+      assert.throws(
+        () => bindingVerify(edited, ledger),
+        /^Error: DEPENDENCY_INPUT_BINDING_INVALID$/,
+      );
+      assert.throws(
+        () => bindingRegenerate(edited, ledger),
+        /^Error: DEPENDENCY_REGENERATE_BINDING_CHANGED$/,
+      );
+    });
+test("release 버전: 구조가 예상과 다르면 digest를 만들지 않는다", () => {
+  const digest = (kind, value) => reviewedInputDigest(kind, Buffer.from(value));
+  const lockOf = (rootVersion, nested) =>
+    `{"version":"1.0.0","packages":{"":{"version":"${rootVersion}"},"node_modules/a":{"version":"${nested}"}}}`;
+  assert.match(digest("manifest", '{"name":"x","version":"1.2.3"}'), /^[a-f0-9]{64}$/);
+  assert.match(digest("manifest", '{"version":"999999999.0.0"}'), /^[a-f0-9]{64}$/);
+  // 대상 경로 밖의 중복 key는 마스킹 판단과 무관하며 raw bytes 차이로 계속 binding에서 보호됩니다.
+  assert.match(digest("manifest", '{"version":"1.0.0","x":1,"x":2}'), /^[a-f0-9]{64}$/);
+  assert.equal(
+    digest("manifest", '{"name":"x","version":"1.2.3"}'),
+    digest("manifest", '{"name":"x","version":"9.0.10"}'),
+  );
+  assert.equal(digest("lock", lockOf("1.0.0", "1.0.0")), digest("lock", lockOf("2.0.0", "1.0.0")));
+  assert.notEqual(
+    digest("manifest", '{"name":"x","version":"1.2.3"}'),
+    digest("manifest", '{"name":"y","version":"1.2.3"}'),
+  );
+  // 대상이 아닌 위치의 version(중첩 객체·node_modules)은 가리지 않습니다.
+  assert.notEqual(
+    digest("manifest", '{"version":"1.0.0","x":{"version":"1.0.0"}}'),
+    digest("manifest", '{"version":"1.0.0","x":{"version":"2.0.0"}}'),
+  );
+  assert.notEqual(
+    digest("lock", lockOf("1.0.0", "1.0.0")),
+    digest("lock", lockOf("1.0.0", "1.0.1")),
+  );
+  for (const [kind, value] of [
+    ["manifest", '{"name":"x"}'],
+    ["manifest", '{"version":"1.0.0","version":"1.0.0"}'],
+    ["manifest", '{"version":"1.0.0","versio\\u006e":"1.0.0"}'],
+    ["manifest", '[{"version":"1.0.0"}]'],
+    ["manifest", '{"version":"1.0.0"'],
+    ["manifest", '{"version":"1.0.0"} {}'],
+    ["lock", '{"version":"1.0.0"}'],
+    [
+      "lock",
+      '{"version":"1.0.0","packages":{"":{"version":"1.0.0"}},"packages":{"":{"version":"1.0.0"}}}',
+    ],
+    ["lock", '{"version":"1.0.0","packages":{"":{"version":"1.0.0"},"":{"version":"1.0.0"}}}'],
+    ["lock", '{"version":"1.0.0","packages":[{"version":"1.0.0"}]}'],
+    // 독립 보안 리뷰 재현: 대상 경로의 비문자열 값도 개수에 포함하고 prefix 키 중복도 거부합니다.
+    ["manifest", '{"version":{},"name":"x","version":"1.0.0"}'],
+    ["manifest", '{"version":"1.0.0","name":"x","version":[]}'],
+    ["manifest", '{"version":null,"version":"1.0.0"}'],
+    [
+      "lock",
+      '{"version":"1.0.0","packages":{"":{"version":"1.0.0"},"node_modules/a":{"version":"1.0.0"}},"packages":{}}',
+    ],
+    ["lock", '{"version":"1.0.0","packages":{"":{"version":"1.0.0"},"":{}}}'],
+    ["lock", '{"version":"1.0.0","packages":{"":{"version":{},"version":"1.0.0"}}}'],
+    ["manifest", '{"version":"1234567890.0.0"}'],
+    ["unknown", '{"version":"1.0.0"}'],
+  ])
+    assert.equal(digest(kind, value), null, `${kind} ${value}`);
+  assert.equal(reviewedInputDigest("manifest", Buffer.from([0x7b, 0xff, 0x7d])), null);
+  assert.equal(reviewedInputDigest("manifest", '{"version":"1.0.0"}'), null);
+});
+test("release 버전: 이전 raw-bytes-v1 tag·digest로 되돌린 원장은 실패한다", () => {
+  for (const target of Object.values(realTargets)) {
+    const ledger = JSON.parse(repositoryFile(target.policyPath));
+    const input = target.input();
+    assert.deepEqual(BINDING_INPUT_TAGS, {
+      manifest: ledger.manifestBinding.input,
+      lock: ledger.lockBinding.input,
+    });
+    const downgraded = structuredClone(ledger);
+    downgraded.manifestBinding.input = "package-json.raw-bytes-v1";
+    downgraded.manifestBinding.digest = fixtureHash(input.manifestBytes);
+    downgraded.lockBinding.input = "package-lock.raw-bytes-v1";
+    downgraded.lockBinding.digest = fixtureHash(input.lockBytes);
+    assert.throws(() => bindingVerify(input, downgraded), /DEPENDENCY_INPUT_BINDING_INVALID/);
   }
 });

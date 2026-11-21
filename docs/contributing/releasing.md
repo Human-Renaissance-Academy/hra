@@ -8,13 +8,13 @@
 
 ## 1. 이슈 → PR → 릴리스의 역할
 
-| 대상 | 형식 | 예 |
-| --- | --- | --- |
-| 이슈 제목 | 한글 요약, 종류/우선순위/분류는 라벨 | 카카오 로그인 실패 후 재시도 가능하게 처리 |
-| 일반 PR 제목 | `type(scope)!: 설명` | `fix(auth): 카카오 로그인 오류 처리` |
-| 일반 PR 본문 | 기존 네 `##` 섹션 | 관련 이슈 / 변경 내용 / 검증 결과 / 배포 영향과 리뷰 |
-| release-please PR | `chore(release): release X.Y.Z` + 생성형 본문 | `chore(release): release 0.1.1` |
-| 태그 | `vX.Y.Z` | `v0.1.1` |
+| 대상              | 형식                                          | 예                                                   |
+| ----------------- | --------------------------------------------- | ---------------------------------------------------- |
+| 이슈 제목         | 한글 요약, 종류/우선순위/분류는 라벨          | 카카오 로그인 실패 후 재시도 가능하게 처리           |
+| 일반 PR 제목      | `type(scope)!: 설명`                          | `fix(auth): 카카오 로그인 오류 처리`                 |
+| 일반 PR 본문      | 기존 네 `##` 섹션                             | 관련 이슈 / 변경 내용 / 검증 결과 / 배포 영향과 리뷰 |
+| release-please PR | `chore(release): release X.Y.Z` + 생성형 본문 | `chore(release): release 0.1.1`                      |
+| 태그              | `vX.Y.Z`                                      | `v0.1.1`                                             |
 
 이슈의 `P1/P2`는 **업무 우선순위**, `feat/fix/!`는 **릴리스 영향**이다. P1 버그가 반드시 major 릴리스인 것은 아니다. 이슈 제목을 전부 `feat:`/`fix:`로 바꾸지 않는다.
 
@@ -22,14 +22,14 @@
 
 버전 `X.Y.Z`는 차례로 major·minor·patch이다. 보통 호환성을 깨는 변경, 기능 추가, 수정의 크기를 구분한다. 현재 0.x 단계에서는 아래 저장소 설정에 따라 증가 폭을 정한다. 업무의 긴급도와는 별개다.
 
-| type | 의미 | 기본 릴리스 영향 |
-| --- | --- | --- |
-| `feat` | 새 기능 | minor |
-| `fix` | 버그 수정 | patch |
-| `perf` | 성능 개선 | patch |
-| `revert` | 배포된 동작 되돌림 | patch (영향은 별도 검토) |
-| `docs`, `style`, `refactor`, `test`, `build`, `ci`, `chore` | 문서/구조/테스트/도구 변경 | 단독 비호환 변경이 없으면 릴리스하지 않음 |
-| 모든 type의 `!` 또는 `BREAKING CHANGE:` | 사용자/운영 계약의 호환성 변경 | 0.x에서는 minor, 1.x 이상에서는 major |
+| type                                                        | 의미                           | 기본 릴리스 영향                          |
+| ----------------------------------------------------------- | ------------------------------ | ----------------------------------------- |
+| `feat`                                                      | 새 기능                        | minor                                     |
+| `fix`                                                       | 버그 수정                      | patch                                     |
+| `perf`                                                      | 성능 개선                      | patch                                     |
+| `revert`                                                    | 배포된 동작 되돌림             | patch (영향은 별도 검토)                  |
+| `docs`, `style`, `refactor`, `test`, `build`, `ci`, `chore` | 문서/구조/테스트/도구 변경     | 단독 비호환 변경이 없으면 릴리스하지 않음 |
+| 모든 type의 `!` 또는 `BREAKING CHANGE:`                     | 사용자/운영 계약의 호환성 변경 | 0.x에서는 minor, 1.x 이상에서는 major     |
 
 scope는 `auth`, `academic`, `attendance`, `upload`, `ci`, `release`처럼 변경 대상을 짧게 쓴다. scope 없는 `fix: ...`도 허용한다. 설명은 한글을 우선하며, 영문 타입만 소문자로 고정한다. 형식이 맞는다고 변경 내용의 의미까지 자동 검증되는 것은 아니므로 리뷰가 필요하다.
 
@@ -87,6 +87,8 @@ scope는 `auth`, `academic`, `attendance`, `upload`, `ci`, `release`처럼 변�
 
 `autorelease: pending`, `autorelease: tagged`는 **릴리스 PR 전용 예약 라벨**이며 일반 이슈 상태 라벨은 계속 만들지 않는다. 사람 PR에 봇 라벨만 붙이거나 `chore(release)`라고 쓰는 것으로 예외를 얻을 수 없다. 생성형 본문 예외가 코드/권한/CI 면제는 아니다.
 
+**릴리스 PR과 의존성 검사.** 릴리스 PR도 필수 `추적 소스 · 도달 가능한 이력 · dependency 검토`를 그대로 통과해야 한다. 의존성 원장(`security/dependency-triage.json`, `security/mobile-dependency-triage.json`)의 binding은 package.json/lock raw bytes를 해시하되 release-please가 바꾸는 제품 버전 경로(각 package.json `$.version`, 각 lock `$.version`·`$.packages[""].version`)의 안정형 `X.Y.Z` 값만 고정 자리표시자로 가린다. 따라서 이 여섯 필드만 바뀐 릴리스 PR은 원장을 고치지 않고도 검사를 통과하고, 병합 뒤 main도 계속 통과한다. 의존성·범위·resolved·integrity·이름·scripts·중첩 패키지 버전·공백 등 다른 byte가 하나라도 바뀌거나 버전이 prerelease·중복 key처럼 예상 밖이면 기존처럼 실패하며, 그때는 릴리스 PR이 아니라 일반 의존성 검토 PR로 처리한다. 2026-11-21 #600이 raw-byte binding 때문에 통과할 수 없던 문제를 이렇게 고쳤다(설계: [저장소 secret·의존성 게이트](../developer/repository-security-gates.md#v3-입력-binding과-qualified-reporting-identity)).
+
 Dependabot도 정확한 작성자와 `dependabot/` 브랜치를 확인하며 **제목은 검사**한다. 향후 Dependabot 도입 시 Conventional Commit 제목을 만들도록 `commit-message.prefix`를 `chore` 등으로 설정한다. 모든 봇 PR을 통째로 건너뛰지 않는다.
 
 본문 규칙의 정본은 `scripts/_lib/process-format.mjs`; 제목·생성형 PR·버전 정책 정본은 `scripts/_lib/release-policy.mjs`다. 제목 검사는 trusted base SHA 코드를 사용하고 변경된 정책 자체는 별도의 읽기 전용 job에서 테스트한다. Node 기본 테스트라 문서/정책 검사에 npm install·운영 비밀값이 필요하지 않다.
@@ -118,7 +120,6 @@ node scripts/check-release-config.mjs
 - [Manifest와 bootstrap](https://github.com/googleapis/release-please/blob/main/docs/manifest-releaser.md)
 - [워크플로가 다른 워크플로를 실행할 때의 토큰 동작](https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/trigger-a-workflow)
 - [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/)
-
 
 ## Android 릴리스 노트와 빌드 기록
 
