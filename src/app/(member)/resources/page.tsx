@@ -35,8 +35,15 @@ export default async function ResourcesPage({ searchParams }: Props) {
 
   const userRole = overview.role;
   const isAdmin = userRole === "ADMIN";
-  const { cohorts: cohortRows, userCohortId, logs, weeklyTexts: allWeeklyTexts,
-    classMaterials: allClassMaterials, guidebooks: allGuidebooks, templates: allTemplates } = overview;
+  const {
+    cohorts: cohortRows,
+    userCohortId,
+    logs,
+    weeklyTexts: allWeeklyTexts,
+    classMaterials: allClassMaterials,
+    guidebooks: allGuidebooks,
+    templates: allTemplates,
+  } = overview;
 
   // 모든 자료를 ResourceItem 배열로 통합
   const items: ResourceItem[] = [
@@ -59,7 +66,10 @@ export default async function ResourcesPage({ searchParams }: Props) {
       cohortId: text.cohortId,
       textType: text.textType ?? null,
       href: text.hasBody ? `/resources/weekly-texts/${text.id}` : undefined,
-      downloadUrl: !text.hasBody && text.hasFile ? `/api/resources/weekly-texts/${text.id}/download` : undefined,
+      downloadUrl:
+        !text.hasBody && text.hasFile
+          ? `/api/resources/weekly-texts/${text.id}/download`
+          : undefined,
     })),
     ...allClassMaterials.map((material) => ({
       id: `cm-${material.id}`,
@@ -89,9 +99,10 @@ export default async function ResourcesPage({ searchParams }: Props) {
       category: "보고서 양식" as const,
       date: tmpl.createdAt,
       cohortId: null,
-      href: tmpl.category === "guide"
-        ? `/member/guides/${tmpl.slug}`
-        : `/member/templates/${tmpl.slug}`,
+      href:
+        tmpl.category === "guide"
+          ? `/member/guides/${tmpl.slug}`
+          : `/member/templates/${tmpl.slug}`,
     })),
   ];
 
@@ -103,7 +114,9 @@ export default async function ResourcesPage({ searchParams }: Props) {
       <section className="mb-8 space-y-3 text-left sm:mb-14 sm:space-y-4">
         <div className="mb-2 flex items-center gap-3 sm:mb-4 sm:gap-4">
           <div className="h-9 w-1 rounded-full bg-[#2563EB] sm:h-12" />
-          <h1 className="text-2xl font-bold text-[#1a1a1a] sm:text-3xl md:text-4xl lg:text-5xl">자료실</h1>
+          <h1 className="text-2xl font-bold text-[#1a1a1a] sm:text-3xl md:text-4xl lg:text-5xl">
+            자료실
+          </h1>
         </div>
         <p className="max-w-2xl text-sm leading-6 text-[#666666] md:text-base">
           가이드북, 주차별 텍스트, 수업일지 등 HRA 교육 자료를 확인하세요.
@@ -115,19 +128,22 @@ export default async function ResourcesPage({ searchParams }: Props) {
               href="/admin/resources/new"
               className="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium rounded-md bg-[#1a1a1a] text-white hover:bg-[#333333] transition-colors"
             >
-              <Plus className="size-4" />수업일지 추가
+              <Plus className="size-4" />
+              수업일지 추가
             </Link>
             <Link
               href="/admin/resources/weekly-texts/new"
               className="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium rounded-md bg-[#1a1a1a] text-white hover:bg-[#333333] transition-colors"
             >
-              <Plus className="size-4" />주차별 텍스트 추가
+              <Plus className="size-4" />
+              주차별 텍스트 추가
             </Link>
             <Link
               href="/admin/resources/guidebooks/new"
               className="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium rounded-md bg-[#1a1a1a] text-white hover:bg-[#333333] transition-colors"
             >
-              <Plus className="size-4" />가이드북 추가
+              <Plus className="size-4" />
+              가이드북 추가
             </Link>
           </div>
         )}
