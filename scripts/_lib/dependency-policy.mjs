@@ -358,6 +358,99 @@ const hasFields = (value, fields) =>
   fields.every((field) => Object.hasOwn(value, field));
 const codeUnitOrder = (a, b) => (a < b ? -1 : a > b ? 1 : 0);
 const sha256 = (bytes) => createHash("sha256").update(bytes).digest("hex");
+// release-please가 갱신하는 제품 버전 JSON 경로만 binding에서 가립니다(release-policy.mjs의
+// RELEASE_EXTRA_FILES와 루트 동등 경로). 중첩 packages["node_modules/x"].version 등은 가리지 않습니다.
+const RELEASE_VERSION_PATHS = {
+  manifest: [["version"]],
+  lock: [["version"], ["packages", "", "version"]],
+};
+// 안정형 X.Y.Z raw JSON 문자열만 허용합니다(escape·prerelease·build metadata 불가).
+const RELEASE_VERSION_TOKEN = /^"(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)"$/;
+// 버전 문자열이 될 수 없는 고정 자리표시자입니다. 바꾸면 binding input tag도 함께 올립니다.
+const RELEASE_VERSION_PLACEHOLDER = '"<hra-release-version>"';
+export const BINDING_INPUT_TAGS = {
+  manifest: "package-json.release-version-masked-v1",
+  lock: "package-lock.release-version-masked-v1",
+};
+/**
+ * binding digest 입력: raw bytes에서 위 경로의 버전 문자열 토큰 span만 자리표시자로 바꾸고
+ * 나머지 bytes(공백·줄바꿈·키 순서·다른 모든 값)는 그대로 둡니다. canonical-JSON이 아닙니다.
+ * - 각 경로는 정확히 한 번(decode한 key 기준, 중복 key 포함) 나타나야 하고 값은 안정형 X.Y.Z여야 합니다.
+ * - 유효하지 않은 UTF-8/JSON, 구조 이상, 깊은 중첩 등 어떤 예외도 null(=binding 실패)입니다.
+ */
+function releaseVersionMaskedBytes(kind, bytes) {
+  const paths = RELEASE_VERSION_PATHS[kind];
+  if (!paths || !Buffer.isBuffer(bytes)) return null;
+  try {
+    const text = bytes.toString("utf8");
+    // 손실 없는 UTF-8 왕복과 JSON 유효성을 먼저 확인하므로 아래 scanner는 유효한 JSON만 읽습니다.
+    if (!Buffer.from(text, "utf8").equals(bytes)) return null;
+    JSON.parse(text);
+    const keys = paths.map((path) => JSON.stringify(path));
+    const prefixes = new Set(
+      paths.flatMap((path) => path.map((_, n) => JSON.stringify(path.slice(0, n)))),
+    );
+    const spans = new Map(keys.map((key) => [key, []]));
+    let i = 0;
+    const space = () => {
+      while (i < text.length && " \t\n\r".includes(text[i])) i++;
+    };
+    const string = () => {
+      const start = i++;
+      while (text[i] !== '"') i += text[i] === "\\" ? 2 : 1;
+      return [start, ++i];
+    };
+    // path가 null이면 대상 경로 밖이므로 위치만 건너뜁니다. 배열 내부는 대상이 아닙니다.
+    const value = (path) => {
+      space();
+      const start = i;
+      const key = path && JSON.stringify(path);
+      if (text[i] === "{" || text[i] === "[") {
+        const close = text[i] === "{" ? "}" : "]";
+        const descend = close === "}" && path && prefixes.has(key);
+        i++;
+        space();
+        if (text[i] === close) return void i++;
+        for (;;) {
+          space();
+          let child = null;
+          if (close === "}") {
+            const [keyStart, keyEnd] = string();
+            if (descend) child = [...path, JSON.parse(text.slice(keyStart, keyEnd))];
+            space();
+            i++; // ':'
+          }
+          value(child);
+          space();
+          if (text[i++] === close) return;
+        }
+      }
+      if (text[i] === '"') string();
+      else while (i < text.length && !",}] \t\n\r".includes(text[i])) i++;
+      if (key && spans.has(key)) spans.get(key).push([start, i]);
+    };
+    value([]);
+    space();
+    if (i !== text.length) return null;
+    const found = [];
+    for (const list of spans.values()) {
+      if (list.length !== 1 || !RELEASE_VERSION_TOKEN.test(text.slice(...list[0]))) return null;
+      found.push(list[0]);
+    }
+    // 뒤쪽 span부터 바꿔 앞쪽 offset을 보존합니다.
+    let masked = text;
+    for (const [start, end] of found.sort((a, b) => b[0] - a[0]))
+      masked = masked.slice(0, start) + RELEASE_VERSION_PLACEHOLDER + masked.slice(end);
+    return Buffer.from(masked, "utf8");
+  } catch {
+    return null;
+  }
+}
+/** 원장 binding과 비교할 SHA256입니다. 구조가 예상과 다르면 null이며 호출자는 실패로 처리합니다. */
+export function reviewedInputDigest(kind, bytes) {
+  const masked = releaseVersionMaskedBytes(kind, bytes);
+  return masked ? sha256(masked) : null;
+}
 /** 검토된 전체 manifest/lock bytes만 authoritative 입력으로 해석합니다. */
 function reviewedLock(input, policy) {
   if (
@@ -379,17 +472,17 @@ function reviewedLock(input, policy) {
     throw new Error("DEPENDENCY_TRIAGE_CHANGED");
   if (!hasFields(input, ["manifestBytes", "lockBytes"]))
     throw new Error("DEPENDENCY_INPUT_BINDING_INVALID");
-  for (const [field, tag, binding] of [
-    ["manifestBytes", "package-json.raw-bytes-v1", policy.manifestBinding],
-    ["lockBytes", "package-lock.raw-bytes-v1", policy.lockBinding],
+  for (const [field, kind, binding] of [
+    ["manifestBytes", "manifest", policy.manifestBinding],
+    ["lockBytes", "lock", policy.lockBinding],
   ]) {
     if (
       !Buffer.isBuffer(input[field]) ||
       !hasFields(binding, ["algorithm", "input", "digest"]) ||
       binding.algorithm !== "sha256" ||
-      binding.input !== tag ||
+      binding.input !== BINDING_INPUT_TAGS[kind] ||
       !/^[a-f0-9]{64}$/.test(binding.digest) ||
-      sha256(input[field]) !== binding.digest
+      reviewedInputDigest(kind, input[field]) !== binding.digest
     )
       throw new Error("DEPENDENCY_INPUT_BINDING_INVALID");
   }
@@ -667,9 +760,14 @@ export function regenerateDependencyPolicy(
   )
     refuse("DEPENDENCY_REGENERATE_INPUT_INVALID");
   // binding 자동 갱신은 하지 않습니다. 선례도 binding을 바꾸지 않았고 lock 변경은 일반 의존성 검토 대상입니다.
+  // 게이트와 같은 digest(제품 버전 경로만 가린 raw bytes)를 쓰며 구조 이상(null)은 불일치로 거부합니다.
+  const manifestDigest = reviewedInputDigest("manifest", input.manifestBytes);
+  const lockDigest = reviewedInputDigest("lock", input.lockBytes);
   if (
-    policy.manifestBinding?.digest !== sha256(input.manifestBytes) ||
-    policy.lockBinding?.digest !== sha256(input.lockBytes)
+    !manifestDigest ||
+    !lockDigest ||
+    policy.manifestBinding?.digest !== manifestDigest ||
+    policy.lockBinding?.digest !== lockDigest
   )
     refuse("DEPENDENCY_REGENERATE_BINDING_CHANGED");
   let lock;
