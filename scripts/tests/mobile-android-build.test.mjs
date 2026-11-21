@@ -95,8 +95,14 @@ describe("Android 빌드 실행 계약", () => {
     assert.match(job, /\$NF == "xml\/network_security_config"/);
     assert.match(job, /grep -c \.\)" -ne 1 \]/);
     // 평문 차단(false) 존재와 평문 허용(true) 부재를 boolean·문자열 형식 모두에서 확인합니다.
-    assert.match(job, /grep -Eq 'cleartextTrafficPermitted\(\\\(\[\^\)\]\*\\\)\)\?="\?false' nsc\.txt/);
-    assert.match(job, /grep -Eq 'cleartextTrafficPermitted\(\\\(\[\^\)\]\*\\\)\)\?="\?true' nsc\.txt/);
+    assert.match(
+      job,
+      /grep -Eq 'cleartextTrafficPermitted\(\\\(\[\^\)\]\*\\\)\)\?="\?false' nsc\.txt/,
+    );
+    assert.match(
+      job,
+      /grep -Eq 'cleartextTrafficPermitted\(\\\(\[\^\)\]\*\\\)\)\?="\?true' nsc\.txt/,
+    );
     // manifest가 같은 리소스 id를 참조하고 usesCleartextTraffic·debuggable이 꺼져 있어야 합니다.
     assert.match(job, /networkSecurityConfig\\\(0x\[0-9a-f\]\+\\\)=@\$\{nsc_id\}/);
     assert.match(job, /usesCleartextTraffic\\\(\[\^\)\]\*\\\)=\(true\|"true"\)/);
