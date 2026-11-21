@@ -159,7 +159,22 @@ jobs:
           apk=android/app/build/outputs/apk/release/app-release.apk
           test -f "$apk"
           aapt2="$ANDROID_SDK_ROOT/build-tools/36.0.0/aapt2"
-          "$aapt2" dump xmltree "$apk" --file res/xml/network_security_config.xml | grep -q 'cleartextTrafficPermitted.*=false'
+          # release는 AGP 리소스 경로 축약으로 res/xml/... 원래 경로가 바뀌므로(#573 첫 실행 실패),
+          # 리소스 표에서 xml/network_security_config의 실제 파일 경로를 찾아 검사합니다.
+          # 경로가 없거나 여러 개(debug 평문 허용 리소스 혼입)이면 실패합니다.
+          "$aapt2" dump resources "$apk" > resources.txt
+          nsc_paths=$(awk '/resource 0x/{found = ($NF == "xml/network_security_config"); next} found {for (i = 1; i < NF; i++) if ($i == "(file)") print $(i + 1)}' resources.txt)
+          if [ "$(printf '%s\n' "$nsc_paths" | grep -c .)" -ne 1 ]; then
+            echo "network_security_config 리소스 경로가 정확히 하나가 아닙니다: ${nsc_paths:-없음}"
+            grep -A3 'network_security_config' resources.txt || true
+            exit 1
+          fi
+          "$aapt2" dump xmltree "$apk" --file "$nsc_paths" | grep -q 'cleartextTrafficPermitted.*=false'
+          if "$aapt2" dump xmltree "$apk" --file "$nsc_paths" | grep -q 'cleartextTrafficPermitted.*=true'; then
+            echo 'release APK가 평문 HTTP를 허용합니다.'
+            exit 1
+          fi
+          "$aapt2" dump xmltree "$apk" --file AndroidManifest.xml | grep -q 'networkSecurityConfig'
           if "$aapt2" dump xmltree "$apk" --file AndroidManifest.xml | grep -q 'debuggable.*=true'; then
             echo 'release APK가 debuggable입니다.'
             exit 1
