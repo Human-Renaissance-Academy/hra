@@ -39,7 +39,7 @@ scope는 `auth`, `academic`, `attendance`, `upload`, `ci`, `release`처럼 변�
 
 ## 3. 최초 도입과 버전 정본
 
-**Manifest(매니페스트)**는 패키지별 기준 버전을 기록하는 파일이다. **bootstrap-sha**는 최초 도입 시 과거 이력을 어디까지 이미 처리한 것으로 볼지 정하는 커밋 ID다. 기준 설정은 `release-please-config.json`과 `.release-please-manifest.json`에 있다.
+**Manifest(매니페스트)**는 패키지별 기준 버전을 기록하는 파일이다. **bootstrap-sha**는 최초 도입 시 과거 이력을 어디까지 이미 처리한 것으로 볼지 정하는 커밋 ID다. 기준 설정은 `release-please-config.json`과 `.release-please-manifest.json`에 있다. 단일 패키지를 통합 release PR(`release-please--branches--main`)로 운영하므로 `package-name`은 빈 문자열로 둔다. 비워 두지 않으면 release-please 17.3.0이 병합된 release PR의 component(없음)와 `package.json` 이름(`hra-website`)을 비교해 GitHub Release와 태그 생성을 건너뛴다(v0.2.0 첫 병합에서 확인). 태그는 `include-component-in-tag: false`로 계속 `vX.Y.Z`다.
 
 - 현재 package 버전 **0.1.0**을 `.release-please-manifest.json`의 기준으로 사용한다. 이미 공개한 릴리스가 있다는 뜻이 아니다.
 - 도입 직전 main `b6b5f7d1608d14e0f647b0929211ceec5db855b2`을 `bootstrap-sha`로 지정했다. 이 커밋까지의 과거 변경 이력은 재수집하지 않는다.

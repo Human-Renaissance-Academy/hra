@@ -169,6 +169,13 @@ export function validateReleaseFiles({
   if (root?.["release-type"] !== "node" || root?.["changelog-path"] !== "CHANGELOG.md") {
     errors.push("Node 전략과 기존 CHANGELOG.md를 사용해야 합니다.");
   }
+  // 단일 패키지 + 통합(Merge) release PR은 브랜치에 component가 없다. package-name이 비어 있지 않으면
+  // release-please가 병합된 release PR의 component(undefined)와 package.json name을 비교해 Release·태그 생성을 건너뛴다.
+  if (root?.["package-name"] !== "") {
+    errors.push(
+      "단일 패키지 release PR의 Release·태그 생성을 위해 package-name은 빈 문자열이어야 합니다.",
+    );
+  }
   if (
     root?.["pull-request-title-pattern"] !== RELEASE_TITLE_PATTERN ||
     config?.["group-pull-request-title-pattern"] !== RELEASE_TITLE_PATTERN ||

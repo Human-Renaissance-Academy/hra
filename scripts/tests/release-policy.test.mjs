@@ -388,6 +388,12 @@ const configFailures = {
   "component 태그": (f) => {
     f.config["include-component-in-tag"] = true;
   },
+  "package-name 누락": (f) => {
+    delete f.config.packages["."]["package-name"];
+  },
+  "package-name 지정": (f) => {
+    f.config.packages["."]["package-name"] = "hra-website";
+  },
   "분할 release PR": (f) => {
     f.config["separate-pull-requests"] = true;
   },
