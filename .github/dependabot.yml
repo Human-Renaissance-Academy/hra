@@ -93,3 +93,15 @@ updates:
       - dependency-name: react-native-safe-area-context
         update-types:
           - version-update:semver-minor
+      # Expo SDK 58(bundledNativeModules)은 react·react-dom을 19.3.0으로 정확히 고정해 expo-doctor가
+      # 다른 patch를 거부한다(#588). 단독 patch 제안은 병합할 수 없으므로 받지 않고, Expo SDK 업그레이드 때
+      # SDK가 요구하는 버전으로 함께 올린다. ignore는 security update PR에도 적용될 수 있으나, 권고 자체는
+      # Dependabot alerts와 모바일 원장 live audit(verify:dependencies)이 계속 검출하므로 그때 SDK 호환
+      # 버전을 수동으로 검토한다. major·minor 제안은 그대로 받는다. expo-sdk 그룹 patch가 react patch를
+      # 요구하면(bundledNativeModules 변경) 그 그룹 PR에서 react·react-dom을 수동으로 함께 올린다.
+      - dependency-name: react
+        update-types:
+          - version-update:semver-patch
+      - dependency-name: react-dom
+        update-types:
+          - version-update:semver-patch
