@@ -1,6 +1,6 @@
 # HRA Web → Android → iOS 플랫폼 전환 로드맵
 
-> **동결 안내(2026-11-19, #491):** 모바일 앱과 API v1은 [동결 결정](decisions/2026-11-19-mobile-api-freeze.md)에 따라 보존·보안 패치·의존성 갱신만 한다. 이 문서의 Android/iOS 출시, API 확대, `apps/web` 이동·monorepo 확장 항목은 **현재 작업 목표가 아니며** 재개 결정 전에는 시작하지 않는다. 아래 내용은 이력과 근거로 보존한다. 현재 우선순위는 [#300](https://github.com/Human-Renaissance-Academy/hra-website/issues/300)과 Web Production 우선 원칙을 따른다.
+> **상태 안내(2026-11-20, #576):** 2026-11-19 [동결 결정](decisions/2026-11-19-mobile-api-freeze.md)(#491)은 [Android Google Play 출시 재개 결정](decisions/2026-11-20-android-play-release-resume.md)이 **Android 출시와 그에 필요한 API v1·모바일 세션 변경에 한해** 대체했다(실행 순서·게이트 #577~#583). 이 문서의 iOS 출시, 출시 범위를 넘는 API 확대, `apps/web` 이동·monorepo 확장 항목은 **현재 작업 목표가 아니며** 별도 결정 전에는 시작하지 않는다. 아래 내용은 이력과 근거로 보존한다. 현재 우선순위는 [#300](https://github.com/Human-Renaissance-Academy/hra-website/issues/300)과 Web Production 우선 원칙을 따른다.
 >
 > 이 문서는 출시일을 약속하지 않는다. 구조 개편의 의존 순서와 완료 조건을 관리한다. 전체 추적 이슈는 #277이다.
 

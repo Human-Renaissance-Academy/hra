@@ -2,7 +2,7 @@
 
 이 문서는 HRA에서 **무엇을 어디서 바꾸고, 어떻게 확인한 뒤 제출하는지** 찾는 안내서입니다. 프로그래밍 전공 지식 없이도 작은 작업부터 따라갈 수 있도록 현재 코드 구조와 운영 작업을 구분했습니다.
 
-이 가이드는 현재 운영 대상인 Web(루트 Next.js 앱)을 중심으로 합니다. 모바일(`apps/mobile`)과 API v1은 [동결](decisions/2026-11-19-mobile-api-freeze.md) 상태입니다.
+이 가이드는 현재 운영 대상인 Web(루트 Next.js 앱)을 중심으로 합니다. 모바일(`apps/mobile`)과 API v1은 2026-11-19 [동결](decisions/2026-11-19-mobile-api-freeze.md)(#491)을 [2026-11-20 Android 출시 재개 결정](decisions/2026-11-20-android-play-release-resume.md)(#576)이 Android Google Play 출시와 그에 필요한 API v1·모바일 세션 변경에 한해 대체했습니다. iOS·Push·무인 EAS CD·monorepo `apps/web` 이동은 시작하지 않았습니다.
 
 처음 실행한다면 [사전 준비](getting-started/prerequisites.md) → [프로젝트 설정](getting-started/clone-and-setup.md) → [첫 실행](getting-started/first-run.md) 순서로 읽습니다. 용어가 낯설면 [기초 용어집](getting-started/glossary.md)을 참고합니다.
 

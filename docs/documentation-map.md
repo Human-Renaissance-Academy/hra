@@ -96,8 +96,9 @@ G1은 첫 학사 기능 묶음으로, 학생·수강 이력, 과제 대상, 개�
 | 문서 | 목적 |
 | --- | --- |
 | [플랫폼 아키텍처](developer/platform-architecture.md) | 웹·모바일이 같은 기능과 권한 정책을 사용하는 구조 |
-| [모바일·API v1 동결 결정](decisions/2026-11-19-mobile-api-freeze.md) | #491. 보존·보안 패치만 하는 현재 정책 |
-| [플랫폼 전환 로드맵](PLATFORM-ROADMAP.md) | (동결, 재개 시 참고) 구조를 바꾸는 순서의 과거 계획 |
+| [Android Google Play 출시 재개 결정](decisions/2026-11-20-android-play-release-resume.md) | #576. 동결(#491)을 Android 출시와 필요한 API 변경에 한해 대체한 현재 정책 |
+| [모바일·API v1 동결 결정](decisions/2026-11-19-mobile-api-freeze.md) | #491. 2026-11-19 당시 결정 기록(Android 출시 범위는 2026-11-20 결정으로 대체됨) |
+| [플랫폼 전환 로드맵](PLATFORM-ROADMAP.md) | (재개 시의 참고 기록이며 현재 계획이 아님) 구조를 바꾸는 순서의 과거 계획 |
 | [공용 API v1 계약과 범위](developer/api-v1.md) | OpenAPI 계약 기반 공용 HTTP 엔드포인트와 제공 범위 |
 | [모바일 앱 개발 안내](developer/mobile-app.md) | React Native, Expo 모바일 앱 구조, 인증, 파일 전송, 빌드 및 검증 |
 | [모바일 인증 HTTP 경계](developer/mobile-auth-routes.md) | 모바일 로그인, 갱신, 로그아웃 엔드포인트 및 요청 제한 정책 |

@@ -100,7 +100,7 @@ APK: `android/app/build/outputs/apk/debug/app-debug.apk`, 약 235MB, application
 
 - API 주소는 운영 HTTPS(`https://hra-website-theta.vercel.app`)로 고정되며 release는 평문 HTTP를 거부합니다.
 - arm64-v8a만 포함합니다(대부분의 실제 기기). x86 에뮬레이터에서는 설치되지 않습니다.
-- 서명은 Expo 템플릿 기본 **공개 debug keystore**입니다. 누구나 같은 키·패키지 ID로 서명한 APK를 "업데이트"로 설치해 앱 데이터(저장된 세션 토큰 포함)에 접근할 수 있으므로 스토어 업로드·외부 배포·장기 사용에 쓰지 않습니다. 실제 출시는 별도 배포 키와 재개 결정이 필요합니다.
+- 서명은 Expo 템플릿 기본 **공개 debug keystore**입니다. 누구나 같은 키·패키지 ID로 서명한 APK를 "업데이트"로 설치해 앱 데이터(저장된 세션 토큰 포함)에 접근할 수 있으므로 스토어 업로드·외부 배포·장기 사용에 쓰지 않습니다. 실제 출시는 #577 업로드 키·#578 서명 AAB 경로와 별도 제출 승인으로 진행합니다.
 - applicationId는 아직 placeholder(`com.hra.mobile`)입니다. Play 패키지 ID는 이후 변경할 수 없으므로 출시 전에 소유자가 확정합니다.
 - 운영 비밀값·`EXPO_TOKEN`을 사용하지 않습니다. 보호 파일 다운로드·제출 흐름은 출시 전 독립 보안 리뷰 대상입니다.
 

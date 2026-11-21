@@ -107,7 +107,7 @@ GitHub 저장소 이름은 `hra`(#575)입니다. 루트 패키지 이름 `hra-we
 | `docs/` | 사용법, 개발 절차, 정책·설계 | 코드 변경과 함께 관련 안내 갱신 |
 | `content/member/` | 보고서 양식·가이드의 내장 기본본 | DB에 해당 항목이 없을 때의 기본 내용 |
 
-`scripts/`는 `src/` 안이 아니라 **저장소 최상위**에 있습니다. `apps/mobile/`은 루트 의존성과 격리된 독립 Expo 프로젝트이며, `apps/web` 전환·monorepo 확대는 동결 결정으로 시작하지 않으며, [플랫폼 아키텍처](docs/developer/platform-architecture.md)는 조건부 장기 목표입니다. 신규 코드는 비용이 낮은 범위에서 해당 문서의 서비스/저장소 경계 규칙을 따릅니다.
+`scripts/`는 `src/` 안이 아니라 **저장소 최상위**에 있습니다. `apps/mobile/`은 루트 의존성과 격리된 독립 Expo 프로젝트이며, `apps/web` 전환·monorepo 확대는 #576 결정에서도 시작하지 않으며, [플랫폼 아키텍처](docs/developer/platform-architecture.md)는 조건부 장기 목표입니다. 신규 코드는 비용이 낮은 범위에서 해당 문서의 서비스/저장소 경계 규칙을 따릅니다.
 
 ## 6. 데이터와 권한을 다룰 때
 
