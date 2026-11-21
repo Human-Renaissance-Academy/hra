@@ -9,6 +9,15 @@ import config from '../app.config';
 
 const blocked = config.android?.blockedPermissions ?? [];
 
+test('Android와 iOS는 승인된 공통 식별자를 기본값으로 사용한다', () => {
+  expect(config.android?.package).toBe(
+    process.env.HRA_ANDROID_APPLICATION_ID?.trim() || 'com.hra.mobile',
+  );
+  expect(config.ios?.bundleIdentifier).toBe(
+    process.env.HRA_IOS_BUNDLE_IDENTIFIER?.trim() || 'com.hra.mobile',
+  );
+});
+
 test('쓰지 않는 민감 권한(오버레이·생체 인증·외부 저장소)은 모두 차단 목록에 있다', () => {
   // Given: app.config.ts의 Android 설정
   // Then: 앱이 사용하지 않는 권한이 병합 매니페스트에서 제거되도록 차단된다.

@@ -271,10 +271,10 @@ React Native와 Expo의 기본 fetch 런타임 및 `File.upload`는 네이티브
 모바일 앱을 실제 사용자에게 배포하기 전에 프로젝트 소유자가 반드시 결정하고 조치해야 하는 항목들입니다.
 
 1. **Android 패키지 식별자 (Package Name) 확정**:
-   - 현재 `app.config.ts`에는 임시 자리표시자인 `com.hra.mobile`이 지정되어 있습니다.
-   - Google Play Console에 앱을 처음 업로드한 이후에는 패키지 식별자를 변경할 수 없으므로, 조직의 공식 패키지 명칭(예: `org.hra.app` 등)을 확정해야 합니다.
+   - 2026-11-21 소유자가 `com.hra.mobile`을 승인했고 Play Console에서 사용 가능함을 확인했습니다. `app.config.ts`의 Android 기본값에 반영합니다.
+   - 실제 EAS 빌드에는 `HRA_ANDROID_APPLICATION_ID=com.hra.mobile`을 명시하고 GitHub 보호 환경과 EAS 원격 환경의 일치를 확인합니다. 출시 후 패키지 식별자를 계속 유지합니다.
 2. **iOS 번들 식별자 (Bundle Identifier) 확정**:
-   - Apple App Store 등록에 사용할 공식 번들 ID를 결정해야 합니다.
+   - Android와 동일한 `com.hra.mobile`을 향후 iOS 번들 ID로 사용하도록 확정했습니다. 실제 Apple 등록·서명과 사용 가능 여부는 iOS 출시 단계에서 확인합니다.
 3. **운영 HTTPS API 기본 주소 준비**:
    - 프로덕션 배포 시 `EXPO_PUBLIC_API_BASE_URL`에 주입할 유효한 보안 도메인을 설정해야 합니다.
 4. **버전 코드 (versionCode) 및 릴리스 서명 정책**:
