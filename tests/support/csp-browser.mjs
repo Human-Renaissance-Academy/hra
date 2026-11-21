@@ -578,11 +578,9 @@ export async function runCspBrowser({
     primaryError;
   const contexts = new Set(),
     cases = [];
-  const safeEnvironment = Object.fromEntries(
-    ["PATH", "HOME", "TMPDIR", "TMP", "TEMP", "SYSTEMROOT"]
-      .filter((key) => process.env[key])
-      .map((key) => [key, process.env[key]]),
-  );
+  // 환경변수 계약(scripts/_lib/environment-inventory.mjs)의 검토된 동적 접근 표현식과 같은 형태를 유지합니다.
+  // prettier-ignore
+  const safeEnvironment = Object.fromEntries(["PATH", "HOME", "TMPDIR", "TMP", "TEMP", "SYSTEMROOT"].filter(key => process.env[key]).map(key => [key, process.env[key]]));
   const abort = () => {
     void bounded(server?.kill(), 5000).catch(() => {
       record.closeErrors++;
