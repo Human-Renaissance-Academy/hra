@@ -99,13 +99,13 @@ export default async function ResourcesPage({ searchParams }: Props) {
   items.sort((a, b) => b.date.getTime() - a.date.getTime());
 
   return (
-    <div className="mx-auto max-w-7xl px-4 sm:px-6 py-12 sm:py-20 md:py-32">
-      <section className="mb-10 sm:mb-14 space-y-4 text-center sm:text-left">
-        <div className="flex items-center gap-4 mb-4 justify-center sm:justify-start">
-          <div className="w-1 h-12 bg-[#2563EB] rounded-full" />
-          <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-[#1a1a1a]">자료실</h1>
+    <div className="mx-auto max-w-7xl px-4 pt-6 pb-12 sm:px-6 sm:py-20 md:py-32">
+      <section className="mb-8 space-y-3 text-left sm:mb-14 sm:space-y-4">
+        <div className="mb-2 flex items-center gap-3 sm:mb-4 sm:gap-4">
+          <div className="h-9 w-1 rounded-full bg-[#2563EB] sm:h-12" />
+          <h1 className="text-2xl font-bold text-[#1a1a1a] sm:text-3xl md:text-4xl lg:text-5xl">자료실</h1>
         </div>
-        <p className="max-w-2xl text-sm text-[#666666] md:text-base mx-auto sm:mx-0">
+        <p className="max-w-2xl text-sm leading-6 text-[#666666] md:text-base">
           가이드북, 주차별 텍스트, 수업일지 등 HRA 교육 자료를 확인하세요.
         </p>
         {/* 관리자 전용 자료 추가 버튼 */}
