@@ -6,6 +6,7 @@ import {
   COMMIT_TYPES,
   RELEASE_BRANCH,
   RELEASE_FILES,
+  RELEASE_EXTRA_FILES,
   RELEASE_TITLE_PATTERN,
   validatePullRequestTitle,
   classifyPullRequest,
@@ -178,6 +179,12 @@ function fixture(version = "0.1.0") {
       readFileSync(new URL("../../release-please-config.json", import.meta.url), "utf8"),
     ),
     manifest: { ".": version },
+    mobilePackageJson: { name: "@hra/mobile", version, private: true },
+    mobileLockfile: {
+      name: "@hra/mobile",
+      version,
+      packages: { "": { name: "@hra/mobile", version } },
+    },
     packageJson: { name: "hra-website", version, private: true },
     lockfile: {
       name: "hra-website",
@@ -336,6 +343,27 @@ for (const version of ["0.1.0", "0.1.1", "0.2.0", "1.0.0", "10.20.30"]) {
     assert.deepEqual(validateReleaseFiles(fixture(version)), []));
 }
 const configFailures = {
+  "모바일 package 버전 불일치": (f) => {
+    f.mobilePackageJson.version = "0.0.0";
+  },
+  "모바일 lock 상위 버전 불일치": (f) => {
+    f.mobileLockfile.version = "0.0.0";
+  },
+  "모바일 lock 루트 버전 불일치": (f) => {
+    f.mobileLockfile.packages[""].version = "0.0.0";
+  },
+  "모바일 private 해제": (f) => {
+    f.mobilePackageJson.private = false;
+  },
+  "모바일 extra-files 누락": (f) => {
+    delete f.config.packages["."]["extra-files"];
+  },
+  "모바일 의존성까지 갱신하는 JSON 경로": (f) => {
+    f.config.packages["."]["extra-files"][1].jsonpath = "$..version";
+  },
+  "모바일 서명 설정을 릴리스에 추가": (f) => {
+    f.config.packages["."]["extra-files"].push("apps/mobile/app.config.ts");
+  },
   "private 해제": (f) => {
     f.packageJson.private = false;
   },
@@ -410,4 +438,12 @@ test("PR 메타데이터와 변경된 규칙의 테스트를 구분하고 봇 �
 });
 test("릴리스 제목 상수와 설정의 template 일치", () => {
   assert.equal(fixture().config.packages["."]["pull-request-title-pattern"], RELEASE_TITLE_PATTERN);
+});
+
+test("release-please의 모바일 버전 경로는 두 패키지 파일로 제한한다", () => {
+  assert.deepEqual(fixture().config.packages["."]["extra-files"], RELEASE_EXTRA_FILES);
+  const injected = [...files, { filename: "apps/mobile/app.config.ts", status: "modified" }];
+  const pr = releasePr();
+  pr.changed_files = injected.length;
+  assert.ok(classifyPullRequest(pr, { repository, files: injected }).errors.length > 0);
 });

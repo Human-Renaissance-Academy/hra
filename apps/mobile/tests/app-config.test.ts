@@ -6,6 +6,7 @@
  * debug 빌드의 개발 도구 오버레이는 debug 소스 세트 매니페스트가 따로 제공하므로 차단 목록과 무관합니다.
  */
 import config from '../app.config';
+import mobilePackage from '../package.json';
 
 const blocked = config.android?.blockedPermissions ?? [];
 
@@ -36,4 +37,8 @@ test('앱 동작에 필요한 INTERNET 권한은 차단하지 않는다', () => 
   // Given: 차단 목록
   // Then: 네트워크 권한을 실수로 제거하면 앱이 서버와 통신할 수 없으므로 포함하지 않는다.
   expect(blocked).not.toContain('android.permission.INTERNET');
+});
+
+test('앱 표시 버전은 release-please가 갱신하는 package 버전을 사용한다', () => {
+  expect(config.version).toBe(mobilePackage.version);
 });

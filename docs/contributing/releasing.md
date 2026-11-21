@@ -46,7 +46,9 @@ scope는 `auth`, `academic`, `attendance`, `upload`, `ci`, `release`처럼 변�
 - 기존 `CHANGELOG.md`는 그대로 보존하고 이후 버전 항목을 release-please가 추가한다. 과거 PR/커밋/태그를 재작성하지 않는다.
 - 다음 실질 변경이 `fix:`면 보통 0.1.1, `feat:`면 0.2.0을 제안한다. 설정 도입 `ci:`/문서 `docs:`만으로 첫 release PR이 안 생겨도 정상이다.
 - 첫 성공적인 release PR 이후 `bootstrap-sha`는 필요 없어져 별도 작은 PR에서 제거할 수 있다. `last-release-sha`로 매번 고정하지 않는다.
-- package.json, package-lock.json 상위 버전, lockfile `packages[""].version`, manifest `"."` 버전은 일치해야 한다. `node scripts/check-release-config.mjs`로 검사한다.
+- HRA 제품 버전은 웹·모바일에서 하나로 관리한다. 루트 package.json, package-lock.json 상위·`packages[""].version`, manifest `"."`, 모바일 `apps/mobile/package.json`과 lockfile 상위·`packages[""].version`을 release-please가 같은 버전으로 갱신한다.
+- 모바일 두 JSON 파일의 세 버전 경로만 `extra-files`로 갱신한다. 의존성 버전이나 서명·API 설정은 릴리스 자동 갱신 대상이 아니다. Expo 표시 버전은 모바일 package.json을 직접 읽으므로 하드코딩한 별도 버전이 없다. `node scripts/check-release-config.mjs`와 모바일 앱 설정 테스트로 일치를 확인한다.
+- Android `versionCode`는 제품 SemVer와 별개인 업로드 번호다. EAS `appVersionSource=remote`·production `autoIncrement=true`로 단조 증가시키며 release-please가 초기화하거나 덮어쓰지 않는다. iOS를 실제 출시할 때도 공통 제품 버전을 사용하되 플랫폼 빌드 번호는 별도로 관리한다.
 - 1.0.0 전환은 제품의 호환성 약속과 운영 준비를 검토한 뒤 별도 결정한다. 상시 `release-as`를 설정해 자동 증가를 망가뜨리지 않는다.
 
 ## 4. 릴리스 흐름
@@ -81,7 +83,7 @@ scope는 `auth`, `academic`, `attendance`, `upload`, `ci`, `release`처럼 변�
 - 신뢰된 작성자, 작업 브랜치와 병합 대상이 같은 저장소, main 대상
 - 정확한 `release-please--branches--main` 브랜치
 - `chore(release): release X.Y.Z` 제목과 `autorelease: pending` 라벨
-- 변경 파일 전체가 CHANGELOG.md, package.json, package-lock.json, .release-please-manifest.json 네 파일이며 삭제/이름 변경 없음
+- 변경 파일 전체가 CHANGELOG.md, package.json, package-lock.json, .release-please-manifest.json, apps/mobile/package.json, apps/mobile/package-lock.json 여섯 파일이며 삭제/이름 변경 없음
 
 `autorelease: pending`, `autorelease: tagged`는 **릴리스 PR 전용 예약 라벨**이며 일반 이슈 상태 라벨은 계속 만들지 않는다. 사람 PR에 봇 라벨만 붙이거나 `chore(release)`라고 쓰는 것으로 예외를 얻을 수 없다. 생성형 본문 예외가 코드/권한/CI 면제는 아니다.
 
@@ -117,3 +119,10 @@ node scripts/check-release-config.mjs
 - [워크플로가 다른 워크플로를 실행할 때의 토큰 동작](https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/trigger-a-workflow)
 - [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/)
 
+
+## Android 릴리스 노트와 빌드 기록
+
+- `CHANGELOG.md`는 웹·Android를 포함하는 통합 제품 변경 이력이다. 모바일 PR은 `feat(mobile): ...`, `fix(mobile): ...`처럼 영향과 구현 범위를 설명한다. release-please는 병합된 변경으로 버전·CHANGELOG·GitHub Release를 제안/생성한다. 자동 생성 내용은 실제 Android 기능 및 검증 결과와 대조한 뒤 릴리스 PR을 병합한다.
+- Google Play의 릴리스 노트는 테스터·사용자용 한국어 요약이다. 통합 CHANGELOG에서 **해당 Android 바이너리에 포함된 변경만** 골라 작성하고 `<ko-KR>` 블록으로 등록한다. GitHub Release나 릴리스 PR 병합이 Play 심사 제출·공개를 실행하지 않는다.
+- 배포 후보마다 제품 버전, versionCode, 소스 SHA, GitHub workflow run, EAS Build ID, 서명 확인, 검증 결과와 배포 트랙을 함께 기록한다. 생성된 바이너리의 버전을 나중에 바꾸지 않는다. 코드 변경 후 새 빌드가 필요하면 versionCode를 증가시킨다.
+- 2026-11-21 첫 내부 테스트 후보는 `0.1.0 (2)`, 소스 `4123ecd035536cb6402b50e074624c33936e2788`, EAS Build ID `4f7f9f18-a6dd-433a-9002-42bf7d6473e4`로 빌드 요청했다. 이 기록은 출시 완료를 의미하지 않으며 실제 성공·업로드·기기 검증 상태는 별도 확인한다.
