@@ -364,8 +364,9 @@ const RELEASE_VERSION_PATHS = {
   manifest: [["version"]],
   lock: [["version"], ["packages", "", "version"]],
 };
-// 안정형 X.Y.Z raw JSON 문자열만 허용합니다(escape·prerelease·build metadata 불가).
-const RELEASE_VERSION_TOKEN = /^"(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)"$/;
+// 안정형 X.Y.Z raw JSON 문자열만 허용합니다(escape·prerelease·build metadata 불가, 각 부분 최대 9자리).
+const RELEASE_VERSION_TOKEN =
+  /^"(?:0|[1-9][0-9]{0,8})\.(?:0|[1-9][0-9]{0,8})\.(?:0|[1-9][0-9]{0,8})"$/;
 // 버전 문자열이 될 수 없는 고정 자리표시자입니다. 바꾸면 binding input tag도 함께 올립니다.
 const RELEASE_VERSION_PLACEHOLDER = '"<hra-release-version>"';
 export const BINDING_INPUT_TAGS = {
@@ -375,7 +376,8 @@ export const BINDING_INPUT_TAGS = {
 /**
  * binding digest 입력: raw bytes에서 위 경로의 버전 문자열 토큰 span만 자리표시자로 바꾸고
  * 나머지 bytes(공백·줄바꿈·키 순서·다른 모든 값)는 그대로 둡니다. canonical-JSON이 아닙니다.
- * - 각 경로는 정확히 한 번(decode한 key 기준, 중복 key 포함) 나타나야 하고 값은 안정형 X.Y.Z여야 합니다.
+ * - 각 경로의 값은 타입과 무관하게 정확히 한 번(decode한 key 기준) 나타나야 하고 안정형 X.Y.Z 문자열이어야 합니다.
+ * - 대상까지의 prefix 키(`packages`, `packages[""]`)도 같은 객체에서 중복되면 안 됩니다.
  * - 유효하지 않은 UTF-8/JSON, 구조 이상, 깊은 중첩 등 어떤 예외도 null(=binding 실패)입니다.
  */
 function releaseVersionMaskedBytes(kind, bytes) {
@@ -408,25 +410,35 @@ function releaseVersionMaskedBytes(kind, bytes) {
       if (text[i] === "{" || text[i] === "[") {
         const close = text[i] === "{" ? "}" : "]";
         const descend = close === "}" && path && prefixes.has(key);
+        // 대상까지의 prefix 키(`packages`, `""`)나 대상 키가 같은 객체에서 중복되면 거부합니다.
+        const seen = new Set();
         i++;
         space();
-        if (text[i] === close) return void i++;
-        for (;;) {
-          space();
-          let child = null;
-          if (close === "}") {
-            const [keyStart, keyEnd] = string();
-            if (descend) child = [...path, JSON.parse(text.slice(keyStart, keyEnd))];
+        if (text[i] === close) i++;
+        else
+          for (;;) {
             space();
-            i++; // ':'
+            let child = null;
+            if (close === "}") {
+              const [keyStart, keyEnd] = string();
+              if (descend) {
+                child = [...path, JSON.parse(text.slice(keyStart, keyEnd))];
+                const childKey = JSON.stringify(child);
+                if (prefixes.has(childKey) || spans.has(childKey)) {
+                  if (seen.has(childKey)) throw new Error("RELEASE_VERSION_PATH_DUPLICATE");
+                  seen.add(childKey);
+                }
+              }
+              space();
+              i++; // ':'
+            }
+            value(child);
+            space();
+            if (text[i++] === close) break;
           }
-          value(child);
-          space();
-          if (text[i++] === close) return;
-        }
-      }
-      if (text[i] === '"') string();
+      } else if (text[i] === '"') string();
       else while (i < text.length && !",}] \t\n\r".includes(text[i])) i++;
+      // 대상 경로의 값은 타입과 무관하게 모두 셉니다. 문자열 X.Y.Z가 아니면 아래에서 거부합니다.
       if (key && spans.has(key)) spans.get(key).push([start, i]);
     };
     value([]);

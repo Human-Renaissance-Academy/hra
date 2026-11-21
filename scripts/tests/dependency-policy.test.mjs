@@ -2187,6 +2187,9 @@ test("release 버전: 구조가 예상과 다르면 digest를 만들지 않는�
   const lockOf = (rootVersion, nested) =>
     `{"version":"1.0.0","packages":{"":{"version":"${rootVersion}"},"node_modules/a":{"version":"${nested}"}}}`;
   assert.match(digest("manifest", '{"name":"x","version":"1.2.3"}'), /^[a-f0-9]{64}$/);
+  assert.match(digest("manifest", '{"version":"999999999.0.0"}'), /^[a-f0-9]{64}$/);
+  // 대상 경로 밖의 중복 key는 마스킹 판단과 무관하며 raw bytes 차이로 계속 binding에서 보호됩니다.
+  assert.match(digest("manifest", '{"version":"1.0.0","x":1,"x":2}'), /^[a-f0-9]{64}$/);
   assert.equal(
     digest("manifest", '{"name":"x","version":"1.2.3"}'),
     digest("manifest", '{"name":"x","version":"9.0.10"}'),
@@ -2219,6 +2222,17 @@ test("release 버전: 구조가 예상과 다르면 digest를 만들지 않는�
     ],
     ["lock", '{"version":"1.0.0","packages":{"":{"version":"1.0.0"},"":{"version":"1.0.0"}}}'],
     ["lock", '{"version":"1.0.0","packages":[{"version":"1.0.0"}]}'],
+    // 독립 보안 리뷰 재현: 대상 경로의 비문자열 값도 개수에 포함하고 prefix 키 중복도 거부합니다.
+    ["manifest", '{"version":{},"name":"x","version":"1.0.0"}'],
+    ["manifest", '{"version":"1.0.0","name":"x","version":[]}'],
+    ["manifest", '{"version":null,"version":"1.0.0"}'],
+    [
+      "lock",
+      '{"version":"1.0.0","packages":{"":{"version":"1.0.0"},"node_modules/a":{"version":"1.0.0"}},"packages":{}}',
+    ],
+    ["lock", '{"version":"1.0.0","packages":{"":{"version":"1.0.0"},"":{}}}'],
+    ["lock", '{"version":"1.0.0","packages":{"":{"version":{},"version":"1.0.0"}}}'],
+    ["manifest", '{"version":"1234567890.0.0"}'],
     ["unknown", '{"version":"1.0.0"}'],
   ])
     assert.equal(digest(kind, value), null, `${kind} ${value}`);
