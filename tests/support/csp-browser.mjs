@@ -348,7 +348,8 @@ export async function runCspBrowser({ repository, origin, sessions, fixtureRoot,
       await page.getByRole("button", { name: category, exact: true }).click();
       await evaluate(page, route => window.next.router.prefetch(route), detail);
       stage = id.toUpperCase().replaceAll("-", "_") + "_DETAIL_LINK";
-      await page.locator(`a[href="${detail}"]`).first().click();
+      // 자료실은 모바일 카드와 데스크톱 표에 같은 상세 링크를 함께 렌더링하므로(#601) 현재 화면에 보이는 링크를 누릅니다.
+      await page.locator(`a[href="${detail}"]:visible`).first().click();
       await page.waitForURL(origin + detail);
       stage = id.toUpperCase().replaceAll("-", "_") + "_PRINT_LINK";
       await page.locator(`a[href="${detail}/print"]`).click();
