@@ -151,3 +151,23 @@ describe("실제 Git index와 작업 트리의 포맷 검사", () => {
     }
   });
 });
+
+
+// 임시 CI 진단: 변경된 세 공개 소스의 Prettier 출력만 로그로 기록합니다.
+// 안전한 로컬 파일만 읽으며 네트워크·비밀정보·운영 환경에 접근하지 않습니다.
+// 포맷 적용 후 이 진단 블록은 PR에서 제거합니다.
+if (process.env.GITHUB_ACTIONS === "true") {
+  const prettier = await import("prettier");
+  const { readFileSync } = await import("node:fs");
+  const config = JSON.parse(readFileSync(".prettierrc.json", "utf8"));
+  const formatPaths = [
+    "src/app/(member)/resources/page.tsx",
+    "src/app/(member)/resources/_components/resources-tabs.tsx",
+    "tests/unit/resources-tabs.test.ts",
+  ];
+  for (const filePath of formatPaths) {
+    const source = readFileSync(filePath, "utf8");
+    const formatted = await prettier.format(source, { ...config, filepath: filePath });
+    console.log("HRA_FORMAT_DUMP " + filePath + " " + Buffer.from(formatted).toString("base64"));
+  }
+}
