@@ -3,6 +3,7 @@
  * 비밀 값은 포함하지 않으며 운영 API 주소는 빌드 시 명시적으로 주입해야 합니다.
  */
 import type { ExpoConfig } from "expo/config";
+import mobilePackage from "./package.json";
 
 // 2026-11-21 소유자가 Android와 향후 iOS의 공통 식별자로 승인했습니다. 출시 후 계속 유지합니다.
 const MOBILE_APPLICATION_ID = "com.hra.mobile";
@@ -16,7 +17,8 @@ const config: ExpoConfig = {
   name: "HRA",
   slug: "hra",
   scheme: "hra",
-  version: "0.1.0",
+  // release-please가 갱신하는 모바일 package 버전을 표시 버전의 정본으로 사용합니다.
+  version: mobilePackage.version,
   orientation: "portrait",
   userInterfaceStyle: "light",
   icon: "./assets/icon.png",

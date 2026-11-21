@@ -362,3 +362,7 @@ Jest는 KST 월·연도·윤년·자정, 길이 검증·파일명 공격·부분
 ### 검증 명령과 현재 검증 현황
 
 실행할 명령은 위 "설치와 검증" 절을 따릅니다. 최근 검증 결과와 미검증 범위는 [모바일 앱 안내 §9](../../docs/developer/mobile-app.md)에, 실제 로컬 서버 연동 검증은 [모바일 Bearer 검증](../../docs/developer/mobile-bearer-verification.md)에 있습니다. 수치가 필요한 검증 결과는 이 두 문서만 갱신하므로 README에는 옮기지 않습니다.
+
+## 버전과 릴리스 노트
+
+HRA 제품 버전은 루트 release-please가 웹·모바일에서 함께 갱신합니다. `app.config.ts`는 이 디렉터리의 package.json 버전을 읽습니다. 통합 변경 이력은 루트 [CHANGELOG.md](../../CHANGELOG.md), 운영 절차는 [릴리스 운영](../../docs/contributing/releasing.md)을 따릅니다. Android 업로드 번호 `versionCode`는 제품 버전과 별개로 EAS 원격 자동 증가를 유지합니다. Play 공개·Production 제출은 별도 승인 사항입니다.

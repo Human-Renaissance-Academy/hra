@@ -11,6 +11,7 @@
 - `scripts/check-eas-config.mjs`: 원격 빌드 전 프로젝트 UUID, 승인한 플랫폼별 앱 식별자, HTTPS API origin, Preview/Production 범위, 운영 빌드의 추가 활성화 값을 검사. **시크릿 원문을 로그에 출력하지 않습니다**.
 - `--remote` 검사는 GitHub의 승인된 Expo 프로젝트 UUID로 선택한 **Expo 서버의 `preview`/`production` 환경**에서 로드한 API origin·플랫폼 앱 식별자가 GitHub 보호 환경의 기대값과 일치해야만 빌드를 시작합니다. GitHub 변수 검증만으로 EAS 원격 빌더에 반영됐다고 가정하지 않습니다.
 - `.github/workflows/mobile-eas-build.yml`: `main`에서만 수동 호출하며 플랫폼·프로필을 입력받습니다. 기존 모바일 CI 안에서 별도 계약 테스트가 실행됩니다. 자동 PR 빌드나 자동 스토어 제출은 하지 않습니다.
+- 표시 버전은 `apps/mobile/package.json`에서 읽고 루트 release-please가 웹·모바일 package·lockfile·manifest와 함께 갱신합니다. 통합 `CHANGELOG.md`를 검토한 후 해당 Android 바이너리에 포함된 변경을 Play용 한국어 릴리스 노트로 요약합니다.
 - 원격 `appVersionSource=remote`, 운영 빌드 `autoIncrement=true`, `requireCommit=true`. 처음 원격 버전 동기화를 검증해야 하며 기존 출시 버전이 있다면 EAS CLI의 `build:version:set`으로 먼저 맞춥니다. 앱 버전을 임의로 초기화하지 않습니다.
 
 ## 2. 실제 계정 작업 전에 확정해야 할 정보
