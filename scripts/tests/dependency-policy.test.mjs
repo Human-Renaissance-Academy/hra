@@ -466,7 +466,7 @@ test("typography의 postcss-selector-parser는 수정본으로 고정하고 해�
 test("shadcn CLI 경로는 개발 의존성으로만 설치되어 개발 도구 기한을 따른다", () => {
   const manifest = JSON.parse(readFileSync(new URL("../../package.json", import.meta.url)));
   assert.equal(manifest.dependencies.shadcn, undefined);
-  assert.equal(manifest.devDependencies.shadcn, "^4.22.1");
+  assert.equal(manifest.devDependencies.shadcn, "^4.23.0");
   for (const path of [
     "node_modules/shadcn",
     "node_modules/@shadcn/registry",
