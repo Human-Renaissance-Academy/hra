@@ -164,18 +164,36 @@ jobs:
           # 경로가 없거나 여러 개(debug 평문 허용 리소스 혼입)이면 실패합니다.
           "$aapt2" dump resources "$apk" > resources.txt
           nsc_paths=$(awk '/resource 0x/{found = ($NF == "xml/network_security_config"); next} found {for (i = 1; i < NF; i++) if ($i == "(file)") print $(i + 1)}' resources.txt)
-          if [ "$(printf '%s\n' "$nsc_paths" | grep -c .)" -ne 1 ]; then
-            echo "network_security_config 리소스 경로가 정확히 하나가 아닙니다: ${nsc_paths:-없음}"
+          nsc_id=$(awk '/resource 0x/ && $NF == "xml/network_security_config" {print $2}' resources.txt)
+          if [ "$(printf '%s\n' "$nsc_paths" | grep -c .)" -ne 1 ] || [ "$(printf '%s\n' "$nsc_id" | grep -c .)" -ne 1 ]; then
+            echo "network_security_config 리소스가 정확히 하나가 아닙니다: ${nsc_paths:-없음}"
             grep -A3 'network_security_config' resources.txt || true
             exit 1
           fi
-          "$aapt2" dump xmltree "$apk" --file "$nsc_paths" | grep -q 'cleartextTrafficPermitted.*=false'
-          if "$aapt2" dump xmltree "$apk" --file "$nsc_paths" | grep -q 'cleartextTrafficPermitted.*=true'; then
-            echo 'release APK가 평문 HTTP를 허용합니다.'
+          # aapt2는 이 속성을 boolean(=false)으로 출력하지만 문자열 형식(="false")도 같은 결과로 판정합니다.
+          "$aapt2" dump xmltree "$apk" --file "$nsc_paths" > nsc.txt
+          if ! grep -Eq 'cleartextTrafficPermitted(\([^)]*\))?="?false' nsc.txt; then
+            echo 'release 네트워크 보안 설정에 평문 차단이 없습니다.'
+            cat nsc.txt
             exit 1
           fi
-          "$aapt2" dump xmltree "$apk" --file AndroidManifest.xml | grep -q 'networkSecurityConfig'
-          if "$aapt2" dump xmltree "$apk" --file AndroidManifest.xml | grep -q 'debuggable.*=true'; then
+          if grep -Eq 'cleartextTrafficPermitted(\([^)]*\))?="?true' nsc.txt; then
+            echo 'release APK가 평문 HTTP를 허용합니다.'
+            cat nsc.txt
+            exit 1
+          fi
+          # manifest가 위에서 찾은 바로 그 리소스를 참조하고 manifest 수준 평문 허용도 꺼져 있어야 합니다.
+          "$aapt2" dump xmltree "$apk" --file AndroidManifest.xml > manifest.txt
+          if ! grep -Eq "networkSecurityConfig\(0x[0-9a-f]+\)=@${nsc_id}\$" manifest.txt; then
+            echo "manifest가 network_security_config(${nsc_id})를 참조하지 않습니다."
+            grep -E 'networkSecurityConfig|usesCleartextTraffic' manifest.txt || true
+            exit 1
+          fi
+          if grep -Eq 'usesCleartextTraffic\([^)]*\)=(true|"true")' manifest.txt; then
+            echo 'release manifest가 usesCleartextTraffic=true입니다.'
+            exit 1
+          fi
+          if grep -q 'debuggable.*=true' manifest.txt; then
             echo 'release APK가 debuggable입니다.'
             exit 1
           fi

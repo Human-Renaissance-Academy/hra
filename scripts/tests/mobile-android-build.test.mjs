@@ -90,12 +90,17 @@ describe("Android 빌드 실행 계약", () => {
     assert.match(job, /EXPO_PUBLIC_API_BASE_URL: https:\/\/hra-website-theta\.vercel\.app\n/);
     assert.match(job, /run: node scripts\/build-android\.mjs release\n/);
     // 소스 트리가 아니라 산출 APK에서 평문 차단·비디버그·API 주소 인라인을 확인합니다.
-    // release 리소스 경로 축약에 대비해 리소스 표에서 실제 경로를 찾고, 정확히 하나여야 합니다.
-    assert.match(job, /dump resources "\$apk"/);
+    // release 리소스 경로 축약에 대비해 리소스 표에서 실제 경로·id를 찾고, 정확히 하나여야 합니다.
+    assert.match(job, /dump resources "\$apk" > resources\.txt/);
     assert.match(job, /\$NF == "xml\/network_security_config"/);
-    assert.match(job, /grep -c \.\)" -ne 1 \]; then/);
-    assert.match(job, /dump xmltree "\$apk" --file "\$nsc_paths" \| grep -q 'cleartextTrafficPermitted\.\*=false'/);
-    assert.match(job, /--file AndroidManifest\.xml \| grep -q 'networkSecurityConfig'/);
+    assert.match(job, /grep -c \.\)" -ne 1 \]/);
+    // 평문 차단(false) 존재와 평문 허용(true) 부재를 boolean·문자열 형식 모두에서 확인합니다.
+    assert.match(job, /grep -Eq 'cleartextTrafficPermitted\(\\\(\[\^\)\]\*\\\)\)\?="\?false' nsc\.txt/);
+    assert.match(job, /grep -Eq 'cleartextTrafficPermitted\(\\\(\[\^\)\]\*\\\)\)\?="\?true' nsc\.txt/);
+    // manifest가 같은 리소스 id를 참조하고 usesCleartextTraffic·debuggable이 꺼져 있어야 합니다.
+    assert.match(job, /networkSecurityConfig\\\(0x\[0-9a-f\]\+\\\)=@\$\{nsc_id\}/);
+    assert.match(job, /usesCleartextTraffic\\\(\[\^\)\]\*\\\)=\(true\|"true"\)/);
+    assert.match(job, /grep -q 'debuggable\.\*=true' manifest\.txt/);
     assert.doesNotMatch(job, /--file res\/xml\/network_security_config\.xml/);
     assert.match(job, /grep -aq 'https:\/\/hra-website-theta\.vercel\.app'/);
     // 같은 수동 실행에서 debug Gradle 빌드는 생략하고 PR·push에서는 그대로 실행합니다.
