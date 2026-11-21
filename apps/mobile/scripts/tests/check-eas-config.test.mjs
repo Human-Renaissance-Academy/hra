@@ -67,10 +67,25 @@ test("API 기준 URL이 누락·평문·인증정보·쿼리·로컬호스트인
     assert.ok(evaluate({ EXPO_PUBLIC_API_BASE_URL: value }).includes("EAS_HTTPS_API_REQUIRED"));
   }
 });
-test("Android 초기 임시 패키지명과 임의 식별자는 차단", () => {
-  for (const value of ["", "com.hra.mobile", "ORG.HRA.App", "com.invalid"]) {
+test("Android 식별자 누락과 잘못된 형식은 차단", () => {
+  for (const value of ["", "ORG.HRA.App", "com.invalid"]) {
     assert.ok(
       evaluate({ HRA_ANDROID_APPLICATION_ID: value }).includes("EAS_ANDROID_PACKAGE_NOT_APPROVED"),
+    );
+  }
+});
+test("승인된 공통 식별자는 두 플랫폼에서 명시적으로 설정하면 허용", () => {
+  for (const platform of ["android", "ios"]) {
+    assert.deepEqual(
+      evaluate(
+        {
+          HRA_ANDROID_APPLICATION_ID: "com.hra.mobile",
+          HRA_IOS_BUNDLE_IDENTIFIER: "com.hra.mobile",
+        },
+        platform,
+        "production",
+      ),
+      [],
     );
   }
 });
@@ -80,7 +95,7 @@ test("iOS 식별자를 Android와 독립 확인", () => {
     evaluate({ HRA_IOS_BUNDLE_IDENTIFIER: "" }, "ios").includes("EAS_IOS_BUNDLE_NOT_APPROVED"),
   );
   assert.ok(
-    evaluate({ HRA_IOS_BUNDLE_IDENTIFIER: "com.hra.mobile" }, "ios").includes(
+    evaluate({ HRA_IOS_BUNDLE_IDENTIFIER: "com.invalid" }, "ios").includes(
       "EAS_IOS_BUNDLE_NOT_APPROVED",
     ),
   );

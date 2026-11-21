@@ -101,7 +101,7 @@ APK: `android/app/build/outputs/apk/debug/app-debug.apk`, 약 235MB, application
 - API 주소는 운영 HTTPS(`https://hra-website-theta.vercel.app`)로 고정되며 release는 평문 HTTP를 거부합니다.
 - arm64-v8a만 포함합니다(대부분의 실제 기기). x86 에뮬레이터에서는 설치되지 않습니다.
 - 서명은 Expo 템플릿 기본 **공개 debug keystore**입니다. 누구나 같은 키·패키지 ID로 서명한 APK를 "업데이트"로 설치해 앱 데이터(저장된 세션 토큰 포함)에 접근할 수 있으므로 스토어 업로드·외부 배포·장기 사용에 쓰지 않습니다. 실제 출시는 #577 업로드 키·#578 서명 AAB 경로와 별도 제출 승인으로 진행합니다.
-- applicationId는 아직 placeholder(`com.hra.mobile`)입니다. Play 패키지 ID는 이후 변경할 수 없으므로 출시 전에 소유자가 확정합니다.
+- 2026-11-21 소유자가 Android와 향후 iOS의 공통 식별자를 `com.hra.mobile`로 확정했습니다. 출시 후 계속 유지하며, EAS 빌드에는 플랫폼별 환경 변수로 명시합니다.
 - 운영 비밀값·`EXPO_TOKEN`을 사용하지 않습니다. 보호 파일 다운로드·제출 흐름은 출시 전 독립 보안 리뷰 대상입니다.
 
 ## API 주소와 네트워크 보안
@@ -137,7 +137,7 @@ APK: `android/app/build/outputs/apk/debug/app-debug.apk`, 약 235MB, application
 
 Android·iOS EAS 빌드 프로필, 수동 실행 보호 조건과 아직 완료되지 않은 계정·출시 승인은 [EAS 빌드 운영 절차](../../docs/developer/mobile-eas-release.md)에서 관리합니다. 설정 파일·워크플로 존재만으로 실제 출시가 완료된 것은 아닙니다.
 
-1. **`ANDROID_PACKAGE_PLACEHOLDER = com.hra.mobile` 승인**: 최초 Play 업로드 뒤 패키지 ID 변경 불가. iOS bundle ID도 출시 전에 별도 확정해야 합니다.
+1. **공통 앱 식별자 `com.hra.mobile` 확정(2026-11-21)**: Play Console에서 사용 가능함을 확인했습니다. 최초 등록 전 사용 가능 여부를 다시 확인하고, 향후 iOS 등록 시에는 Apple 측 사용 가능 여부를 확인합니다.
 2. 정식 아이콘/브랜딩과 운영 HTTPS API URL, 서명키 보관/릴리스 배포 정책이 필요합니다.
 3. 현재 수동 `android.versionCode = 1`; 매 Play 업로드마다 반드시 단조 증가시킵니다. 첫 배포 전 수동 관리 또는 EAS remote version 자동 증가 중 하나를 정해야 하며 이 작업은 EAS 계정/키를 만들지 않습니다.
 4. Linux에서 iOS 네이티브 컴파일, 실기기/에뮬레이터 실행, Play 제출, 화면 시각 QA는 검증하지 못했습니다. 공통 코드와 iOS 설정을 유지했지만 compile-ready를 실제 iOS 빌드 통과로 주장하지 않습니다.

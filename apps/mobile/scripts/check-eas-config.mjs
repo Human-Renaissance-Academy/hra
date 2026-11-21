@@ -82,12 +82,10 @@ export function validateEasBuild({ config, profile, platform, variables }) {
 
   if (platform === "android") {
     const identifier = variables.HRA_ANDROID_APPLICATION_ID || "";
-    if (!appId.test(identifier) || identifier === "com.hra.mobile")
-      errors.push("EAS_ANDROID_PACKAGE_NOT_APPROVED");
+    if (!appId.test(identifier)) errors.push("EAS_ANDROID_PACKAGE_NOT_APPROVED");
   } else {
     const identifier = variables.HRA_IOS_BUNDLE_IDENTIFIER || "";
-    if (!appId.test(identifier) || identifier === "com.hra.mobile")
-      errors.push("EAS_IOS_BUNDLE_NOT_APPROVED");
+    if (!appId.test(identifier)) errors.push("EAS_IOS_BUNDLE_NOT_APPROVED");
   }
 
   if (profile === "production" && variables.HRA_MOBILE_PRODUCTION_RELEASE_ENABLED !== "true")

@@ -7,7 +7,7 @@
 ## 1. 현재 구현된 경계
 
 - `apps/mobile/eas.json`: 내부 검증용 `preview`와 배포 후보용 `production` 프로필. 운영 프로필은 스토어용 바이너리를 **빌드할 뿐 자동 제출하지 않습니다**.
-- `apps/mobile/app.config.ts`: 명시된 `EXPO_PROJECT_ID`, `HRA_ANDROID_APPLICATION_ID`, `HRA_IOS_BUNDLE_IDENTIFIER`를 앱 설정에 연결. 값이 없으면 기존 Android 임시 `com.hra.mobile`로 로컬 debug는 유지하고 iOS 앱 식별자는 구성하지 않습니다.
+- `apps/mobile/app.config.ts`: 명시된 `EXPO_PROJECT_ID`, `HRA_ANDROID_APPLICATION_ID`, `HRA_IOS_BUNDLE_IDENTIFIER`를 앱 설정에 연결합니다. Android와 iOS 식별자의 기본값은 2026-11-21 소유자가 승인한 `com.hra.mobile`입니다. EAS 원격 빌드에는 선택 플랫폼 식별자를 환경 변수로 명시해야 합니다.
 - `scripts/check-eas-config.mjs`: 원격 빌드 전 프로젝트 UUID, 승인한 플랫폼별 앱 식별자, HTTPS API origin, Preview/Production 범위, 운영 빌드의 추가 활성화 값을 검사. **시크릿 원문을 로그에 출력하지 않습니다**.
 - `--remote` 검사는 GitHub의 승인된 Expo 프로젝트 UUID로 선택한 **Expo 서버의 `preview`/`production` 환경**에서 로드한 API origin·플랫폼 앱 식별자가 GitHub 보호 환경의 기대값과 일치해야만 빌드를 시작합니다. GitHub 변수 검증만으로 EAS 원격 빌더에 반영됐다고 가정하지 않습니다.
 - `.github/workflows/mobile-eas-build.yml`: `main`에서만 수동 호출하며 플랫폼·프로필을 입력받습니다. 기존 모바일 CI 안에서 별도 계약 테스트가 실행됩니다. 자동 PR 빌드나 자동 스토어 제출은 하지 않습니다.
@@ -18,13 +18,13 @@
 | 항목                                                         | 어디에 설정할지                                                               | 확인   |
 | ------------------------------------------------------------ | ----------------------------------------------------------------------------- | ------ |
 | Expo 조직/프로젝트 권한, 정확한 프로젝트 ID                  | 승인받은 Expo 프로젝트, GitHub environment 변수 `EXPO_PROJECT_ID`             | 미확인 |
-| Android 영구 applicationId (현재 `com.hra.mobile`은 임시 값) | 환경 변수 `HRA_ANDROID_APPLICATION_ID`; Play Console 패키지 ID와 대조         | 미확인 |
-| iOS 영구 bundle identifier와 Apple Team                      | `HRA_IOS_BUNDLE_IDENTIFIER`; Apple Developer 설정과 대조                      | 미확인 |
+| Android 영구 applicationId `com.hra.mobile`                  | 환경 변수 `HRA_ANDROID_APPLICATION_ID`; Play Console 패키지 ID와 대조         | 소유자 승인·Play 사용 가능 확인. 앱 생성 대기 |
+| iOS 공통 bundle identifier `com.hra.mobile`와 Apple Team     | `HRA_IOS_BUNDLE_IDENTIFIER`; Apple Developer 설정과 대조                      | 이름 승인. Apple 등록·Team 확인 대기 |
 | 운영 HTTPS API 주소                                          | `EXPO_PUBLIC_API_BASE_URL`, Expo EAS `production` environment에 동일한 공개값 | 미확인 |
 | Preview 전용 HTTPS API 주소, 독립 테스트 DB/Blob/OAuth       | GitHub `mobile-preview` environment와 Expo EAS `preview` environment          | 미확인 |
 | Expo 서비스용 자동화 토큰                                    | GitHub 환경별 `EXPO_TOKEN` secret, 저장소 소스와 일반 Variables에는 저장 금지 | 미확인 |
 | Android 서명 키 및 Apple 배포 인증서 소유·회수 계획          | Expo/플랫폼 계정의 승인된 보안 저장소                                         | 미확인 |
-| GitHub `mobile-production` 보호 환경의 required reviewer     | 조직 관리자 설정에서 실제 승인자 지정                                         | 미확인 |
+| GitHub `mobile-production` 보호 환경의 required reviewer     | 조직 관리자 설정에서 실제 승인자 지정                                         | 2026-11-21 생성. yeongseon 승인, main 허용, 관리자 우회 비활성화 |
 
 EAS 빌드가 성공했다고 운영 DB/Blob 또는 OAuth 환경 분리가 검증됐다는 뜻은 아닙니다. 민감정보/제출 자료는 **합성 계정과 파일**로만 Preview 검증합니다. Production 사용자 데이터는 테스트용으로 복사하지 않습니다.
 
