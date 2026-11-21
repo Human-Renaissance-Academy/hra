@@ -39,7 +39,8 @@ const CLASS_MATERIAL_AUDIENCE_FILTERS = ["전체", "학생용", "교수용"] as 
 type ClassMaterialAudienceFilter = (typeof CLASS_MATERIAL_AUDIENCE_FILTERS)[number];
 
 /** 카테고리 탭 — 표시 순서 그대로 */
-export type ResourceCategory = "가이드북" | "강의 자료" | "주차별 텍스트" | "주차별 수업일지" | "보고서 양식";
+export type ResourceCategory =
+  "가이드북" | "강의 자료" | "주차별 텍스트" | "주차별 수업일지" | "보고서 양식";
 
 const CATEGORY_TABS: ResourceCategory[] = [
   "가이드북",
@@ -89,7 +90,13 @@ const getCategoryColor = (category: ResourceCategory): string => {
   }
 };
 
-export function ResourcesTabs({ initialCategory, items, cohorts, userCohortId, userRole }: ResourcesTabsProps) {
+export function ResourcesTabs({
+  initialCategory,
+  items,
+  cohorts,
+  userCohortId,
+  userRole,
+}: ResourcesTabsProps) {
   // 기수 기본값: 전체
   const defaultCohort = ALL_COHORT;
 
@@ -122,8 +129,11 @@ export function ResourcesTabs({ initialCategory, items, cohorts, userCohortId, u
     (isAdminOrFaculty || (isMember && userCohortId !== null));
 
   // 업로드 링크에 넘길 cohortId
-  const uploadCohortId =
-    isMember ? userCohortId : activeCohort !== ALL_COHORT ? activeCohort : null;
+  const uploadCohortId = isMember
+    ? userCohortId
+    : activeCohort !== ALL_COHORT
+      ? activeCohort
+      : null;
 
   // 필터링 로직
   const filteredItems = items.filter((item) => {
@@ -131,7 +141,9 @@ export function ResourcesTabs({ initialCategory, items, cohorts, userCohortId, u
     const matchesCohort =
       activeCohort === ALL_COHORT ||
       (item.cohortId == null &&
-        (item.category === "가이드북" || item.category === "강의 자료" || item.category === "보고서 양식")) ||
+        (item.category === "가이드북" ||
+          item.category === "강의 자료" ||
+          item.category === "보고서 양식")) ||
       item.cohortId === activeCohort;
 
     // 카테고리 탭 필터
@@ -196,17 +208,22 @@ export function ResourcesTabs({ initialCategory, items, cohorts, userCohortId, u
   return (
     <div className="space-y-6">
       {/* 카테고리 탭 + 기수 필터 + 검색 + 업로드 버튼 */}
-      <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
-        <div className="flex overflow-x-auto pb-2 sm:pb-0 w-full sm:w-auto gap-4 sm:gap-6 border-b border-[#D9D9D9]">
+      <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+        <div
+          role="group"
+          aria-label="자료 종류"
+          className="flex w-full flex-wrap gap-2 md:w-auto md:flex-nowrap md:gap-6 md:border-b md:border-[#D9D9D9] xl:shrink-0"
+        >
           {CATEGORY_TABS.map((tab) => (
             <button
               key={tab}
               type="button"
               onClick={() => handleCategoryChange(tab)}
-              className={`whitespace-nowrap pb-3 text-sm md:text-base transition-colors relative ${
+              aria-pressed={activeCategory === tab}
+              className={`min-h-11 whitespace-nowrap rounded-lg border px-3 py-2 text-sm transition-colors md:min-h-0 md:rounded-none md:border-0 md:px-0 md:pb-3 md:pt-0 md:text-base ${
                 activeCategory === tab
-                  ? "border-b-2 border-[#2563EB] text-[#2563EB] font-medium"
-                  : "text-[#666666] hover:text-[#1a1a1a]"
+                  ? "border-[#2563EB] bg-blue-50 font-semibold text-[#2563EB] md:border-b-2 md:bg-transparent"
+                  : "border-[#D9D9D9] bg-white text-[#666666] hover:text-[#1a1a1a]"
               }`}
             >
               {tab}
@@ -214,7 +231,7 @@ export function ResourcesTabs({ initialCategory, items, cohorts, userCohortId, u
           ))}
         </div>
 
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex w-full min-w-0 flex-wrap items-center gap-2 xl:w-auto">
           {/* 기수 필터 드롭다운 — 검색창 왼쪽에 위치 */}
           {cohorts.length > 0 && (
             <Select
@@ -222,7 +239,7 @@ export function ResourcesTabs({ initialCategory, items, cohorts, userCohortId, u
               value={activeCohort}
               onValueChange={handleCohortChange}
             >
-              <SelectTrigger className="w-32 border-[#D9D9D9] bg-white text-[#1a1a1a] text-sm">
+              <SelectTrigger className="min-h-11 w-28 shrink-0 border-[#D9D9D9] bg-white text-sm text-[#1a1a1a] sm:w-32">
                 <SelectValue placeholder="전체" />
               </SelectTrigger>
               <SelectContent>
@@ -261,12 +278,13 @@ export function ResourcesTabs({ initialCategory, items, cohorts, userCohortId, u
               자료 업로드
             </Link>
           )}
-          <div className="relative w-full sm:w-64">
+          <div className="relative min-w-0 flex-1 basis-40 sm:basis-56 xl:w-64 xl:flex-none">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#666666]" />
             <input
-              type="text"
+              type="search"
+              aria-label="자료 검색"
               placeholder="자료 검색..."
-              className="w-full pl-10 pr-4 py-1.5 border border-[#D9D9D9] rounded-lg text-sm focus:outline-none focus:border-[#2563EB] transition-colors"
+              className="min-h-11 w-full rounded-lg border border-[#D9D9D9] py-1.5 pl-10 pr-4 text-sm transition-colors focus:border-[#2563EB] focus:outline-none"
               value={searchQuery}
               onChange={handleSearchChange}
             />
@@ -316,8 +334,87 @@ export function ResourcesTabs({ initialCategory, items, cohorts, userCohortId, u
         </div>
       )}
 
-      {/* 자료 목록 테이블 */}
-      <div className="overflow-x-auto rounded-lg border border-[#D9D9D9] bg-white">
+      {/* 모바일: 고정 폭 표 대신 제목·분류·날짜를 모두 볼 수 있는 세로 카드 목록 */}
+      <div data-testid="mobile-resource-list" className="space-y-3 md:hidden">
+        {currentItems.length > 0 ? (
+          currentItems.map((item) => (
+            <article
+              key={item.id}
+              className="min-w-0 rounded-xl border border-[#D9D9D9] bg-white p-4"
+            >
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  {item.href ? (
+                    <Link
+                      href={item.href}
+                      className="block break-words py-1 font-medium leading-6 text-[#1a1a1a] hover:text-[#2563EB]"
+                    >
+                      {item.title}
+                    </Link>
+                  ) : item.downloadUrl ? (
+                    <a
+                      href={item.downloadUrl}
+                      download
+                      className="block break-words py-1 font-medium leading-6 text-[#1a1a1a] hover:text-[#2563EB]"
+                    >
+                      {item.title}
+                    </a>
+                  ) : (
+                    <span className="block break-words py-1 font-medium leading-6 text-[#1a1a1a]">
+                      {item.title}
+                    </span>
+                  )}
+                  {item.category === "강의 자료" && (item.weekNumber || item.lectureTitle) ? (
+                    <div className="mt-1 flex flex-wrap gap-2 text-xs text-[#666666]">
+                      {item.weekNumber ? <span>{item.weekNumber}주차</span> : null}
+                      {item.lectureTitle ? <span>{item.lectureTitle}</span> : null}
+                    </div>
+                  ) : null}
+                </div>
+                {item.category === "주차별 텍스트" ? (
+                  <Badge
+                    variant="outline"
+                    className={`shrink-0 whitespace-nowrap ${
+                      item.textType
+                        ? "border-green-200 bg-green-50 text-green-700"
+                        : "border-[#D9D9D9] bg-gray-50 text-[#666666]"
+                    }`}
+                  >
+                    {item.textType ?? "미분류"}
+                  </Badge>
+                ) : (
+                  <Badge
+                    variant="outline"
+                    className={`${getCategoryColor(item.category)} shrink-0 whitespace-nowrap`}
+                  >
+                    {item.category}
+                  </Badge>
+                )}
+              </div>
+              <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-[#666666]">
+                <span>등록일: {formatKstDate(item.date)}</span>
+                {item.author ? <span>작성자: {item.author}</span> : null}
+              </div>
+            </article>
+          ))
+        ) : (
+          <div
+            role="status"
+            className="rounded-xl border border-[#D9D9D9] bg-white px-4 py-10 text-center text-sm text-[#666666]"
+          >
+            {searchQuery
+              ? "검색 결과가 없습니다."
+              : activeCohort !== ALL_COHORT
+                ? "해당 기수의 자료가 없습니다."
+                : "등록된 자료가 없습니다."}
+          </div>
+        )}
+      </div>
+      {/* 데스크톱: 기존 표와 모든 열을 유지 */}
+      <div
+        data-testid="desktop-resource-table"
+        className="hidden overflow-x-auto rounded-lg border border-[#D9D9D9] bg-white md:block"
+      >
         <table className="w-full border-collapse text-left">
           <thead>
             <tr className="bg-gray-50 text-[#666666] text-sm border-b border-[#D9D9D9]">
@@ -342,7 +439,7 @@ export function ResourcesTabs({ initialCategory, items, cohorts, userCohortId, u
                       >
                         {item.title}
                       </Link>
-                   ) : item.downloadUrl ? (
+                    ) : item.downloadUrl ? (
                       <a
                         href={item.downloadUrl}
                         download
@@ -417,7 +514,10 @@ export function ResourcesTabs({ initialCategory, items, cohorts, userCohortId, u
           >
             <ChevronLeft className="w-4 h-4" />
           </Button>
-          <div className="flex gap-1">
+          <span aria-live="polite" className="px-2 text-sm text-[#666666] sm:hidden">
+            {currentPage} / {totalPages} 페이지
+          </span>
+          <div className="hidden max-w-[65vw] gap-1 overflow-x-auto sm:flex">
             {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
               <Button
                 key={page}
