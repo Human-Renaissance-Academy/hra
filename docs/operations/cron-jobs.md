@@ -20,7 +20,7 @@
 | 위험 데이터 | 요청 제한 기록(짧은 보존 전제) | 학사 과제 제출 파일(개인정보·법적 보존 가능성) | 모바일 로그인 세션·이력(복구 불가) |
 | 응답 | `{status:"ok"}` | 후보·삭제·실패 건수와 `referenceId` | `{deletedCount}` |
 | 로그·경보 | 실패 시 `logServerError("rate-limit/cleanup")`, 응답 500 | `UPLOAD_CLEANUP` 관찰 이벤트([학사 관찰성](../developer/academic-observability.md)) | 모바일 인증 응답 래퍼의 오류 응답만 있음 (전용 경보 없음) |
-| 관련 이슈 | #121 | #142, #157, #282, #284 | #273, #280, #491 |
+| 관련 이슈 | #121 | #142, #157, #282, #284 | #273, #280, #491, #576 |
 | 상세 문서 | [요청 제한](rate-limits.md) | [학사 과제 업로드](../developer/academic-assignment-uploads.md) | [모바일 인증 경로](../developer/mobile-auth-routes.md), [모바일 세션 이전](../developer/mobile-session-migration.md) |
 
 ## 2. 등록된 작업: `cleanup-rate-limits`
@@ -59,8 +59,8 @@
 
 등록 전 선행 조건:
 
-1. 2026-11-19 [동결 결정](../decisions/2026-11-19-mobile-api-freeze.md)에 따라 모바일 세션 정리 cron은 **등록하지 않습니다.** 재개 결정이 있을 때만 아래 조건을 검토합니다.
-2. 운영 DB에 `mobile_sessions`와 종속 이력 스키마가 적용되어 있어야 합니다(#273, #280, #491). 현재 운영 적용 여부는 확인하지 않았습니다.
+1. 모바일 세션 정리 cron은 아직 **등록하지 않았습니다.** 2026-11-19 [동결 결정](../decisions/2026-11-19-mobile-api-freeze.md)(#491)은 [Android 출시 재개 결정(#576)](../decisions/2026-11-20-android-play-release-resume.md)이 출시 범위에서 대체했으며, 등록 여부는 #494·#583에서 결정합니다. 등록 전에는 아래 조건을 모두 확인합니다.
+2. 운영 DB에 `mobile_sessions`와 종속 이력 스키마가 적용되어 있어야 합니다(#273, #280, #491, #576). 현재 운영 적용 여부는 확인하지 않았습니다.
 3. 만료·회수 세션과 소비 이력에 별도 감사 보존기간이 필요 없는지 확인합니다. [모바일 세션 이전](../developer/mobile-session-migration.md)은 별도 보존기간을 두지 않는다고 설명하지만 백업의 보존·파기는 운영자가 따로 확인합니다.
 4. `CRON_SECRET`이 운영에 설정되어 있어야 합니다.
 
@@ -93,4 +93,4 @@
 - 정리 실패에 대한 외부 경보와 재시도 기준 (현재는 앱 로그와 호출 응답뿐)
 - 사용하지 않기로 결정된 라우트를 제거할 경우: 해당 `route.ts`, 관련 테스트, `scripts/_lib/environment-inventory.mjs`의 env 계약과 [환경변수 목록](../developer/environment-inventory.md), 이 문서를 함께 갱신하고 운영에서 해당 경로를 호출하는 실행자가 없는지 먼저 확인합니다.
 
-관련: #142 #157 #273 #280 #282 #284 #491 #494.
+관련: #142 #157 #273 #280 #282 #284 #491 #494 #576.

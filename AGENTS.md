@@ -207,7 +207,7 @@ src/app/(admin)/admin/[feature]/
 - **DB**: 단위 테스트는 필요한 경우 mock, DB 경합·제약은 격리 PostgreSQL 사용
 - **Blob**: 대부분 mock, 실제 업로드 검증은 별도 E2E에서 수행
 - **CI(현재)**: lint/typecheck/Vitest/build·일반 Playwright smoke와 별도 학사 G1 검증(`test:academic-g1`). 모든 E2E 파일이 기본 실행되는 것은 아니다.
-- **CI(조건부 장기 목표)**: 실제 모바일 출시를 결정한 경우에만 server integration + API contract/OpenAPI + web build/E2E + mobile typecheck + Android/iOS build 확대. 현재는 웹 필수 안전 회귀·운영 배포 점검을 우선하고 중복·무의미한 검사 비용을 #492에서 측정하여 줄인다.
+- **CI(조건부 장기 목표)**: 2026-11-20 #576 결정으로 Android Google Play 출시 개발·검증이 재개되었다(Play 제출은 별도 승인). 이에 따른 CI 확대 범위(Android build·실기기/E2E, API contract/OpenAPI, server integration, mobile typecheck 등)는 #578·#579·#492에서 정한다. iOS build 확대는 실제 iOS 출시를 결정한 경우에만 검토한다. 현재는 웹 필수 안전 회귀·운영 배포 점검을 우선하고 중복·무의미한 검사 비용을 #492에서 측정하여 줄인다.
 
 ## 10. 배포
 

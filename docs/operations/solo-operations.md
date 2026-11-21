@@ -21,7 +21,7 @@
 - 운영 DB가 바뀌지 않는 변경에는 마이그레이션 승인 작업을 매번 추가하지 않는다.
 - 운영 DB가 바뀌는 배포만 [DB 변경 배포 게이트](../developer/database-change-procedure.md#db-change-gate)를 따른다: 플래그 꺼진 채 병합 → 백업 확인 → SQL 적용 → 읽기 전용 보고서의 catalog `missing` 0 → 플래그 켜기. 실패하면 플래그를 끈 채 forward-fix하고 자동 `DROP`하지 않는다. 플래그가 없으면 SQL을 먼저 적용·확인한 뒤 병합한다.
 - Preview가 필요한 날에만 비운영 Test DB·합성 자료로 검증하고, 평소에는 CI를 사용한다.
-- 실제 사용자가 없는 기능·모바일 확장·불필요한 타사 서비스는 추가하지 않는다(#491 [동결 결정](../decisions/2026-11-19-mobile-api-freeze.md)).
+- 실제 사용자가 없는 기능·Android 출시 범위를 넘는 모바일 확장·불필요한 타사 서비스는 추가하지 않는다([Android 출시 재개 결정(#576)](../decisions/2026-11-20-android-play-release-resume.md)이 대체한 범위를 제외하고 #491 [동결 결정](../decisions/2026-11-19-mobile-api-freeze.md) 취지를 유지).
 
 ## 알림이 왔을 때
 
