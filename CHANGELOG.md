@@ -4,6 +4,13 @@
 
 ---
 
+## [0.2.1](https://github.com/Human-Renaissance-Academy/hra/compare/v0.2.0...v0.2.1) (2026-11-21)
+
+
+### 버그 수정
+
+* **release:** 단일 패키지 통합 release PR 병합 뒤 Release·태그가 생성되게 한다 ([#619](https://github.com/Human-Renaissance-Academy/hra/issues/619)) ([03aada2](https://github.com/Human-Renaissance-Academy/hra/commit/03aada2b9d62700fcb86ac2f7d42863f375ff6ea))
+
 ## [0.2.0](https://github.com/Human-Renaissance-Academy/hra/compare/v0.1.0...v0.2.0) (2026-11-21)
 
 
