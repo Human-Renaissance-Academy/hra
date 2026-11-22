@@ -110,6 +110,14 @@ function upsertComment(repo, number, commentId, body) {
     : `repos/${repo}/issues/${number}/comments`;
   gh(["api", "-X", commentId ? "PATCH" : "POST", path, "--input", "-"], JSON.stringify({ body }));
 }
+// check run은 PR이 아니라 head SHA에 붙는다. 닫힌 PR의 생략(성공) 결과가 같은 SHA를 head로 쓰는
+// 열린 PR의 필수 검사를 대신 통과시키지 않도록, 그런 PR이 있거나 SHA를 확인할 수 없으면 생략하지 않는다.
+function sharesHeadWithOpenPullRequest(repo, number, sha) {
+  if (typeof sha !== "string" || !/^[a-f\d]{40}$/i.test(sha)) return true;
+  return pages(`repos/${repo}/commits/${sha}/pulls?per_page=100`).some(
+    (pr) => pr.state !== "closed" && pr.number !== number,
+  );
+}
 function checkEvent(repo) {
   const event = JSON.parse(readFileSync(process.env.GITHUB_EVENT_PATH, "utf8"));
   if (event.pull_request) {
@@ -117,7 +125,8 @@ function checkEvent(repo) {
     // 병합·닫힘 뒤의 라벨 변경(release-please의 pending→tagged 등)도 pull_request 이벤트를 만든다.
     // 닫힌 PR은 병합될 수 없으므로 이벤트 값이 아닌 현재 GitHub 상태가 명시적으로 closed일 때만 생략한다.
     // 다시 열면 reopened 이벤트로 전체 검사가 다시 실행되며, 상태를 알 수 없으면 기존대로 검사한다.
-    if (api(`repos/${repo}/pulls/${number}`).state === "closed") {
+    const live = api(`repos/${repo}/pulls/${number}`);
+    if (live.state === "closed" && !sharesHeadWithOpenPullRequest(repo, number, live.head?.sha)) {
       console.log(`- PR #${number}: 닫힌 PR이라 병합 대상이 아니므로 형식 검사를 생략합니다.`);
       return 0;
     }

@@ -14,7 +14,7 @@ const BODY =
   "## 관련 이슈\n\nCloses #1\n\n## 변경 내용\n\n- 변경\n\n## 검증 결과\n\n- 통과\n\n## 배포 영향과 리뷰\n\n- 없음\n";
 
 // filesBytes 만큼의 파일 목록 페이지를 내놓는 가짜 gh 로 검사기를 실행한다.
-function run(filesBytes, overrides = {}) {
+function run(filesBytes, overrides = {}, { sameHead = [], failPr = false } = {}) {
   const dir = mkdtempSync(join(tmpdir(), "fake-gh-"));
   try {
     const pr = {
@@ -29,9 +29,12 @@ function run(filesBytes, overrides = {}) {
     };
     const gh = `#!/usr/bin/env node
 const args = process.argv.slice(2);
-if (args.includes("--paginate")) {
+if (args.some((arg) => arg.includes("/commits/"))) {
+  process.stdout.write(JSON.stringify([${JSON.stringify(sameHead)}]));
+} else if (args.includes("--paginate")) {
   process.stdout.write(JSON.stringify([[{ filename: "a.txt", status: "added", pad: "x".repeat(${filesBytes}) }]]));
-} else process.stdout.write(${JSON.stringify(JSON.stringify(pr))});
+} else if (${failPr}) process.exit(1);
+else process.stdout.write(${JSON.stringify(JSON.stringify(pr))});
 `;
     writeFileSync(join(dir, "gh"), gh);
     chmodSync(join(dir, "gh"), 0o755);
@@ -65,9 +68,16 @@ test("버퍼 한도를 넘는 gh 응답은 한국어 오류로 실패하고 통�
   assert.doesNotMatch(result.stdout, /✓/);
 });
 
+const SHA = "a".repeat(40);
+const CLOSED = {
+  state: "closed",
+  body: "",
+  head: { sha: SHA, ref: "fix/x", repo: { full_name: "o/r" } },
+};
+
 test("닫힌 PR의 이벤트(병합 뒤 라벨 변경)는 형식 검사를 생략하고 통과한다", () => {
   // release-please가 병합 뒤 autorelease: pending → tagged 로 바꾸면 pending 라벨이 없어 일반 PR로 판정되던 회귀.
-  const result = run(10, { state: "closed", body: "", labels: [{ name: "autorelease: tagged" }] });
+  const result = run(10, { ...CLOSED, labels: [{ name: "autorelease: tagged" }] });
   assert.equal(result.status, 0, result.stderr + result.stdout);
   assert.match(result.stdout, /닫힌 PR이라/);
   assert.doesNotMatch(result.stdout, /[✓✗] PR #7/);
@@ -77,4 +87,32 @@ test("열린 PR은 상태 값이 있어도 그대로 검사하여 형식 위반�
   const result = run(10, { state: "open", body: "" });
   assert.equal(result.status, 1);
   assert.match(result.stdout, /✗ PR #7/);
+});
+
+test("닫힌 PR이라도 같은 head SHA를 쓰는 열린 PR이 있으면 생략하지 않고 검사한다", () => {
+  const result = run(10, CLOSED, {
+    sameHead: [
+      { number: 7, state: "closed" },
+      { number: 8, state: "open" },
+    ],
+  });
+  assert.equal(result.status, 1);
+  assert.match(result.stdout, /✗ PR #7/);
+  assert.doesNotMatch(result.stdout, /닫힌 PR이라/);
+});
+
+test("닫힌 PR의 head SHA를 확인할 수 없으면 생략하지 않고 검사한다", () => {
+  const result = run(10, {
+    ...CLOSED,
+    head: { sha: "abc", ref: "fix/x", repo: { full_name: "o/r" } },
+  });
+  assert.equal(result.status, 1);
+  assert.doesNotMatch(result.stdout, /닫힌 PR이라/);
+});
+
+test("PR 상태 조회가 실패하면 통과시키지 않는다", () => {
+  const result = run(10, {}, { failPr: true });
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /형식 검사를 완료하지 못했습니다/);
+  assert.doesNotMatch(result.stdout, /✓|닫힌 PR이라/);
 });
