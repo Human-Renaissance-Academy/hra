@@ -67,6 +67,7 @@ const CI_ALWAYS_COMMANDS = [
   "npm ci",
   "npm run build",
   "npm run test:e2e -- tests/e2e/ci-smoke.spec.ts",
+  "npm run test:e2e -- tests/e2e/ci-smoke.spec.ts --list",
 ];
 
 const isObject = (value) => value !== null && typeof value === "object" && !Array.isArray(value);
@@ -88,6 +89,7 @@ const CHECK_COMMANDS = {
     "npm run verify:auth-proxy",
     "npm run test:academic-g1",
     "npm run test:e2e -- tests/e2e/ci-smoke.spec.ts",
+    "npm run test:e2e -- tests/e2e/ci-smoke.spec.ts --list",
   ],
   "process-format.yml:pull-request": ["node scripts/check-process-format.mjs --event"],
   "process-format.yml:contracts": [
@@ -150,6 +152,8 @@ const SCOPE_CONDITIONAL_STEPS = {
     command: MAIN_CI_REUSE_COMMAND,
     condition: "github.event_name == 'push' && github.ref == 'refs/heads/main'",
     environment: { GH_TOKEN: "${{ github.token }}" },
+    // 시간 초과는 scope 실패이므로 전체 CI로 복귀합니다(안전한 방향).
+    timeoutMinutes: 5,
   },
 };
 const REVIEWED_CONDITIONAL_STEPS = {
@@ -204,7 +208,7 @@ const DIRECT_CHECK_COMMANDS = Object.values(CHECK_COMMANDS).flat();
  * 정상적인 gate/순서/env/uses 변경도 먼저 실제 실행·실패 전파 회귀를 검토하고 workflow와 이 지문을 함께 갱신합니다.
  */
 const REVIEWED_PIPELINE_DIGESTS = {
-  "ci.yml:scope": "7f0c3f6c922dd813127ade61bdb776688f6b8a46c04764406d3422b7ac2f8425",
+  "ci.yml:scope": "98e4909577e612677ea502a3f17307cd63b12a67a7c36786a7d51ffa7fd0787f",
   "ci.yml:ci": "7fd28a989b71e83e9f148c592fdb741bde279f44f06a41923d247378e0e4282b",
   "process-format.yml:pull-request":
     "ae70c42a9c814c1df9e9c238b87353f08b462cc50160cfa6b485820e83a263f1",
@@ -432,6 +436,7 @@ export function validateWorkflowCheckBoundaries(workflows) {
         if (
           step.if !== allowed.condition ||
           step.run !== allowed.command ||
+          step["timeout-minutes"] !== allowed.timeoutMinutes ||
           !sameEnvironment(stepEnvironment, allowed.environment)
         ) {
           errors.push(

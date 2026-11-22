@@ -937,6 +937,41 @@ const reducedModeMutations = [
     "unconditional command: npm ci",
   ],
   [
+    "스모크 수집 단계 조건부 생략",
+    (f) =>
+      replace(
+        f,
+        "ci.yml",
+        "        run: npm run test:e2e -- tests/e2e/ci-smoke.spec.ts --list\n",
+        "        if: " +
+          FULL_ONLY +
+          "\n        run: npm run test:e2e -- tests/e2e/ci-smoke.spec.ts --list\n",
+      ),
+    "unconditional command: npm run test:e2e -- tests/e2e/ci-smoke.spec.ts --list",
+  ],
+  [
+    "축소 판별 시간 제한 삭제",
+    (f) =>
+      replace(
+        f,
+        "ci.yml",
+        "        timeout-minutes: 5\n        env:\n          GH_TOKEN",
+        "        env:\n          GH_TOKEN",
+      ),
+    "exact command/condition/environment",
+  ],
+  [
+    "축소 판별 시간 제한 확대",
+    (f) =>
+      replace(
+        f,
+        "ci.yml",
+        "        timeout-minutes: 5\n        env:\n          GH_TOKEN",
+        "        timeout-minutes: 360\n        env:\n          GH_TOKEN",
+      ),
+    "exact command/condition/environment",
+  ],
+  [
     "축소 판별 PR 실행 확대",
     (f) => replace(f, "ci.yml", REUSE_STEP_IF, "        if: always()\n"),
     "exact command/condition/environment",
@@ -1018,6 +1053,7 @@ test("ci 생략 조건은 PR·수동·예약에서 항상 참이고 확인된 ma
   const last = scope.steps.at(-1);
   assert.equal(last.id, "main-reuse");
   assert.equal(last.if, "github.event_name == 'push' && github.ref == 'refs/heads/main'");
+  assert.equal(last["timeout-minutes"], 5);
   const { env: lastEnvironment } = last;
   assert.deepEqual(lastEnvironment, { GH_TOKEN: "${{ github.token }}" });
   assert.deepEqual(scope.permissions, {

@@ -60,6 +60,8 @@ jobs:
       - name: main 병합 트리의 PR CI 통과 확인
         id: main-reuse
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        # API·fetch 지연 시 시간 초과는 scope 실패가 되어 전체 CI를 실행합니다.
+        timeout-minutes: 5
         env:
           GH_TOKEN: ${{ github.token }}
         run: node scripts/detect-main-ci-reuse.mjs "$GITHUB_EVENT_NAME" "$GITHUB_REF" "$GITHUB_SHA" "$GITHUB_REPOSITORY" "$GITHUB_OUTPUT"
