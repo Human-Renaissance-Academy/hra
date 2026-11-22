@@ -47,14 +47,15 @@ export default async function ResourcesPage({ searchParams }: Props) {
     templates: allTemplates,
   } = overview;
   // 화면 미리보기는 ADMIN에게만 허용하며 서버 인가 주체는 언제나 원래 계정입니다.
-  const previewRole = isAdmin && query.view === "faculty"
-    ? "FACULTY"
-    : isAdmin && query.view === "student"
-      ? "MEMBER"
-      : null;
+  const previewRole =
+    isAdmin && query.view === "faculty"
+      ? "FACULTY"
+      : isAdmin && query.view === "student"
+        ? "MEMBER"
+        : null;
   const portalRole = userRole === "FACULTY" || userRole === "MEMBER" ? userRole : previewRole;
   const cohortName = userCohortId
-    ? cohortRows.find((cohort) => cohort.id === userCohortId)?.name ?? null
+    ? (cohortRows.find((cohort) => cohort.id === userCohortId)?.name ?? null)
     : null;
 
   // 모든 자료를 ResourceItem 배열로 통합
@@ -122,15 +123,29 @@ export default async function ResourcesPage({ searchParams }: Props) {
   items.sort((a, b) => b.date.getTime() - a.date.getTime());
 
   return (
-    <div className={portalRole
-      ? "mx-auto max-w-7xl px-4 pt-6 pb-12 sm:px-6 sm:py-8 md:py-10"
-      : "mx-auto max-w-7xl px-4 pt-6 pb-12 sm:px-6 sm:py-20 md:py-32"}>
+    <div
+      className={
+        portalRole
+          ? "mx-auto max-w-7xl px-4 pt-6 pb-12 sm:px-6 sm:py-8 md:py-10"
+          : "mx-auto max-w-7xl px-4 pt-6 pb-12 sm:px-6 sm:py-20 md:py-32"
+      }
+    >
       <section className={portalRole ? "mb-5 space-y-3" : "mb-8 space-y-3 sm:mb-14 sm:space-y-4"}>
         <div className="flex items-center gap-3">
-          <div className={portalRole ? "h-6 w-1 rounded-full bg-[#2563EB]" : "h-9 w-1 rounded-full bg-[#2563EB] sm:h-12"} />
-          <h1 className={portalRole
-            ? "text-sm font-semibold tracking-wide text-[#2563EB]"
-            : "text-2xl font-bold text-[#1a1a1a] sm:text-3xl md:text-4xl lg:text-5xl"}>
+          <div
+            className={
+              portalRole
+                ? "h-6 w-1 rounded-full bg-[#2563EB]"
+                : "h-9 w-1 rounded-full bg-[#2563EB] sm:h-12"
+            }
+          />
+          <h1
+            className={
+              portalRole
+                ? "text-sm font-semibold tracking-wide text-[#2563EB]"
+                : "text-2xl font-bold text-[#1a1a1a] sm:text-3xl md:text-4xl lg:text-5xl"
+            }
+          >
             자료실
           </h1>
         </div>
@@ -141,19 +156,34 @@ export default async function ResourcesPage({ searchParams }: Props) {
         )}
         {isAdmin && (
           <nav aria-label="자료실 화면 모드" className="flex flex-wrap items-center gap-2 text-sm">
-            <Link href="/resources" className={!portalRole
-              ? "rounded-full bg-slate-900 px-3 py-2 text-white"
-              : "rounded-full border border-slate-200 px-3 py-2 text-slate-700 hover:bg-slate-50"}>
+            <Link
+              href="/resources"
+              className={
+                !portalRole
+                  ? "rounded-full bg-slate-900 px-3 py-2 text-white"
+                  : "rounded-full border border-slate-200 px-3 py-2 text-slate-700 hover:bg-slate-50"
+              }
+            >
               관리자 자료실
             </Link>
-            <Link href="/resources?view=faculty" className={previewRole === "FACULTY"
-              ? "rounded-full bg-slate-900 px-3 py-2 text-white"
-              : "rounded-full border border-slate-200 px-3 py-2 text-slate-700 hover:bg-slate-50"}>
+            <Link
+              href="/resources?view=faculty"
+              className={
+                previewRole === "FACULTY"
+                  ? "rounded-full bg-slate-900 px-3 py-2 text-white"
+                  : "rounded-full border border-slate-200 px-3 py-2 text-slate-700 hover:bg-slate-50"
+              }
+            >
               교수 화면 미리보기
             </Link>
-            <Link href="/resources?view=student" className={previewRole === "MEMBER"
-              ? "rounded-full bg-slate-900 px-3 py-2 text-white"
-              : "rounded-full border border-slate-200 px-3 py-2 text-slate-700 hover:bg-slate-50"}>
+            <Link
+              href="/resources?view=student"
+              className={
+                previewRole === "MEMBER"
+                  ? "rounded-full bg-slate-900 px-3 py-2 text-white"
+                  : "rounded-full border border-slate-200 px-3 py-2 text-slate-700 hover:bg-slate-50"
+              }
+            >
               학생 화면 미리보기
             </Link>
           </nav>
