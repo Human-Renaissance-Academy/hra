@@ -4,6 +4,13 @@
 
 ---
 
+## [0.3.0](https://github.com/Human-Renaissance-Academy/hra/compare/v0.2.2...v0.3.0) (2026-11-22)
+
+
+### 새 기능
+
+* **web:** 학생·교수 학사포털을 실제 자료실 화면에 반영 ([d662cd2](https://github.com/Human-Renaissance-Academy/hra/commit/d662cd2a9f48bdf409c0e2e3ced331ee663edecf))
+
 ## [0.2.2](https://github.com/Human-Renaissance-Academy/hra/compare/v0.2.1...v0.2.2) (2026-11-22)
 
 
