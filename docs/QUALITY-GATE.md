@@ -34,7 +34,7 @@
 | 7 | Chromium 설치 | Playwright 브라우저 검사에 필요한 실행 파일 준비 |
 | 8 | `npm run verify:editor-preview` | 실제 에디터 미리보기·키보드·Dialog 회귀 검사 |
 | 9 | `npm run test:academic-g1` | 실제 Next·credentials 인증·격리 PostgreSQL·Blob SDK·로컬 private HTTP 저장소를 잇는 학사 제출 검사 |
-| 10 | `npm run test:resources-responsive` | 앞 단계 빌드·격리 PostgreSQL·합성 MEMBER/FACULTY로 회원 자료실의 320·375·390·768·1280px 넘침·카테고리·필터·링크·빈 상태·페이지네이션 검사(#601, Chromium 에뮬레이션) |
+| 10 | `node scripts/verify-resources-responsive.mjs` | 앞 단계 빌드·격리 PostgreSQL·합성 MEMBER/FACULTY로 회원 자료실의 320·375·390·768·1280px 넘침·카테고리·필터·링크·빈 상태·페이지네이션 검사(#601, Chromium 에뮬레이션) |
 | 11 | `npm run test:e2e -- tests/e2e/ci-smoke.spec.ts --list` | 실행할 smoke 파일·테스트 이름·수집 수를 로그에 남김 |
 | 12 | `npm run test:e2e -- tests/e2e/ci-smoke.spec.ts` | 로그인 화면·공개 UI·보호 경로 등 수집된 브라우저 검사 실행 |
 
