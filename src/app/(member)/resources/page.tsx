@@ -16,7 +16,7 @@ import { ResourcesTabs, type ResourceItem } from "./_components/resources-tabs";
 import { ResourcePortal } from "./_components/resource-portal";
 
 export const metadata: Metadata = {
-  title: "자료실",
+  title: "HRA 학사포털 · 자료실",
 };
 
 export const dynamic = "force-dynamic";
