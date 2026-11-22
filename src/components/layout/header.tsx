@@ -74,9 +74,10 @@ export function Header({ session }: HeaderProps) {
   const isAdmin = user?.role === "ADMIN";
   const canAccessResources = user?.role === "ADMIN" || user?.role === "MEMBER" || user?.role === "FACULTY";
 
-  /** 로그인 사용자에게만 자료실 메뉴 추가 */
+  /** 교수·학생은 학사포털로, 홈페이지 관리자는 기존 자료실로 진입합니다. */
+  const resourceLabel = user?.role === "FACULTY" || user?.role === "MEMBER" ? "학사포털" : "자료실";
   const visibleNavItems: NavItem[] = canAccessResources
-    ? [...navItems, { label: "자료실", href: "/resources" }]
+    ? [...navItems, { label: resourceLabel, href: "/resources" }]
     : navItems;
 
   /**
