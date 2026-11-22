@@ -137,7 +137,8 @@ test("독립 PR에서도 포맷 게이트를 실행하고 실패 시 전체 CI�
   assert.equal(steps[formatIndex]["continue-on-error"], undefined);
   assert.equal(steps[formatIndex].if, undefined);
   assert.ok(steps.slice(0, formatIndex).some((step) => step.run === "npm ci --no-audit"));
-  assert.match(workflow.jobs.ci.if, /always\(\)/);
+  // #492 D: 실행 취소는 따르되(cancelled로 기록) scope 실패에는 전체 CI로 복귀합니다.
+  assert.match(workflow.jobs.ci.if, /^\$\{\{ !cancelled\(\) && /);
   assert.match(workflow.jobs.ci.if, /needs.scope.result != 'success'/);
   assert.ok(workflow.jobs.ci.steps.some((step) => step.run?.includes("npm run format:check")));
 });

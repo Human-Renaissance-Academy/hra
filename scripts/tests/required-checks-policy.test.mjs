@@ -684,8 +684,24 @@ const scopeMutations = [
   [
     "실패 시 복귀 삭제",
     "ci.yml",
-    "always() && (needs.scope.result != 'success' || needs.scope.outputs.web != 'false')",
+    "!cancelled() && (needs.scope.result != 'success' || needs.scope.outputs.web != 'false')",
     "needs.scope.outputs.web == 'true'",
+    "job if/needs",
+  ],
+  // #492 D: always()는 취소된 이전 head의 job도 끝까지 실행해 최신 head CI를 지연시킵니다.
+  [
+    "취소 무시 조건 복귀",
+    "ci.yml",
+    "!cancelled() && (needs.scope.result != 'success' || needs.scope.outputs.web != 'false')",
+    "always() && (needs.scope.result != 'success' || needs.scope.outputs.web != 'false')",
+    "job if/needs",
+  ],
+  // success()는 scope 실패 시 job을 건너뛰어 skipped가 필수 검사 통과로 처리됩니다.
+  [
+    "scope 실패 시 생략",
+    "ci.yml",
+    "!cancelled() && (needs.scope.result != 'success' || needs.scope.outputs.web != 'false')",
+    "success() && (needs.scope.result != 'success' || needs.scope.outputs.web != 'false')",
     "job if/needs",
   ],
   ["scope 의존성 삭제", "ci.yml", "    needs: scope\n", "", "job if/needs"],
@@ -866,11 +882,18 @@ test("scope 실패·취소·생략·출력 누락은 전체 CI, 정상 문서 �
   const expression = workflow.jobs.ci.if.slice(3, -2).trim();
   for (const result of ["success", "failure", "cancelled", "skipped"]) {
     for (const web of ["false", "true", undefined]) {
+      // #492 D: 실행 자체가 취소되지 않은 경우의 scope 결과별 판정입니다.
       const run = runInNewContext(expression, {
-        always: () => true,
+        cancelled: () => false,
         needs: { scope: { result, outputs: { web } } },
       });
       assert.equal(run, !(result === "success" && web === "false"), result + ":" + web);
+      // 실행이 취소되면 job은 시작하지 않습니다. GitHub는 이때 skipped가 아닌 cancelled로 기록합니다(#492 실험).
+      const cancelledRun = runInNewContext(expression, {
+        cancelled: () => true,
+        needs: { scope: { result, outputs: { web } } },
+      });
+      assert.equal(cancelledRun, false, "cancelled:" + result + ":" + web);
     }
   }
   const contracts = parseWorkflow(baseline()["process-format.yml"]).jobs.contracts;

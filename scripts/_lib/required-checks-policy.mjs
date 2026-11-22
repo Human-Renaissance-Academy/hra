@@ -119,7 +119,7 @@ export const REVIEWED_RUNNER = "ubuntu-24.04";
 
 const JOB_IF = {
   "ci.yml:ci":
-    "${{ always() && (needs.scope.result != 'success' || needs.scope.outputs.web != 'false') }}",
+    "${{ !cancelled() && (needs.scope.result != 'success' || needs.scope.outputs.web != 'false') }}",
   "process-format.yml:pull-request": "github.event_name == 'pull_request'",
   "process-format.yml:contracts": "github.event_name != 'issues'",
 };
