@@ -12,6 +12,7 @@ import {
   mkdtempSync,
   readFileSync,
   rmSync,
+  symlinkSync,
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
@@ -43,11 +44,12 @@ const change = (path, base, head) => ({
   base: base === null ? null : Buffer.from(base),
   head: head === null ? null : Buffer.from(head),
 });
-// release PR이 실제로 바꾸는 6개 파일 조합입니다(루트 파일은 내용 비교 대상이 아닙니다).
+// release PR이 실제로 바꾸는 6개 파일 조합입니다. CHANGELOG·manifest 기록만 내용 비교 대상이 아니고,
+// 루트 package.json/lock도 모바일과 같은 마스킹 규칙으로 버전 필드만 바뀌었는지 확인합니다.
 const releaseChanges = () => [
   change("CHANGELOG.md", null, null),
-  change("package.json", null, null),
-  change("package-lock.json", null, null),
+  change("package.json", manifest("0.2.2"), manifest("0.2.3")),
+  change("package-lock.json", lock("0.2.2"), lock("0.2.3")),
   change(".release-please-manifest.json", null, null),
   change("apps/mobile/package.json", manifest("0.2.2"), manifest("0.2.3")),
   change("apps/mobile/package-lock.json", lock("0.2.2"), lock("0.2.3")),
@@ -76,6 +78,31 @@ describe("버전 전용 판정", () => {
     ["workflow 변경", (c) => [...c, change(".github/workflows/mobile.yml", null, null)]],
     ["Node 버전 파일 변경", (c) => [...c, change(".nvmrc", null, null)]],
     ["루트 릴리스 파일만 변경", (c) => c.slice(0, 4)],
+    // 루트 workspaces·의존성 변경은 APK 의존성 그래프에 섞일 수 있으므로 모바일 버전 갱신과 함께여도 컴파일합니다.
+    [
+      "루트 workspaces 추가와 모바일 버전 갱신",
+      (c) => [
+        c[0],
+        change(
+          "package.json",
+          manifest("0.2.2"),
+          manifest("0.2.3", ',\n  "workspaces": ["apps/mobile"]'),
+        ),
+        ...c.slice(2),
+      ],
+    ],
+    [
+      "루트 lock 의존성 변경과 모바일 버전 갱신",
+      (c) => [
+        ...c.slice(0, 2),
+        change("package-lock.json", lock("0.2.2"), lock("0.2.3", "0.2.3", "1.0.1")),
+        ...c.slice(3),
+      ],
+    ],
+    [
+      "루트 package.json 내용 없음(일반 파일 아님)",
+      (c) => [c[0], change("package.json", null, manifest("0.2.3")), ...c.slice(2)],
+    ],
     [
       "manifest의 다른 byte 변경",
       () => [
@@ -180,7 +207,11 @@ describe("실제 Git 범위 판정 CLI", () => {
       join(directory, "scripts", file),
     );
   git("init", "-q", "-b", "main");
+  // CLI 출력 파일과 복사한 스크립트는 판정 대상 변경이 아니므로 커밋하지 않습니다.
+  writeFileSync(join(directory, ".git/info/exclude"), "/output.txt\n/scripts/\n");
   const base = commit({
+    "package.json": manifest("0.2.2"),
+    "package-lock.json": lock("0.2.2"),
     "apps/mobile/package.json": manifest("0.2.2"),
     "apps/mobile/package-lock.json": lock("0.2.2"),
     "apps/mobile/src/app.tsx": "export {};\n",
@@ -220,13 +251,67 @@ describe("실제 Git 범위 판정 CLI", () => {
       assert.equal(runCli(directory, args()).output, "apk=true\n");
     });
 
-  test("실행 권한만 바뀐 버전 파일은 컴파일한다", () => {
-    git("checkout", "-q", "-b", "mode", release);
-    chmodSync(join(directory, "apps/mobile/package.json"), 0o755);
+  /** release 커밋에서 갈라진 branch에 변경을 커밋하고 그 SHA를 돌려줍니다. */
+  const branch = (name, change) => {
+    git("checkout", "-q", "-b", name, release);
+    change();
     git("add", "-A");
-    git("commit", "-q", "-m", "mode");
-    const mode = git("rev-parse", "HEAD");
+    git("commit", "-q", "-m", name);
+    const sha = git("rev-parse", "HEAD");
     git("checkout", "-q", "main");
-    assert.equal(runCli(directory, ["push", release, mode]).output, "apk=true\n");
+    return sha;
+  };
+  // 모바일 버전을 한 번 더 올려 각 사례가 "모바일 버전 갱신 + 다른 변경"이 되게 합니다.
+  const bumpMobile = () => {
+    writeFileSync(join(directory, "apps/mobile/package.json"), manifest("0.2.4"));
+    writeFileSync(join(directory, "apps/mobile/package-lock.json"), lock("0.2.4"));
+  };
+
+  test("모바일·루트 버전 파일의 실행 권한 변경은 컴파일한다", () => {
+    for (const path of ["apps/mobile/package.json", "package.json"]) {
+      const mode = branch("mode-" + path.replaceAll("/", "-"), () => {
+        bumpMobile();
+        chmodSync(join(directory, path), 0o755);
+      });
+      const { output, stdout } = runCli(directory, ["push", release, mode]);
+      assert.equal(output, "apk=true\n", path);
+      assert.match(stdout, /REASON=not-a-content-change/, path);
+    }
+  });
+
+  test("루트 package.json이 symlink로 바뀌면 컴파일한다", () => {
+    const link = branch("root-symlink", () => {
+      bumpMobile();
+      // 다른 파일을 추가하지 않도록 이미 있는 모바일 manifest를 가리킵니다.
+      rmSync(join(directory, "package.json"));
+      symlinkSync("apps/mobile/package.json", join(directory, "package.json"));
+    });
+    const { output, stdout } = runCli(directory, ["push", release, link]);
+    assert.equal(output, "apk=true\n");
+    assert.match(stdout, /REASON=not-a-content-change/);
+  });
+
+  test("루트 workspaces 추가와 모바일 버전 갱신이 함께면 컴파일한다", () => {
+    const workspaces = branch("root-workspaces", () => {
+      bumpMobile();
+      writeFileSync(
+        join(directory, "package.json"),
+        manifest("0.2.4", ',\n  "workspaces": ["apps/mobile"]'),
+      );
+      writeFileSync(join(directory, "package-lock.json"), lock("0.2.4"));
+    });
+    const { output, stdout } = runCli(directory, ["push", release, workspaces]);
+    assert.equal(output, "apk=true\n");
+    assert.match(stdout, /REASON=non-version-change/);
+  });
+
+  test("루트 버전 필드만 함께 바뀐 release는 생략한다", () => {
+    const rootRelease = branch("root-release", () => {
+      bumpMobile();
+      writeFileSync(join(directory, "package.json"), manifest("0.2.4"));
+      writeFileSync(join(directory, "package-lock.json"), lock("0.2.4"));
+      writeFileSync(join(directory, "CHANGELOG.md"), "# 0.2.4\n");
+    });
+    assert.equal(runCli(directory, ["push", release, rootRelease]).output, "apk=false\n");
   });
 });

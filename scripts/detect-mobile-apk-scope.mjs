@@ -18,31 +18,31 @@ const MOBILE_VERSION_FILES = {
   "apps/mobile/package.json": "manifest",
   "apps/mobile/package-lock.json": "lock",
 };
-// release PR이 함께 바꾸는 루트 파일입니다. 독립 npm 프로젝트인 apps/mobile의 APK 입력이 아니므로 내용을 보지 않습니다.
+// 루트 manifest/lock도 같은 마스킹으로 버전 필드만 바뀌었는지 확인합니다.
+// workspaces·overrides·의존성 변경이 APK 의존성 그래프에 섞일 수 있으므로 내용 확인 없이 허용하지 않습니다(#626 리뷰).
+const VERSION_FILES = {
+  ...MOBILE_VERSION_FILES,
+  "package.json": "manifest",
+  "package-lock.json": "lock",
+};
+// release PR이 함께 바꾸는 루트 파일 중 빌드 입력이 아닌 텍스트 기록만 내용을 보지 않습니다.
 // .nvmrc처럼 APK 빌드 도구에 영향을 주는 다른 루트 파일은 여기에 넣지 않으며, 목록 밖 파일은 모두 컴파일합니다.
-const ROOT_RELEASE_FILES = new Set([
-  "CHANGELOG.md",
-  "package.json",
-  "package-lock.json",
-  ".release-please-manifest.json",
-]);
+const ROOT_RELEASE_RECORDS = new Set(["CHANGELOG.md", ".release-please-manifest.json"]);
 
 /**
  * 변경 목록이 제품 버전 필드만 바꿨는지 판정합니다.
- * changes: [{ path, base: Buffer|null, head: Buffer|null }] (모바일 버전 파일만 내용이 필요합니다)
+ * changes: [{ path, base: Buffer|null, head: Buffer|null }] (모바일·루트 manifest/lock만 내용이 필요합니다)
  * 반환값의 apk가 false일 때만 컴파일을 생략합니다.
  */
 export function classifyMobileApkChanges(changes) {
   if (!Array.isArray(changes) || changes.length === 0 || changes.length > 100)
     return { apk: true, reason: "unknown-or-empty" };
-  let versionFiles = 0;
+  let mobileVersionFiles = 0;
   for (const change of changes) {
     const path = change?.path;
-    if (typeof path === "string" && ROOT_RELEASE_FILES.has(path)) continue;
+    if (typeof path === "string" && ROOT_RELEASE_RECORDS.has(path)) continue;
     const kind =
-      typeof path === "string" && Object.hasOwn(MOBILE_VERSION_FILES, path)
-        ? MOBILE_VERSION_FILES[path]
-        : null;
+      typeof path === "string" && Object.hasOwn(VERSION_FILES, path) ? VERSION_FILES[path] : null;
     if (!kind) return { apk: true, reason: "build-input-changed" };
     const { base, head } = change;
     // 추가·삭제(한쪽 없음)나 내용이 같은 mode 변경은 버전 갱신이 아닙니다.
@@ -52,10 +52,10 @@ export function classifyMobileApkChanges(changes) {
     const after = reviewedInputDigest(kind, head);
     // 마스킹 실패(null: 비정상 JSON, 안정형 X.Y.Z가 아닌 버전, 경로 중복 등)나 다른 bytes 변경은 컴파일합니다.
     if (!before || !after || before !== after) return { apk: true, reason: "non-version-change" };
-    versionFiles++;
+    if (Object.hasOwn(MOBILE_VERSION_FILES, path)) mobileVersionFiles++;
   }
-  // 루트 파일만 바뀐 경우는 이 workflow 경로 조건과 맞지 않으므로 애매한 것으로 보고 컴파일합니다.
-  if (versionFiles === 0) return { apk: true, reason: "no-mobile-version-change" };
+  // 모바일 버전 파일이 바뀌지 않은 경우는 이 workflow 경로 조건과 맞지 않으므로 애매한 것으로 보고 컴파일합니다.
+  if (mobileVersionFiles === 0) return { apk: true, reason: "no-mobile-version-change" };
   return { apk: false, reason: "release-version-only" };
 }
 
@@ -78,7 +78,7 @@ function resolveBase(event, base, head) {
   return SHA.test(mergeBase) ? mergeBase : null;
 }
 
-/** 기준과 head 사이의 변경 파일과 모바일 버전 파일의 양쪽 원문 bytes를 읽습니다. */
+/** 기준과 head 사이의 변경 파일과 버전 파일(모바일·루트 manifest/lock)의 양쪽 원문 bytes를 읽습니다. */
 function readChanges(base, head) {
   const out = git(["diff", "--name-only", "--no-renames", "-z", base, head, "--"]);
   if (!out.endsWith("\0")) return null;
@@ -92,7 +92,7 @@ function readChanges(base, head) {
     .slice(0, -1)
     .split("\0")
     .map((path) =>
-      Object.hasOwn(MOBILE_VERSION_FILES, path)
+      Object.hasOwn(VERSION_FILES, path)
         ? { path, base: blob(base, path), head: blob(head, path) }
         : { path, base: null, head: null },
     );

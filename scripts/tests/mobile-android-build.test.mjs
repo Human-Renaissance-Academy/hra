@@ -115,6 +115,11 @@ describe("Android 빌드 실행 계약", () => {
       workflow,
       /android-build:\n    name: [^\n]+\n    needs: apk-scope\n(?:    #[^\n]*\n)*    if: \$\{\{ !cancelled\(\) && !inputs\.release_test_apk && \(needs\.apk-scope\.result != 'success' \|\| needs\.apk-scope\.outputs\.apk != 'false'\) \}\}\n/,
     );
+    // 수동 실행에서는 판별 job을 건너뛰며(skipped), 위 조건의 result != 'success'로 컴파일이 실행됩니다.
+    assert.match(
+      workflow,
+      /apk-scope:\n    name: [^\n]+\n(?:    #[^\n]*\n)*    if: \$\{\{ github\.event_name != 'workflow_dispatch' \}\}\n/,
+    );
     assert.match(job, /retention-days: 7/);
     // 운영 비밀값·EAS 토큰·스토어 제출을 사용하지 않습니다.
     assert.doesNotMatch(job, /secrets\.|EXPO_TOKEN|eas (?:build|submit)/);

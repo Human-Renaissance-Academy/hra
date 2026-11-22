@@ -83,6 +83,8 @@ jobs:
   # 판정 규칙은 의존성 원장의 버전 마스킹(#618)과 같고, 확인하지 못하면 컴파일을 실행합니다.
   apk-scope:
     name: APK 컴파일 필요 여부 판별
+    # 수동 실행은 판정 없이 컴파일하므로(아래 result != 'success') 이 job을 실행하지 않습니다.
+    if: ${{ github.event_name != 'workflow_dispatch' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     outputs:
