@@ -87,6 +87,8 @@ scope는 `auth`, `academic`, `attendance`, `upload`, `ci`, `release`처럼 변�
 
 `autorelease: pending`, `autorelease: tagged`는 **릴리스 PR 전용 예약 라벨**이며 일반 이슈 상태 라벨은 계속 만들지 않는다. 사람 PR에 봇 라벨만 붙이거나 `chore(release)`라고 쓰는 것으로 예외를 얻을 수 없다. 생성형 본문 예외가 코드/권한/CI 면제는 아니다.
 
+병합 뒤 release-please가 라벨을 `autorelease: pending`에서 `autorelease: tagged`로 바꾸면 닫힌 PR에도 `pull_request` 이벤트가 생긴다. `PR 형식` 이벤트 검사는 GitHub API의 현재 상태가 `closed`인 PR을 병합 대상이 아니라는 이유로 생략한다(2026-11-21 #600·#620 병합 뒤 실패 기록). 열린 PR과 다시 연 PR은 기존 검사를 그대로 받는다.
+
 **릴리스 PR과 의존성 검사.** 릴리스 PR도 필수 `추적 소스 · 도달 가능한 이력 · dependency 검토`를 그대로 통과해야 한다. 의존성 원장(`security/dependency-triage.json`, `security/mobile-dependency-triage.json`)의 binding은 package.json/lock raw bytes를 해시하되 release-please가 바꾸는 제품 버전 경로(각 package.json `$.version`, 각 lock `$.version`·`$.packages[""].version`)의 안정형 `X.Y.Z` 값만 고정 자리표시자로 가린다. 따라서 이 여섯 필드만 바뀐 릴리스 PR은 원장을 고치지 않고도 검사를 통과하고, 병합 뒤 main도 계속 통과한다. 의존성·범위·resolved·integrity·이름·scripts·중첩 패키지 버전·공백 등 다른 byte가 하나라도 바뀌거나 버전이 prerelease·중복 key처럼 예상 밖이면 기존처럼 실패하며, 그때는 릴리스 PR이 아니라 일반 의존성 검토 PR로 처리한다. 2026-11-21 #600이 raw-byte binding 때문에 통과할 수 없던 문제를 이렇게 고쳤다(설계: [저장소 secret·의존성 게이트](../developer/repository-security-gates.md#v3-입력-binding과-qualified-reporting-identity)).
 
 Dependabot도 정확한 작성자와 `dependabot/` 브랜치를 확인하며 **제목은 검사**한다. 향후 Dependabot 도입 시 Conventional Commit 제목을 만들도록 `commit-message.prefix`를 `chore` 등으로 설정한다. 모든 봇 PR을 통째로 건너뛰지 않는다.
