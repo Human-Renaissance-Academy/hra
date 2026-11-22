@@ -25,6 +25,9 @@ import {
   validateWorkflowCheckBoundaries,
 } from "../_lib/required-checks-policy.mjs";
 
+// #492 B2: ci job의 main push 축소 실행용 단일 생략 조건입니다(PR에서는 항상 참).
+const FULL_ONLY =
+  "github.event_name != 'push' || needs.scope.result != 'success' || needs.scope.outputs.main_ci != 'reduced'";
 const directory = new URL("../../.github/workflows/", import.meta.url);
 const cli = new URL("../check-required-checks-config.mjs", import.meta.url);
 
@@ -594,8 +597,8 @@ for (const [reason, mutate] of [
       replace(
         files,
         "ci.yml",
-        "    runs-on: ubuntu-24.04",
-        "    runs-on: ubuntu-24.04\n    permissions:\n      contents: write",
+        "    name: Lint · Typecheck · Test · Build\n    runs-on: ubuntu-24.04",
+        "    name: Lint · Typecheck · Test · Build\n    runs-on: ubuntu-24.04\n    permissions:\n      contents: write",
       ),
   ],
   [
@@ -629,8 +632,16 @@ for (const [reason, mutate] of [
       replace(
         files,
         "ci.yml",
-        "      - name: ESLint 검사\n        run: npm run lint\n\n      - name: TypeScript 타입 검사\n        run: npm run typecheck",
-        "      - name: TypeScript 타입 검사\n        run: npm run typecheck\n\n      - name: ESLint 검사\n        run: npm run lint",
+        "      - name: ESLint 검사\n        if: " +
+          FULL_ONLY +
+          "\n        run: npm run lint\n\n      - name: TypeScript 타입 검사\n        if: " +
+          FULL_ONLY +
+          "\n        run: npm run typecheck",
+        "      - name: TypeScript 타입 검사\n        if: " +
+          FULL_ONLY +
+          "\n        run: npm run typecheck\n\n      - name: ESLint 검사\n        if: " +
+          FULL_ONLY +
+          "\n        run: npm run lint",
       ),
   ],
   [
@@ -871,4 +882,149 @@ test("scope 실패·취소·생략·출력 누락은 전체 CI, 정상 문서 �
         step.run === "node scripts/check-required-checks-config.mjs" && step.if === undefined,
     ),
   );
+});
+
+// #492 B2: main push 축소 실행의 검토된 예외만 허용하고, 변형·확대는 차단합니다.
+const REUSE_STEP_IF =
+  "        if: github.event_name == 'push' && github.ref == 'refs/heads/main'\n";
+const REUSE_RUN =
+  '        run: node scripts/detect-main-ci-reuse.mjs "$GITHUB_EVENT_NAME" "$GITHUB_REF" "$GITHUB_SHA" "$GITHUB_REPOSITORY" "$GITHUB_OUTPUT"';
+const reducedModeMutations = [
+  [
+    "ci 생략 조건 변형",
+    (f) =>
+      replace(
+        f,
+        "ci.yml",
+        "        if: " + FULL_ONLY + "\n        run: npm run lint",
+        "        if: github.event_name != 'push'\n        run: npm run lint",
+      ),
+    "unauthorized conditional",
+  ],
+  [
+    "빌드 단계 조건부 생략",
+    (f) =>
+      replace(
+        f,
+        "ci.yml",
+        "        run: npm run build",
+        "        if: " + FULL_ONLY + "\n        run: npm run build",
+      ),
+    "unconditional command: npm run build",
+  ],
+  [
+    "스모크 단계 조건부 생략",
+    (f) =>
+      replace(
+        f,
+        "ci.yml",
+        "        run: npm run test:e2e -- tests/e2e/ci-smoke.spec.ts\n",
+        "        if: " +
+          FULL_ONLY +
+          "\n        run: npm run test:e2e -- tests/e2e/ci-smoke.spec.ts\n",
+      ),
+    "unconditional command: npm run test:e2e",
+  ],
+  [
+    "의존성 설치 조건부 생략",
+    (f) =>
+      replace(
+        f,
+        "ci.yml",
+        "        run: npm ci\n",
+        "        if: " + FULL_ONLY + "\n        run: npm ci\n",
+      ),
+    "unconditional command: npm ci",
+  ],
+  [
+    "축소 판별 PR 실행 확대",
+    (f) => replace(f, "ci.yml", REUSE_STEP_IF, "        if: always()\n"),
+    "exact command/condition/environment",
+  ],
+  [
+    "축소 판별 조건 삭제",
+    (f) => replace(f, "ci.yml", REUSE_STEP_IF, ""),
+    "exact command/condition/environment",
+  ],
+  [
+    "축소 판별 추가 환경",
+    (f) =>
+      replace(
+        f,
+        "ci.yml",
+        "          GH_TOKEN: ${{ github.token }}\n",
+        "          GH_TOKEN: ${{ github.token }}\n          NODE_OPTIONS: --require=/tmp/x.js\n",
+      ),
+    "exact command/condition/environment",
+  ],
+  [
+    "축소 판별 대체",
+    (f) => replace(f, "ci.yml", REUSE_RUN, '        run: echo main_ci=reduced >> "$GITHUB_OUTPUT"'),
+    "exact command/condition/environment",
+  ],
+  [
+    "축소 판별 출력 위조",
+    (f) =>
+      replace(f, "ci.yml", "main_ci: ${{ steps.main-reuse.outputs.main_ci }}", "main_ci: reduced"),
+    "scope output",
+  ],
+  [
+    "축소 판별 뒤 단계 추가",
+    (f) => replace(f, "ci.yml", REUSE_RUN + "\n", REUSE_RUN + "\n      - run: npm run lint\n"),
+    "final scope step",
+  ],
+  [
+    "scope 쓰기 권한",
+    (f) => replace(f, "ci.yml", "      checks: read\n", "      checks: write\n"),
+    "job permissions",
+  ],
+  [
+    "scope 추가 권한",
+    (f) =>
+      replace(f, "ci.yml", "      actions: read\n", "      actions: read\n      statuses: read\n"),
+    "job permissions",
+  ],
+];
+for (const [name, mutate, diagnostic] of reducedModeMutations) {
+  test("main 축소 실행: " + name + " 변이를 차단한다", () => {
+    const errors = validateWorkflowCheckBoundaries(mutate(baseline()));
+    assert.ok(
+      errors.some((error) => error.includes(diagnostic)),
+      name + ": " + errors.join(" | "),
+    );
+  });
+}
+
+// GitHub 식의 검토된 논리식을 합성 컨텍스트에 적용합니다. 실제 runner 결과의 증거는 아닙니다.
+test("ci 생략 조건은 PR·수동·예약에서 항상 참이고 확인된 main push에서만 거짓이다", () => {
+  const workflow = parseWorkflow(baseline()["ci.yml"]);
+  const conditional = workflow.jobs.ci.steps.filter((step) => step.if !== undefined);
+  assert.ok(conditional.length > 0);
+  assert.ok(conditional.every((step) => step.if === FULL_ONLY));
+  for (const event of ["pull_request", "push", "workflow_dispatch", "schedule"]) {
+    for (const result of ["success", "failure", "cancelled", "skipped"]) {
+      for (const mainCi of ["reduced", "full", "", undefined]) {
+        const run = runInNewContext(FULL_ONLY, {
+          github: { event_name: event },
+          needs: { scope: { result, outputs: { main_ci: mainCi } } },
+        });
+        const reduced = event === "push" && result === "success" && mainCi === "reduced";
+        assert.equal(run, !reduced, event + ":" + result + ":" + mainCi);
+      }
+    }
+  }
+  // 축소 판별은 scope 마지막 단계이며 push·main에서만 읽기 전용 토큰을 받습니다.
+  const scope = workflow.jobs.scope;
+  const last = scope.steps.at(-1);
+  assert.equal(last.id, "main-reuse");
+  assert.equal(last.if, "github.event_name == 'push' && github.ref == 'refs/heads/main'");
+  const { env: lastEnvironment } = last;
+  assert.deepEqual(lastEnvironment, { GH_TOKEN: "${{ github.token }}" });
+  assert.deepEqual(scope.permissions, {
+    contents: "read",
+    "pull-requests": "read",
+    checks: "read",
+    actions: "read",
+  });
+  assert.equal(workflow.jobs.ci.permissions, undefined);
 });

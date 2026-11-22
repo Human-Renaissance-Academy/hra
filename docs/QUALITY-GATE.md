@@ -21,7 +21,7 @@
 
 개발·CI의 Node 버전은 `.nvmrc`의 `24.15.0`과 `engines.node`의 `^24.15.0`를 따른다. 빌드의 실제 버전은 로그로 확인하며 현재 운영 Vercel의 런타임 일치 여부는 미확인이다.
 
-`main`에 대한 push와 pull request에서 `.github/workflows/ci.yml`의 한 job이 다음 순서로 실행한다. **기본 CI에는 G1 통합 검사와 브라우저 smoke가 모두 포함되어 있다.**
+`main`에 대한 push와 pull request에서 `.github/workflows/ci.yml`의 한 job이 다음 순서로 실행한다. **기본 CI에는 G1 통합 검사와 브라우저 smoke가 모두 포함되어 있다.** PR(필수 검사)에서는 아래 단계가 항상 모두 실행된다. `main` push만 아래 축소 실행 조건을 확인한다.
 
 | 순서 | 명령·단계 | 확인하는 내용 |
 | --- | --- | --- |
@@ -37,6 +37,15 @@
 | 10 | `node scripts/verify-resources-responsive.mjs` | 앞 단계 빌드·격리 PostgreSQL·합성 MEMBER/FACULTY로 회원 자료실의 320·375·390·768·1280px 넘침·카테고리·필터·링크·빈 상태·페이지네이션 검사(#601, Chromium 에뮬레이션) |
 | 11 | `npm run test:e2e -- tests/e2e/ci-smoke.spec.ts --list` | 실행할 smoke 파일·테스트 이름·수집 수를 로그에 남김 |
 | 12 | `npm run test:e2e -- tests/e2e/ci-smoke.spec.ts` | 로그인 화면·공개 UI·보호 경로 등 수집된 브라우저 검사 실행 |
+
+**main push 축소 실행(#492 B2):** squash 병합 후 `main` push에서는 `scope` job의 마지막 단계(`scripts/detect-main-ci-reuse.mjs`)가 다음을 모두 확인한 경우에만 `npm ci`·`npm run build`·Chromium 설치·smoke 수집과 실행만 남기고 나머지 단계를 생략한다.
+
+1. push된 커밋과 연결된 PR이 정확히 1개다.
+2. 그 PR이 병합되었고 `merge_commit_sha`가 push된 커밋이다.
+3. `refs/pull/N/head`를 받아 PR `head.sha`와 일치하고, push된 커밋(단일 부모)과 PR head의 트리가 같으며, 병합 직전 `main`이 PR head의 조상이다.
+4. PR head에 같은 이름의 최신 검사가 모두 성공이고, 그중 GitHub Actions(`github-actions`)가 `.github/workflows/ci.yml`의 `pull_request` 실행으로 만든 성공 검사가 있다.
+
+하나라도 확인하지 못하거나 API·Git 오류가 나면 전체 단계를 실행한다(fail-safe). 수동·예약 실행과 `scope` 실패도 같다. 판별 회귀는 `node --test scripts/tests/main-ci-reuse.test.mjs`이고, 단계 조건의 고정은 `scripts/_lib/required-checks-policy.mjs`가 검사한다. 포맷 검사는 `scope` job에서 계속 실행된다.
 
 **Smoke**는 주요 화면이 열리고 기본 접근 경계가 작동하는지 빠르게 확인하는 검사다. 현재 기본 CI는 `auth-protection.spec.ts`나 개별 학사 `*.spec.ts` 전체를 선택하지 않는다. G1은 전용 실행기가 별도 시나리오를 실행하므로, 일반 Playwright 파일 전체가 통과했다는 뜻으로 해석하지 않는다. G1의 로컬 저장소 검사는 실제 외부 공급자의 업로드·OAuth 로그인을 확인하는 검사와도 구분한다.
 

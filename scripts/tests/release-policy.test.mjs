@@ -20,7 +20,11 @@ const files = RELEASE_FILES.map((filename) => ({ filename, status: "modified" })
 // 별도 YAML 의존성 없이 현재 workflow의 명시적 권한 블록과 checkout 단계를 검사합니다.
 // workflow나 권한을 추가할 때는 아래 허용 목록과 실제 YAML 검증을 함께 검토해야 합니다.
 const workflowPermissions = {
-  "ci.yml": [{ contents: "read" }],
+  // scope job은 #492 B2 main push 축소 판별을 위한 읽기 전용 권한만 추가합니다.
+  "ci.yml": [
+    { contents: "read" },
+    { contents: "read", "pull-requests": "read", checks: "read", actions: "read" },
+  ],
   "authentication-measurement.yml": [{ contents: "read" }],
   "repository-security.yml": [{ contents: "read" }],
   "expanded-e2e.yml": [{ contents: "read" }],

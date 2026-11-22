@@ -20,8 +20,16 @@ jobs:
   scope:
     name: 변경 범위 판별
     runs-on: ubuntu-24.04
+    # main push 축소 판별(#492 B2)이 PR·검사 결과를 읽기 위한 읽기 전용 권한입니다. 쓰기 권한은 없습니다.
+    # 토큰은 push·main에서만 실행되는 마지막 판별 단계의 env에만 전달합니다.
+    permissions:
+      contents: read
+      pull-requests: read
+      checks: read
+      actions: read
     outputs:
       web: ${{ steps.detect.outputs.web }}
+      main_ci: ${{ steps.main-reuse.outputs.main_ci }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
@@ -42,10 +50,19 @@ jobs:
           node --test scripts/tests/code-format-scope.test.mjs
           npm run format:check
       - name: 변경 범위의 허용 목록·오류 시 전체 검사 회귀
-        run: node --test scripts/tests/ci-scope.test.mjs
+        run: node --test scripts/tests/ci-scope.test.mjs scripts/tests/main-ci-reuse.test.mjs
       - name: 대상 변경 범위 판별
         id: detect
         run: node scripts/detect-ci-scope.mjs "$GITHUB_EVENT_NAME" "$GITHUB_OUTPUT"
+      # #492 B2: main push에서만 병합 트리가 같은 트리로 필수 CI를 통과한 PR head와 같은지 확인합니다.
+      # 확인 실패·오류·단계 미실행(PR 등)은 main_ci가 reduced가 아니므로 전체 CI를 실행합니다.
+      # 반드시 마지막 단계로 두어 reduced 출력 뒤에 scope가 실패하는 경우를 만들지 않습니다.
+      - name: main 병합 트리의 PR CI 통과 확인
+        id: main-reuse
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/detect-main-ci-reuse.mjs "$GITHUB_EVENT_NAME" "$GITHUB_REF" "$GITHUB_SHA" "$GITHUB_REPOSITORY" "$GITHUB_OUTPUT"
 
   ci:
     needs: scope
@@ -62,6 +79,9 @@ jobs:
       AUTH_SECRET: ci-only-secret-for-isolated-smoke-tests
       NEXT_PUBLIC_APP_URL: http://127.0.0.1:3100
 
+    # #492 B2: PR에서는 아래 모든 단계를 그대로 실행합니다(조건의 첫 항이 항상 참).
+    # main push에서 scope가 PR head 트리 재사용을 확인한 경우에만 설치·빌드·브라우저 스모크만 실행하고,
+    # 그 외 단계는 검토된 단일 조건으로 생략합니다. 확인 실패·scope 실패는 전체 실행입니다.
     steps:
       # 기존 v4 태그의 검증한 commit을 고정합니다. 갱신 절차: docs/developer/github-actions-security.md
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -78,18 +98,21 @@ jobs:
         run: npm ci
 
       - name: PR 필수 보안 검사 생성·우회 방지 계약
+        if: github.event_name != 'push' || needs.scope.result != 'success' || needs.scope.outputs.main_ci != 'reduced'
         # 기존 required Web CI에 검증기를 포함하되 운영 secret·추가 네트워크는 전달하지 않습니다.
         run: |
           node --test scripts/tests/required-checks-policy.test.mjs
           node scripts/check-required-checks-config.mjs
 
       - name: DB 소스 목록 계약 검사
+        if: github.event_name != 'push' || needs.scope.result != 'success' || needs.scope.outputs.main_ci != 'reduced'
         # Git 경로와 파일 바이트만 읽으며 SQL·DB·Blob·환경 파일을 실행하지 않습니다.
         run: |
           node --test scripts/tests/db-source-inventory.test.mjs
           node scripts/check-db-source-inventory.mjs
 
       - name: 신규 설치 소스 대응 계약
+        if: github.event_name != 'push' || needs.scope.result != 'success' || needs.scope.outputs.main_ci != 'reduced'
         # 기존 inventory를 정본으로 참조하고 미해결 설치 조건을 준비 완료로 오인하지 않습니다.
         run: |
           node --test scripts/tests/db-installation-contract.test.mjs
@@ -97,47 +120,57 @@ jobs:
           node scripts/check-db-installation-contract.mjs
 
       - name: 기본 DB push·관리 명령 접속 차단 회귀
+        if: github.event_name != 'push' || needs.scope.result != 'success' || needs.scope.outputs.main_ci != 'reduced'
         # 차단된 합성 대상에서 기본 접속·계획 전용 관리 명령의 우회 거부와 오프라인 SQL 생성을 검사합니다.
         run: |
           node --test scripts/tests/db-push-guard.test.mjs
           node --test scripts/tests/db-plan-cli.test.mjs
 
       - name: 버전 SQL manifest·이력 snapshot 소스 계약
+        if: github.event_name != 'push' || needs.scope.result != 'success' || needs.scope.outputs.main_ci != 'reduced'
         # 실제 적용 이력을 만들지 않고 파일·Git·전달된 JSON의 일관성만 확인합니다.
         run: |
           node --test scripts/tests/db-migration-manifest.test.mjs
           node scripts/check-db-migration-manifest.mjs
 
       - name: 환경변수 문서·예시 계약 검사
+        if: github.event_name != 'push' || needs.scope.result != 'success' || needs.scope.outputs.main_ci != 'reduced'
         # 실제 .env·DB·Blob에 접근하지 않고 설치한 TypeScript로 소스만 읽습니다.
         run: |
           node --test scripts/tests/environment-contract.test.mjs
           node scripts/check-environment-contract.mjs
 
       - name: 운영 읽기 전용 점검 스크립트 안전 계약
+        if: github.event_name != 'push' || needs.scope.result != 'success' || needs.scope.outputs.main_ci != 'reduced'
         # 실제 DB·Vercel·Blob 없이 mock 으로 READ ONLY 트랜잭션·SQL 목록·출력 차단을 검사합니다.
         run: node --test scripts/tests/ops-readonly-report.test.mjs
 
       - name: 분리 제출 측정 도구 안전 계약
+        if: github.event_name != 'push' || needs.scope.result != 'success' || needs.scope.outputs.main_ci != 'reduced'
         # 실제 Blob 없이 mock 으로 읽기 전용 호출·출력 비밀 제거·판정 경계를 검사합니다.
         run: node --test scripts/tests/academic-artifact-measurement.test.mjs
 
       - name: 로컬 push 훅 ref 계약 검사
+        if: github.event_name != 'push' || needs.scope.result != 'success' || needs.scope.outputs.main_ci != 'reduced'
         # 삭제 전용 push만 빌드를 생략하고 코드 ref·손상된 입력은 계속 차단합니다.
         run: node --test scripts/tests/pre-push-hook.test.mjs
 
       - name: 변경 소스 포맷 검사
+        if: github.event_name != 'push' || needs.scope.result != 'success' || needs.scope.outputs.main_ci != 'reduced'
         run: |
           node --test scripts/tests/code-format-scope.test.mjs
           npm run format:check
 
       - name: ESLint 검사
+        if: github.event_name != 'push' || needs.scope.result != 'success' || needs.scope.outputs.main_ci != 'reduced'
         run: npm run lint
 
       - name: TypeScript 타입 검사
+        if: github.event_name != 'push' || needs.scope.result != 'success' || needs.scope.outputs.main_ci != 'reduced'
         run: npm run typecheck
 
       - name: 격리 PostgreSQL 준비
+        if: github.event_name != 'push' || needs.scope.result != 'success' || needs.scope.outputs.main_ci != 'reduced'
         run: |
           sudo apt-get update
           sudo apt-get install -y postgresql
@@ -147,32 +180,38 @@ jobs:
           printf 'HRA_TEST_PG_BIN=%s\n' "$pg_bin" >> "$GITHUB_ENV"
 
       - name: 로컬 migration 원자성·경합·연결 유실 복구
+        if: github.event_name != 'push' || needs.scope.result != 'success' || needs.scope.outputs.main_ci != 'reduced'
         # 실제 임시 PG만 소유하는 factory로 검증하며 운영 URL·승인 입력을 받지 않습니다.
         timeout-minutes: 10
         run: node --test --test-concurrency=1 scripts/tests/db-migration-*.test.mjs tests/integration/db-migration-local.test.mjs
 
       - name: 신규 설치 원문 기준·후보 전체 복구 계약
+        if: github.event_name != 'push' || needs.scope.result != 'success' || needs.scope.outputs.main_ci != 'reduced'
         # 독립 원문 기준 DB와 후보 엔진 DB를 소유 로컬 PG에 따로 만들고 단계별 catalog·실패 복구를 대조합니다.
         timeout-minutes: 10
         run: node --test --test-concurrency=1 tests/integration/db-fresh-reference.test.mjs tests/integration/db-fresh-bundle.test.mjs tests/integration/mobile-session-persistence.test.mjs
 
       - name: 관리 CLI 계정 연결·비공개 파일 보호 회귀
+        if: github.event_name != 'push' || needs.scope.result != 'success' || needs.scope.outputs.main_ci != 'reduced'
         # 소유 임시 PG와 합성 Blob 저장소만 사용하고 외부 서비스 호출을 차단합니다.
         timeout-minutes: 5
         run: node --test scripts/tests/management-cli-safety.test.mjs
 
       - name: 한정 스키마 설치 CLI의 무인자·원자 적용 회귀
+        if: github.event_name != 'push' || needs.scope.result != 'success' || needs.scope.outputs.main_ci != 'reduced'
         # 소유 임시 PG에서만 두 컬럼의 소유권·정의·기존 값 보존을 검증합니다.
         timeout-minutes: 5
         run: node --test scripts/tests/schema-installer-cli.test.mjs
 
       - name: 단위 테스트
+        if: github.event_name != 'push' || needs.scope.result != 'success' || needs.scope.outputs.main_ci != 'reduced'
         run: npm test
 
       - name: Next.js 빌드
         run: npm run build
 
       - name: Proxy 인증 경계 HTTP 회귀
+        if: github.event_name != 'push' || needs.scope.result != 'success' || needs.scope.outputs.main_ci != 'reduced'
         # 실제 Auth.js 래퍼와 격리 DB 세션으로 역할별 302/403 응답을 확인합니다.
         run: npm run verify:auth-proxy
 
@@ -180,15 +219,18 @@ jobs:
         run: npx playwright install --with-deps chromium
 
       - name: 에디터 미리보기 키보드 회귀
+        if: github.event_name != 'push' || needs.scope.result != 'success' || needs.scope.outputs.main_ci != 'reduced'
         # 운영 계정 없이 실제 에디터·CSS·Dialog를 Chromium에서 검증합니다.
         run: npm run verify:editor-preview
 
       - name: 학사 G1 실제 제출 품질 게이트
+        if: github.event_name != 'push' || needs.scope.result != 'success' || needs.scope.outputs.main_ci != 'reduced'
         # fork PR에서도 secrets 없이 실제 앱·격리 DB·로컬 private 저장소를 검증합니다.
         timeout-minutes: 10
         run: npm run test:academic-g1
 
       - name: 회원 자료실 반응형 회귀 (#601)
+        if: github.event_name != 'push' || needs.scope.result != 'success' || needs.scope.outputs.main_ci != 'reduced'
         # 위 빌드·Chromium·격리 PG를 재사용해 합성 MEMBER/FACULTY로 320~1280px 넘침·필터·링크를 검사합니다.
         timeout-minutes: 5
         run: node scripts/verify-resources-responsive.mjs

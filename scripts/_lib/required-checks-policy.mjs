@@ -56,15 +56,29 @@ export const EXPECTED_WORKFLOW_FILES = Object.freeze(
   ["ci.yml", "process-format.yml", "repository-security.yml", ...NON_REQUIRED_WORKFLOWS].sort(),
 );
 
+// #492 B2: main push 축소 판별 명령과 ci job의 단일 생략 조건입니다. 정확한 문자열로 고정합니다.
+const MAIN_CI_REUSE_COMMAND =
+  'node scripts/detect-main-ci-reuse.mjs "$GITHUB_EVENT_NAME" "$GITHUB_REF" "$GITHUB_SHA" "$GITHUB_REPOSITORY" "$GITHUB_OUTPUT"';
+// 첫 항 때문에 pull_request(필수 검사)에서는 항상 참이며, scope 실패·출력 누락도 전체 실행입니다.
+const CI_FULL_ONLY_CONDITION =
+  "github.event_name != 'push' || needs.scope.result != 'success' || needs.scope.outputs.main_ci != 'reduced'";
+// 축소 실행에서도 반드시 남는 명령입니다. 이 명령의 단계에는 조건을 붙일 수 없습니다.
+const CI_ALWAYS_COMMANDS = [
+  "npm ci",
+  "npm run build",
+  "npm run test:e2e -- tests/e2e/ci-smoke.spec.ts",
+];
+
 const isObject = (value) => value !== null && typeof value === "object" && !Array.isArray(value);
 const CHECK_COMMANDS = {
   "ci.yml:scope": [
     "npm run format:check",
     "node --test scripts/tests/code-format-scope.test.mjs",
-    "node --test scripts/tests/ci-scope.test.mjs",
+    "node --test scripts/tests/ci-scope.test.mjs scripts/tests/main-ci-reuse.test.mjs",
     'node scripts/detect-ci-scope.mjs "$GITHUB_EVENT_NAME" "$GITHUB_OUTPUT"',
   ],
   "ci.yml:ci": [
+    "npm ci",
     "node --test scripts/tests/required-checks-policy.test.mjs",
     "node scripts/check-required-checks-config.mjs",
     "npm run lint",
@@ -130,6 +144,18 @@ const CONDITIONAL_STEPS = {
     environment: { HISTORY_MODE, BASE_SHA, HEAD_SHA },
   },
 };
+// scope의 조건부 단계는 main push 축소 판별 하나뿐이며 읽기 전용 job token만 받습니다.
+const SCOPE_CONDITIONAL_STEPS = {
+  "main 병합 트리의 PR CI 통과 확인": {
+    command: MAIN_CI_REUSE_COMMAND,
+    condition: "github.event_name == 'push' && github.ref == 'refs/heads/main'",
+    environment: { GH_TOKEN: "${{ github.token }}" },
+  },
+};
+const REVIEWED_CONDITIONAL_STEPS = {
+  "process-format.yml:contracts": CONDITIONAL_STEPS,
+  "ci.yml:scope": SCOPE_CONDITIONAL_STEPS,
+};
 
 /** 환경 값을 오류에 출력하지 않고 검토한 키·값·완전성만 대조합니다. */
 function sameEnvironment(actual, expected) {
@@ -160,8 +186,8 @@ function expectedEnvironment(key, step) {
       GH_TOKEN: "${{ github.token }}",
       RELEASE_PLEASE_BOT_LOGIN: "${{ vars.RELEASE_PLEASE_BOT_LOGIN }}",
     };
-  if (step && key === "process-format.yml:contracts")
-    return CONDITIONAL_STEPS[step.name]?.environment ?? {};
+  if (step && REVIEWED_CONDITIONAL_STEPS[key])
+    return REVIEWED_CONDITIONAL_STEPS[key][step.name]?.environment ?? {};
   return {};
 }
 
@@ -178,8 +204,8 @@ const DIRECT_CHECK_COMMANDS = Object.values(CHECK_COMMANDS).flat();
  * 정상적인 gate/순서/env/uses 변경도 먼저 실제 실행·실패 전파 회귀를 검토하고 workflow와 이 지문을 함께 갱신합니다.
  */
 const REVIEWED_PIPELINE_DIGESTS = {
-  "ci.yml:scope": "aca77f0afc12dc899bfb04730a18ef0cd3cc7e468d1bcb9d065745721f5b11ab",
-  "ci.yml:ci": "62f65537ef6036657f2ca0bff2db84a21da546abf74a231b56fdb67629033ddb",
+  "ci.yml:scope": "7f0c3f6c922dd813127ade61bdb776688f6b8a46c04764406d3422b7ac2f8425",
+  "ci.yml:ci": "7fd28a989b71e83e9f148c592fdb741bde279f44f06a41923d247378e0e4282b",
   "process-format.yml:pull-request":
     "ae70c42a9c814c1df9e9c238b87353f08b462cc50160cfa6b485820e83a263f1",
   "process-format.yml:contracts":
@@ -190,6 +216,13 @@ const REVIEWED_PIPELINE_DIGESTS = {
     "baed69b6efce5a1146adba27a84cea126c7c8fc336113e253567c9475d5be168",
 };
 const REVIEWED_JOB_PERMISSIONS = {
+  // #492 B2 판별의 PR·check run·workflow run 조회용 읽기 전용 권한입니다.
+  "ci.yml:scope": {
+    contents: "read",
+    "pull-requests": "read",
+    checks: "read",
+    actions: "read",
+  },
   "process-format.yml:pull-request": { contents: "read", "pull-requests": "read" },
   "process-format.yml:contracts": { contents: "read" },
 };
@@ -346,12 +379,20 @@ export function validateWorkflowCheckBoundaries(workflows) {
     if (key === "ci.yml:scope") {
       const detectors = job.steps.filter((step) => step?.id === "detect");
       if (
-        !sameEnvironment(job.outputs, { web: "${{ steps.detect.outputs.web }}" }) ||
+        !sameEnvironment(job.outputs, {
+          web: "${{ steps.detect.outputs.web }}",
+          main_ci: "${{ steps.main-reuse.outputs.main_ci }}",
+        }) ||
         detectors.length !== 1 ||
         detectors[0].run !==
           'node scripts/detect-ci-scope.mjs "$GITHUB_EVENT_NAME" "$GITHUB_OUTPUT"'
       ) {
         errors.push(key + ": scope output must come from the reviewed fail-closed detector.");
+      }
+      // reduced 출력 뒤에 실패할 수 있는 단계가 오지 않도록 축소 판별은 마지막 단계여야 합니다.
+      const last = job.steps[job.steps.length - 1];
+      if (last?.id !== "main-reuse" || last.run !== MAIN_CI_REUSE_COMMAND) {
+        errors.push(key + ": main CI reuse detector must be the reviewed final scope step.");
       }
     }
     const expectedPermissions = REVIEWED_JOB_PERMISSIONS[key];
@@ -386,8 +427,7 @@ export function validateWorkflowCheckBoundaries(workflows) {
         errors.push(key + ": unreviewed step execution environment/shell/directory.");
       }
       // if를 삭제하고 같은 이름의 echo만 남기는 경우도 거부합니다.
-      const allowed =
-        key === "process-format.yml:contracts" ? CONDITIONAL_STEPS[step.name] : undefined;
+      const allowed = REVIEWED_CONDITIONAL_STEPS[key]?.[step.name];
       if (allowed) {
         if (
           step.if !== allowed.condition ||
@@ -400,7 +440,10 @@ export function validateWorkflowCheckBoundaries(workflows) {
               step.name,
           );
         }
-      } else if (step.if !== undefined) {
+      } else if (
+        step.if !== undefined &&
+        !(key === "ci.yml:ci" && step.if === CI_FULL_ONLY_CONDITION)
+      ) {
         errors.push(key + ": unauthorized conditional step: " + String(step.name ?? "unnamed"));
       }
       if (
@@ -412,17 +455,32 @@ export function validateWorkflowCheckBoundaries(workflows) {
       }
     }
     // 조건부 필수 단계를 통째로 삭제하거나 중복 선언해도 검사에서 빠져나가면 안 됩니다.
-    if (key === "process-format.yml:contracts") {
-      for (const stepName of Object.keys(CONDITIONAL_STEPS)) {
+    if (REVIEWED_CONDITIONAL_STEPS[key]) {
+      for (const stepName of Object.keys(REVIEWED_CONDITIONAL_STEPS[key])) {
         const occurrences = job.steps.filter((step) => step?.name === stepName).length;
         if (occurrences !== 1) {
           errors.push(key + ": required conditional step must appear exactly once: " + stepName);
         }
       }
     }
+    // ci의 단일 생략 조건은 PR에서 항상 참이므로 필수 명령으로 인정합니다(#492 B2).
     const commands = job.steps
-      .filter((step) => isObject(step) && step.if === undefined)
+      .filter(
+        (step) =>
+          isObject(step) &&
+          (step.if === undefined || (key === "ci.yml:ci" && step.if === CI_FULL_ONLY_CONDITION)),
+      )
       .flatMap((step) => directCommands(step, key));
+    if (key === "ci.yml:ci") {
+      const unconditional = job.steps
+        .filter((step) => isObject(step) && step.if === undefined)
+        .flatMap((step) => directCommands(step, key));
+      for (const required of CI_ALWAYS_COMMANDS) {
+        if (!hasCommand(unconditional, required)) {
+          errors.push(key + ": main reduced mode must keep unconditional command: " + required);
+        }
+      }
+    }
     for (const required of CHECK_COMMANDS[key] || []) {
       if (!hasCommand(commands, required)) {
         errors.push(key + ": required executable command missing: " + required);

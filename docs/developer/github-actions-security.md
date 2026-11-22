@@ -28,11 +28,17 @@ release-please의 활성화 조건과 별도 `RELEASE_PLEASE_TOKEN` 전달을 �
 
 `.github/workflows/ci.yml`의 `scope` job은 PR의 **GitHub merge ref와 첫 번째 부모(base)** 를 비교합니다. 변경된 파일이 `apps/mobile/**`, 일반 Markdown/이미지 문서, 저장소 설명 문서, 이슈 템플릿에만 있으면 웹의 PostgreSQL 설치·전체 Vitest·브라우저·Next.js 빌드 job을 생략합니다. 별도 `mobile.yml`의 Android 빌드·타입·Jest·Expo 검증은 계속 실행되며 PR 형식·보안/CSP 검사도 독립적으로 실행됩니다.
 
-`src/**`, `packages/contracts/**`, `scripts/**`, 웹·모바일 CI/보안 workflow, 자동 생성된 `docs/developer/environment-inventory.md`, 문서 경로의 JSON·스크립트, `package*.json`, `vercel.json`, 환경변수/설정처럼 웹에 영향을 줄 수 있는 파일이 **하나라도 포함되면 전체 웹 CI**를 실행합니다. 공용 API 계약이 바뀐 모바일 PR은 Web과 Mobile을 함께 검사합니다. `push`/`main`은 변함없이 전체 CI를 수행합니다.
+`src/**`, `packages/contracts/**`, `scripts/**`, 웹·모바일 CI/보안 workflow, 자동 생성된 `docs/developer/environment-inventory.md`, 문서 경로의 JSON·스크립트, `package*.json`, `vercel.json`, 환경변수/설정처럼 웹에 영향을 줄 수 있는 파일이 **하나라도 포함되면 전체 웹 CI**를 실행합니다. 공용 API 계약이 바뀐 모바일 PR은 Web과 Mobile을 함께 검사합니다. `push`/`main`은 경로 범위로 생략하지 않습니다. 다만 병합 트리가 같은 트리로 필수 CI를 통과한 PR head와 같다고 확인되면 설치·빌드·브라우저 smoke만 실행합니다(아래 #492 B2).
 
 범위를 판독할 수 없거나, merge parent가 없거나, 파일명이 손상되거나, 검출 job의 테스트가 실패해도 전체 Web CI가 실행되도록 `always()` 기반 job 조건을 사용합니다. _탐지 실패를 검사 성공으로 취급해 건너뛰지 않습니다._ 기존 `Lint · Typecheck · Test · Build` job 이름을 유지하여 브랜치 보호 확인 이름을 임의 변경하지 않습니다. 운영 DB나 배포를 호출하는 workflow를 새로 만들지 않았습니다.
 
 변경 소스 포맷 계약과 `format:check`는 범위 판별 job에서 먼저 실행하여 문서·모바일 전용 PR에서도 #497의 포맷 게이트를 유지합니다. 범위 판별이 실패한 경우 전체 CI의 기존 포맷 검사도 계속 실행합니다.
+
+### main push 축소 실행 (#492 B2)
+
+`scope` job의 마지막 단계 `main 병합 트리의 PR CI 통과 확인`은 `push`·`refs/heads/main`에서만 실행됩니다. `GH_TOKEN`은 이 단계에만 전달되고, `scope` job 권한은 `contents`·`pull-requests`·`checks`·`actions`의 **읽기**뿐입니다. 쓰기 권한은 없습니다. 판별기(`scripts/detect-main-ci-reuse.mjs`)는 runner 기본 환경변수를 인수로만 받습니다. 연결 PR 1개, 병합 커밋 일치, PR head ref·트리·조상 일치, PR head의 `github-actions` 앱이 `ci.yml`의 `pull_request` 실행으로 만든 성공 검사를 모두 확인한 경우에만 `main_ci=reduced`를 출력합니다. 그 외에는 `full`입니다.
+
+`ci` job은 `if`를 바꾸지 않습니다(취소 의미 유지). 설치·빌드·Chromium·smoke를 뺀 단계에 같은 단일 조건 `github.event_name != 'push' || needs.scope.result != 'success' || needs.scope.outputs.main_ci != 'reduced'`만 붙습니다. 첫 항 때문에 PR에서는 항상 참입니다. 필수 체크 경계 검사는 이 조건 문자열, 무조건 실행해야 하는 `npm ci`·`npm run build`·smoke 명령, 판별 단계의 정확한 조건·명령·env, 마지막 단계 위치, `scope` 권한과 출력을 고정합니다.
 
 재현 가능한 독립 검증은 `node --test scripts/tests/ci-scope.test.mjs`이며 실제 PR에서는 merge ref의 SHA/파일 범위까지 확인합니다. 이 분기는 **GitHub Actions의 웹 CI 비용/범위만 조정**합니다. Vercel 프로젝트의 Ignored Build Step이나 Root Directory를 변경하지 않았으며, 두 설정의 운영 적용은 #281과 조직 이전 연결 문제 #408에서 별도 확인해야 합니다.
 
@@ -67,7 +73,7 @@ node --test scripts/tests/release-policy.test.mjs scripts/tests/required-checks-
 
 | 워크플로 / 통합 | 실제 Check Run / Status 이름 | App ID | 실행 트리거 | 모든 `main` PR 생성 여부 | 정본 `main` 필수 여부 | 2026-11-14 GitHub 설정 조회 결과 |
 | --- | --- | --- | --- | --- | --- | --- |
-| `ci.yml` | `Lint · Typecheck · Test · Build` | `15368` | `pull_request(main)`, `push(main)` | 예 (scope 판별 실패·불명확 시 전체 실행, 문서·모바일 전용 정상 PR만 skipped) | **필수** | 등록됨 (`strict: true`, `enforce_admins: true`) |
+| `ci.yml` | `Lint · Typecheck · Test · Build` | `15368` | `pull_request(main)`, `push(main)` | 예 (scope 판별 실패·불명확 시 전체 실행, 문서·모바일 전용 정상 PR만 skipped; main push는 PR head 트리 재사용 확인 시 축소 실행) | **필수** | 등록됨 (`strict: true`, `enforce_admins: true`) |
 | `process-format.yml` | `PR 형식` | `15368` | `pull_request(main)` (7개 활동 유형) | 예 (`event_name == 'pull_request'`) | **필수** | 등록됨 |
 | `process-format.yml` | `형식·릴리스 계약 테스트` | `15368` | `pull_request(main)`, `push(main)`, `workflow_dispatch` | 예 (`event_name != 'issues'`) | **필수** | 등록됨 |
 | `repository-security.yml` | `추적 소스 · 도달 가능한 이력 · dependency 검토` | `15368` | `pull_request(main)`, `push(main)`, `schedule`, `workflow_dispatch` | 예 (무조건 실행, 비밀값 없음) | **필수** | 미등록 → 운영자 반영·검증 대상 ([#408](https://github.com/Human-Renaissance-Academy/hra-website/issues/408)) |
