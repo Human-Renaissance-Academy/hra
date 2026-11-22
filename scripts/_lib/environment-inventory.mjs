@@ -591,6 +591,14 @@ export const environmentInventory = {
       "없으면 해당 QA 시나리오 준비 불가",
     ),
     variable(
+      "HRA_RESOURCES_RESPONSIVE_QA",
+      "qa",
+      "회원 자료실 반응형 격리 QA 시나리오",
+      false,
+      "전용 자료실 반응형 실행기가 true로 전달",
+      "true가 아니면 자료실 반응형 QA skip; 통과 증거 아님",
+    ),
+    variable(
       "HRA_ACADEMIC_UI_QA",
       "qa",
       "학생 화면 격리 QA 시나리오",
@@ -825,6 +833,13 @@ export const environmentInventory = {
       path: "scripts/verify-academic-roster-http.mjs",
       expression:
         'Object.fromEntries(["PATH", "HOME", "TMPDIR", "TMP", "TEMP", "SYSTEMROOT"]\n    .filter((key) => process.env[key]).map((key) => [key, process.env[key]]))',
+      reason: "기존 여섯 시스템 값만 새 격리 자식 환경으로 복사",
+      names: ["PATH", "HOME", "TMPDIR", "TMP", "TEMP", "SYSTEMROOT"],
+    },
+    {
+      path: "scripts/verify-resources-responsive.mjs",
+      expression:
+        'Object.fromEntries(\n  ["PATH", "HOME", "TMPDIR", "TMP", "TEMP", "SYSTEMROOT"]\n    .filter((key) => process.env[key])\n    .map((key) => [key, process.env[key]]),\n)',
       reason: "기존 여섯 시스템 값만 새 격리 자식 환경으로 복사",
       names: ["PATH", "HOME", "TMPDIR", "TMP", "TEMP", "SYSTEMROOT"],
     },

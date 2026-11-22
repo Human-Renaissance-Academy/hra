@@ -34,8 +34,9 @@
 | 7 | Chromium 설치 | Playwright 브라우저 검사에 필요한 실행 파일 준비 |
 | 8 | `npm run verify:editor-preview` | 실제 에디터 미리보기·키보드·Dialog 회귀 검사 |
 | 9 | `npm run test:academic-g1` | 실제 Next·credentials 인증·격리 PostgreSQL·Blob SDK·로컬 private HTTP 저장소를 잇는 학사 제출 검사 |
-| 10 | `npm run test:e2e -- tests/e2e/ci-smoke.spec.ts --list` | 실행할 smoke 파일·테스트 이름·수집 수를 로그에 남김 |
-| 11 | `npm run test:e2e -- tests/e2e/ci-smoke.spec.ts` | 로그인 화면·공개 UI·보호 경로 등 수집된 브라우저 검사 실행 |
+| 10 | `node scripts/verify-resources-responsive.mjs` | 앞 단계 빌드·격리 PostgreSQL·합성 MEMBER/FACULTY로 회원 자료실의 320·375·390·768·1280px 넘침·카테고리·필터·링크·빈 상태·페이지네이션 검사(#601, Chromium 에뮬레이션) |
+| 11 | `npm run test:e2e -- tests/e2e/ci-smoke.spec.ts --list` | 실행할 smoke 파일·테스트 이름·수집 수를 로그에 남김 |
+| 12 | `npm run test:e2e -- tests/e2e/ci-smoke.spec.ts` | 로그인 화면·공개 UI·보호 경로 등 수집된 브라우저 검사 실행 |
 
 **Smoke**는 주요 화면이 열리고 기본 접근 경계가 작동하는지 빠르게 확인하는 검사다. 현재 기본 CI는 `auth-protection.spec.ts`나 개별 학사 `*.spec.ts` 전체를 선택하지 않는다. G1은 전용 실행기가 별도 시나리오를 실행하므로, 일반 Playwright 파일 전체가 통과했다는 뜻으로 해석하지 않는다. G1의 로컬 저장소 검사는 실제 외부 공급자의 업로드·OAuth 로그인을 확인하는 검사와도 구분한다.
 

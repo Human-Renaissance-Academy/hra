@@ -122,6 +122,7 @@ Production·Preview·Development는 DB·공개/비공개 Blob·OAuth·세션 비
 | `HRA_QA_PRIVATE_BLOB_URL` | 승인된 합성 보호 자료의 private QA URL | Development 합성 검증 / CI 격리 실행; 합성 계정·격리 DB; 공급자 QA는 승인한 전용 namespace·원장만 | 아니요 | 실제 공급자 resource QA 실행 | 미설정·허용 호스트 불일치 시 검증 중단; 실제 자료 URL 공개 금지 | 앱 예시에 넣지 않음 |
 | `HRA_QA_SUBMISSION_STORAGE_KEY` | 이번 승인 QA 제출 객체의 키 | Development 합성 검증 / CI 격리 실행; 합성 계정·격리 DB; 공급자 QA는 승인한 전용 namespace·원장만 | 아니요 | 제출 파일 공급자 검증 실행 | 전용 QA 조건을 충족하지 않으면 중단; 실제 사용자 객체 키 공개 금지 | 앱 예시에 넣지 않음 |
 | `HRA_RESOURCE_QA_ROOT` | 이번 격리 PG fixture 디렉터리 | Development 합성 검증 / CI 격리 실행; 합성 계정·격리 DB; 공급자 QA는 승인한 전용 namespace·원장만 | 아니요 | QA preload·transport 실행기 | 없거나 scope 파일과 다르면 격리 DB 연결 거부 | 앱 예시에 넣지 않음 |
+| `HRA_RESOURCES_RESPONSIVE_QA` | 회원 자료실 반응형 격리 QA 시나리오 | Development 합성 검증 / CI 격리 실행; 합성 계정·격리 DB; 공급자 QA는 승인한 전용 namespace·원장만 | 아니요 | 전용 자료실 반응형 실행기가 true로 전달 | true가 아니면 자료실 반응형 QA skip; 통과 증거 아님 | 앱 예시에 넣지 않음 |
 | `HRA_SITE_ROUTE_ORIGIN` | 사이트 route 검사 전용 앱 origin | Development 합성 검증 / CI 격리 실행; 합성 계정·격리 DB; 공급자 QA는 승인한 전용 namespace·원장만 | 아니요 | site-route 실행기가 생성 | 없으면 QA 전용 AUTH_URL fallback; 둘 다 없으면 실패 | 앱 예시에 넣지 않음 |
 | `HRA_TEST_DATABASE_URL` | OAuth binding 검증 전용 DB | Development 합성 검증 / CI 격리 실행; 합성 계정·격리 DB; 공급자 QA는 승인한 전용 namespace·원장만 | 예 | 전용 검증 스크립트 실행 | 없거나 운영 DB 대상과 같으면 검증 중단 | 앱 예시에 넣지 않음 |
 | `HRA_TEST_PG_BIN` | 격리 테스트 PostgreSQL 실행 파일 디렉터리 | Development 합성 검증 / CI 격리 실행; 합성 계정·격리 DB; 공급자 QA는 승인한 전용 namespace·원장만 | 아니요 | 로컬 PG 기반 회귀 검사 | 미설정 시 실행기/테스트별 실패·skip 가능; 통과로 간주하지 않음 | 주석 예시·실행 시에만 지정 |
@@ -163,6 +164,7 @@ Production·Preview·Development는 DB·공개/비공개 Blob·OAuth·세션 비
 | `scripts/verify-academic-g1.mjs` | 기존 여섯 시스템 값만 새 격리 자식 환경으로 복사 | `PATH`, `HOME`, `TMPDIR`, `TMP`, `TEMP`, `SYSTEMROOT` |
 | `scripts/verify-academic-private-upload-http.mjs` | 기존 여섯 시스템 값만 새 격리 자식 환경으로 복사 | `PATH`, `HOME`, `TMPDIR`, `TMP`, `TEMP`, `SYSTEMROOT` |
 | `scripts/verify-academic-roster-http.mjs` | 기존 여섯 시스템 값만 새 격리 자식 환경으로 복사 | `PATH`, `HOME`, `TMPDIR`, `TMP`, `TEMP`, `SYSTEMROOT` |
+| `scripts/verify-resources-responsive.mjs` | 기존 여섯 시스템 값만 새 격리 자식 환경으로 복사 | `PATH`, `HOME`, `TMPDIR`, `TMP`, `TEMP`, `SYSTEMROOT` |
 | `scripts/verify-academic-student-ui.mjs` | 기존 여섯 시스템 값만 새 격리 자식 환경으로 복사 | `PATH`, `HOME`, `TMPDIR`, `TMP`, `TEMP`, `SYSTEMROOT` |
 | `scripts/verify-academic-submission-file-http.mjs` | 기존 여섯 시스템 값만 새 격리 자식 환경으로 복사 | `PATH`, `HOME`, `TMPDIR`, `TMP`, `TEMP`, `SYSTEMROOT` |
 | `scripts/verify-resource-access-http.mjs` | 기존 여섯 시스템 값만 새 격리 자식 환경으로 복사 | `PATH`, `HOME`, `TMPDIR`, `TMP`, `TEMP`, `SYSTEMROOT` |
