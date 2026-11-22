@@ -4,6 +4,13 @@
 
 ---
 
+## [0.2.2](https://github.com/Human-Renaissance-Academy/hra/compare/v0.2.1...v0.2.2) (2026-11-22)
+
+
+### 버그 수정
+
+* **ci:** 병합 뒤 라벨 변경으로 닫힌 릴리스 PR의 형식 검사가 실패하지 않게 한다 ([#622](https://github.com/Human-Renaissance-Academy/hra/issues/622)) ([f7cb8c3](https://github.com/Human-Renaissance-Academy/hra/commit/f7cb8c3e0bb9cda0357d5d53ee621c4f3f559c3c))
+
 ## [0.2.1](https://github.com/Human-Renaissance-Academy/hra/compare/v0.2.0...v0.2.1) (2026-11-21)
 
 
