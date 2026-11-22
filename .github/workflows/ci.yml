@@ -70,7 +70,10 @@ jobs:
     needs: scope
     # 탐지 실패/범위 판독 오류는 전체 CI로 복귀합니다. Docs/Mobile만 바뀐 정상 PR에서만 생략.
     # job 이름을 유지해 기존 branch protection의 체크 이름을 바꾸지 않습니다.
-    if: ${{ always() && (needs.scope.result != 'success' || needs.scope.outputs.web != 'false') }}
+    # #492 D: always()는 취소를 무시해 이전 head의 job이 끝까지 돌며 최신 head CI를 지연시켰습니다.
+    # !cancelled()는 scope 실패 시 전체 CI를 유지하고, 실행 취소 시에는 skipped가 아닌 cancelled로 끝나
+    # 필수 검사가 통과로 처리되지 않습니다(2026-11-22 실험 기록은 #492).
+    if: ${{ !cancelled() && (needs.scope.result != 'success' || needs.scope.outputs.web != 'false') }}
     name: Lint · Typecheck · Test · Build
     runs-on: ubuntu-24.04
 
