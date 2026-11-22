@@ -32,6 +32,8 @@ const check = (condition, code) => {
   if (!condition) throw new Error(`RESOURCES_RESPONSIVE_${code}`);
 };
 let cluster, server, serverDone;
+// spec의 필수 사례 수. 사례를 추가·삭제하면 함께 바꿉니다.
+const EXPECTED_BROWSER_CASES = 7;
 
 /** 임의 포트 번호만 확인하고 실제 수신은 Next 자식 프로세스가 맡습니다. */
 async function availablePort() {
@@ -133,6 +135,7 @@ try {
   }
   check(ready, "APP_READY");
 
+  const reportPath = join(cluster.root, "resources-responsive-report.json");
   // 3) 저장소 Playwright 설정(PLAYWRIGHT_BASE_URL이 있으면 webServer 미사용)으로 반응형 spec만 실행합니다.
   const browser = spawn(
     process.execPath,
@@ -141,6 +144,8 @@ try {
       "test",
       "tests/e2e/resources-responsive.spec.ts",
       "--workers=1",
+      // 화면 출력(line)과 함께 실행 건수 확인용 JSON 결과를 임시 클러스터 디렉터리에 남깁니다.
+      "--reporter=line,json",
     ],
     {
       cwd: repository,
@@ -150,6 +155,7 @@ try {
         CI: "true",
         PLAYWRIGHT_BASE_URL: baseUrl,
         HRA_RESOURCES_RESPONSIVE_QA: "true",
+        PLAYWRIGHT_JSON_OUTPUT_FILE: reportPath,
       },
     },
   );
@@ -158,6 +164,21 @@ try {
     browser.once("exit", resolve);
   });
   check(code === 0, "BROWSER_FAILED");
+  // 환경 플래그 누락 등으로 모든 사례가 skip되어도 Playwright는 0으로 끝나므로, 실제로 실행되어
+  // 통과한 건수를 확인합니다(MEMBER 5개 폭 + FACULTY 2개 폭). skip·재시도 통과(flaky)도 실패로 봅니다.
+  let stats;
+  try {
+    stats = JSON.parse(readFileSync(reportPath, "utf8")).stats;
+  } catch {
+    stats = null;
+  }
+  check(
+    stats?.expected === EXPECTED_BROWSER_CASES &&
+      stats.skipped === 0 &&
+      stats.unexpected === 0 &&
+      stats.flaky === 0,
+    "BROWSER_CASE_COUNT",
+  );
   console.log(
     "PASS 자료실 반응형 320·375·390·768·1280px (격리 DB·실제 credentials·MEMBER/FACULTY)",
   );
