@@ -431,7 +431,8 @@ export function ResourcesTabs({
                   key={item.id}
                   className="border-b border-[#D9D9D9] hover:bg-gray-50 transition-colors last:border-0"
                 >
-                  <td className="px-4 py-3.5">
+                  {/* 공백 없는 긴 제목도 줄바꿈해 분류·작성자·날짜 열이 표 밖으로 밀리지 않게 합니다(#601). */}
+                  <td className="px-4 py-3.5 wrap-anywhere">
                     {item.href ? (
                       <Link
                         href={item.href}
@@ -510,6 +511,8 @@ export function ResourcesTabs({
             size="icon"
             onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
             disabled={currentPage === 1}
+            // 아이콘만 있는 버튼이므로 스크린리더용 이름을 붙입니다.
+            aria-label="이전 페이지"
             className="border-[#D9D9D9] text-[#666666]"
           >
             <ChevronLeft className="w-4 h-4" />
@@ -538,6 +541,7 @@ export function ResourcesTabs({
             size="icon"
             onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
             disabled={currentPage === totalPages}
+            aria-label="다음 페이지"
             className="border-[#D9D9D9] text-[#666666]"
           >
             <ChevronRight className="w-4 h-4" />
