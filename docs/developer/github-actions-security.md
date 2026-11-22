@@ -30,7 +30,7 @@ release-please의 활성화 조건과 별도 `RELEASE_PLEASE_TOKEN` 전달을 �
 
 `src/**`, `packages/contracts/**`, `scripts/**`, 웹·모바일 CI/보안 workflow, 자동 생성된 `docs/developer/environment-inventory.md`, 문서 경로의 JSON·스크립트, `package*.json`, `vercel.json`, 환경변수/설정처럼 웹에 영향을 줄 수 있는 파일이 **하나라도 포함되면 전체 웹 CI**를 실행합니다. 공용 API 계약이 바뀐 모바일 PR은 Web과 Mobile을 함께 검사합니다. `push`/`main`은 경로 범위로 생략하지 않습니다. 다만 병합 트리가 같은 트리로 필수 CI를 통과한 PR head와 같다고 확인되면 설치·빌드·브라우저 smoke만 실행합니다(아래 #492 B2).
 
-범위를 판독할 수 없거나, merge parent가 없거나, 파일명이 손상되거나, 검출 job의 테스트가 실패해도 전체 Web CI가 실행되도록 `always()` 기반 job 조건을 사용합니다. _탐지 실패를 검사 성공으로 취급해 건너뛰지 않습니다._ 기존 `Lint · Typecheck · Test · Build` job 이름을 유지하여 브랜치 보호 확인 이름을 임의 변경하지 않습니다. 운영 DB나 배포를 호출하는 workflow를 새로 만들지 않았습니다.
+범위를 판독할 수 없거나, merge parent가 없거나, 파일명이 손상되거나, 검출 job의 테스트가 실패해도 전체 Web CI가 실행되도록 `!cancelled()` 기반 job 조건을 사용합니다. #492 D 이전의 `always()`는 취소를 무시해 새 push로 취소된 이전 head의 job이 끝까지 실행되며 최신 head CI를 기다리게 했습니다. 2026-11-22 실험에서 `!cancelled()` job은 실행 취소 시 `skipped`가 아니라 `cancelled`로 끝나 필수 검사가 통과로 처리되지 않았고, `scope` 실패 시에는 그대로 실행됐습니다. _탐지 실패를 검사 성공으로 취급해 건너뛰지 않습니다._ 기존 `Lint · Typecheck · Test · Build` job 이름을 유지하여 브랜치 보호 확인 이름을 임의 변경하지 않습니다. 운영 DB나 배포를 호출하는 workflow를 새로 만들지 않았습니다.
 
 변경 소스 포맷 계약과 `format:check`는 범위 판별 job에서 먼저 실행하여 문서·모바일 전용 PR에서도 #497의 포맷 게이트를 유지합니다. 범위 판별이 실패한 경우 전체 CI의 기존 포맷 검사도 계속 실행합니다.
 
@@ -101,6 +101,6 @@ node scripts/check-required-checks-config.mjs --protection-file /tmp/hra-main-pr
 
 ### 범위 판별과 수동 모바일 작업의 경계
 
-Web CI는 #483의 `scope` 성공과 명시적인 `web=false`가 함께 확인된 문서·모바일 전용 PR만 생략합니다. `always()` 조건, `needs: scope`, 탐지 단계의 출력 연결, 실제 포맷·범위 회귀 명령을 검사하며 탐지 실패·출력 누락은 전체 Web CI로 복귀합니다. 정책 회귀와 CLI는 범위 생략과 무관한 기존 필수 `형식·릴리스 계약 테스트`에서도 실행합니다. scope 단계 지문은 검토한 구조의 변경 감지이며 탐지 구현의 보안성이나 실제 실행 성공을 증명하지 않습니다.
+Web CI는 #483의 `scope` 성공과 명시적인 `web=false`가 함께 확인된 문서·모바일 전용 PR만 생략합니다. `!cancelled()` 조건, `needs: scope`, 탐지 단계의 출력 연결, 실제 포맷·범위 회귀 명령을 검사하며 탐지 실패·출력 누락은 전체 Web CI로 복귀합니다. 정책 회귀와 CLI는 범위 생략과 무관한 기존 필수 `형식·릴리스 계약 테스트`에서도 실행합니다. scope 단계 지문은 검토한 구조의 변경 감지이며 탐지 구현의 보안성이나 실제 실행 성공을 증명하지 않습니다.
 
 #479의 `mobile-eas-build.yml`은 PR 필수 검사가 아닌 수동 작업입니다. `workflow_dispatch` 전용 트리거, main guard, android/ios 및 preview/production 선택지와 검토한 동적 이름만 인정합니다. 수동 작업을 PR 필수 체크로 등록하지 않으며, 새로운 동적 이름을 포괄적으로 허용하지 않습니다.
