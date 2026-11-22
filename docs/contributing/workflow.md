@@ -80,7 +80,7 @@ release-please/Dependabot의 본문은 검증된 생성형 PR에 한해서만 �
 
 ## 3. 검증과 리뷰
 
-현재 [앱 CI](https://github.com/Human-Renaissance-Academy/hra/actions/workflows/ci.yml)는 `main` 대상 PR과 `main` 푸시에서 **lint → typecheck → 격리 PostgreSQL을 쓰는 Vitest → build → 학사 G1 검증 → Playwright 브라우저 스모크**를 실행합니다. 학사 G1 검증은 `npm run test:academic-g1`, 일반 브라우저 스모크는 `ci-smoke.spec.ts`이며 모든 E2E 파일을 실행하는 설정은 아닙니다. 이 CI에는 운영 DB·Blob 자격 증명을 전달하지 않습니다. 별도 `형식·릴리스 계약 테스트`는 Node 기본 테스트 및 버전 정합성을 검사합니다. PR에서 실패한 검사를 원인 확인 없이 건너뛰지 않습니다.
+현재 [앱 CI](https://github.com/Human-Renaissance-Academy/hra/actions/workflows/ci.yml)는 `main` 대상 PR과 `main` 푸시에서 **lint → typecheck → 격리 PostgreSQL을 쓰는 Vitest → build → 학사 G1 검증 → Playwright 브라우저 스모크**를 실행합니다. 학사 G1 검증은 `npm run test:academic-g1`, 일반 브라우저 스모크는 `ci-smoke.spec.ts`이며 모든 E2E 파일을 실행하는 설정은 아닙니다. `main` 푸시는 병합 트리가 같은 트리로 CI를 통과한 PR head와 같다고 확인되면 빌드·스모크만 실행합니다. 확인하지 못하면 전체를 실행합니다(#492). 이 CI에는 운영 DB·Blob 자격 증명을 전달하지 않습니다. 별도 `형식·릴리스 계약 테스트`는 Node 기본 테스트 및 버전 정합성을 검사합니다. PR에서 실패한 검사를 원인 확인 없이 건너뛰지 않습니다.
 
 ```bash
 npm run lint

@@ -53,7 +53,7 @@ DB의 제약이나 동시 요청을 검사하는 테스트에는 로컬 PostgreS
 
 ### 현재 CI 범위
 
-`.github/workflows/ci.yml`은 `main` 대상 PR과 `main` 푸시에서 lint·typecheck·격리 PostgreSQL을 준비한 Vitest·build를 실행합니다. 빌드 뒤 Proxy 인증 경계 HTTP 검사, Chromium 설치, 에디터 미리보기 키보드 회귀와 **별도 학사 G1 검증**을 실행합니다. 일반 브라우저 검사는 `ci-smoke.spec.ts`의 수집 목록을 남긴 뒤 실행합니다. 모든 E2E 파일을 기본 CI에서 실행하는 설정은 아닙니다.
+`.github/workflows/ci.yml`은 `main` 대상 PR과 `main` 푸시에서 lint·typecheck·격리 PostgreSQL을 준비한 Vitest·build를 실행합니다. 빌드 뒤 Proxy 인증 경계 HTTP 검사, Chromium 설치, 에디터 미리보기 키보드 회귀와 **별도 학사 G1 검증**을 실행합니다. 일반 브라우저 검사는 `ci-smoke.spec.ts`의 수집 목록을 남긴 뒤 실행합니다. 모든 E2E 파일을 기본 CI에서 실행하는 설정은 아닙니다. `main` 푸시는 병합 트리가 같은 트리로 CI를 통과한 PR head와 같다고 확인되면 설치·빌드·브라우저 스모크만 실행합니다. 확인하지 못하면 전체를 실행합니다([품질 게이트](../QUALITY-GATE.md), #492).
 
 Vitest 설정은 `tests/unit/**/*.test.{ts,tsx}`를 수집하므로 TSX를 위해 별도 설정을 추가하지 않습니다. 실제 수집·skip·성공 범위는 실행 로그로 확인합니다.
 
