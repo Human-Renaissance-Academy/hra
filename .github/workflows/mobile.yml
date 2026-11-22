@@ -79,10 +79,42 @@ jobs:
       # Linux에서는 iOS 네이티브 컴파일을 할 수 없으므로 공통 코드가 iOS 번들로도 만들어지는지(JS 번들링)만 확인합니다.
       - run: npm run export:ios
 
+  # release-please가 제품 버전 필드만 바꾼 변경인지 판별합니다(#492 선택지 A).
+  # 판정 규칙은 의존성 원장의 버전 마스킹(#618)과 같고, 확인하지 못하면 컴파일을 실행합니다.
+  apk-scope:
+    name: APK 컴파일 필요 여부 판별
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      apk: ${{ steps.detect.outputs.apk }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+          # PR base와 push before 커밋까지 비교하므로 전체 이력을 가져옵니다.
+          fetch-depth: 0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version-file: .nvmrc
+      # 판정 회귀나 workflow 계약이 깨지면 이 job이 실패하고 아래 android-build는 컴파일을 실행합니다.
+      - name: 판정·workflow 계약 회귀
+        working-directory: .
+        run: node --test scripts/tests/mobile-apk-scope.test.mjs scripts/tests/mobile-android-build.test.mjs
+      - name: 버전 전용 변경 판별
+        id: detect
+        working-directory: .
+        # SHA는 셸에 직접 삽입하지 않고 환경변수로 전달합니다. PR은 base·head의 merge-base, push는 before와 비교합니다.
+        env:
+          BASE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+          HEAD_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+        run: node scripts/detect-mobile-apk-scope.mjs "$GITHUB_EVENT_NAME" "$BASE_SHA" "$HEAD_SHA" "$GITHUB_OUTPUT"
+
   android-build:
     name: 실제 debug APK 컴파일
-    # release 테스트 APK를 요청한 수동 실행에서는 중복 Gradle 빌드를 생략합니다. PR·push에서는 항상 실행합니다.
-    if: ${{ !inputs.release_test_apk }}
+    needs: apk-scope
+    # release 테스트 APK를 요청한 수동 실행에서는 중복 Gradle 빌드를 생략합니다.
+    # PR·push에서는 버전 필드만 바뀐 것으로 확인된 경우에만 생략하고, 판별 실패·누락은 실행합니다.
+    if: ${{ !cancelled() && !inputs.release_test_apk && (needs.apk-scope.result != 'success' || needs.apk-scope.outputs.apk != 'false') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     steps:

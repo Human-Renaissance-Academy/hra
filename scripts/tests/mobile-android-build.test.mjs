@@ -109,10 +109,11 @@ describe("Android 빌드 실행 계약", () => {
     assert.match(job, /grep -q 'debuggable\.\*=true' manifest\.txt/);
     assert.doesNotMatch(job, /--file res\/xml\/network_security_config\.xml/);
     assert.match(job, /grep -aq 'https:\/\/hra-website-theta\.vercel\.app'/);
-    // 같은 수동 실행에서 debug Gradle 빌드는 생략하고 PR·push에서는 그대로 실행합니다.
+    // 같은 수동 실행에서 debug Gradle 빌드는 생략하고, PR·push에서는 버전 전용 판정(#492)이
+    // 성공적으로 false를 낸 경우에만 생략합니다. 판별 job 실패·누락은 컴파일을 실행합니다.
     assert.match(
       workflow,
-      /android-build:\n    name: [^\n]+\n(?:    #[^\n]*\n)*    if: \$\{\{ !inputs\.release_test_apk \}\}/,
+      /android-build:\n    name: [^\n]+\n    needs: apk-scope\n(?:    #[^\n]*\n)*    if: \$\{\{ !cancelled\(\) && !inputs\.release_test_apk && \(needs\.apk-scope\.result != 'success' \|\| needs\.apk-scope\.outputs\.apk != 'false'\) \}\}\n/,
     );
     assert.match(job, /retention-days: 7/);
     // 운영 비밀값·EAS 토큰·스토어 제출을 사용하지 않습니다.
