@@ -130,7 +130,7 @@ export default async function ResourcesPage({ searchParams }: Props) {
           : "mx-auto max-w-7xl px-4 pt-6 pb-12 sm:px-6 sm:py-20 md:py-32"
       }
     >
-      <section className={portalRole ? "mb-5 space-y-3" : "mb-8 space-y-3 sm:mb-14 sm:space-y-4"}>
+      <section className={portalRole && !isAdmin ? "sr-only" : "mb-8 space-y-3 sm:mb-14 sm:space-y-4"}>
         <div className="flex items-center gap-3">
           <div
             className={
@@ -146,7 +146,7 @@ export default async function ResourcesPage({ searchParams }: Props) {
                 : "text-2xl font-bold text-[#1a1a1a] sm:text-3xl md:text-4xl lg:text-5xl"
             }
           >
-            자료실
+            {portalRole ? "학사포털" : "자료실"}
           </h1>
         </div>
         {!portalRole && (
@@ -217,7 +217,7 @@ export default async function ResourcesPage({ searchParams }: Props) {
       </section>
 
       {portalRole && (
-        <div className="mb-10">
+        <div className="mb-6">
           <ResourcePortal
             role={portalRole}
             cohortName={isAdmin ? null : cohortName}
