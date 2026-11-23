@@ -8,6 +8,12 @@ import LoginScreen from '../app/(auth)/login';
 import { theme } from '../src/theme';
 import { renderWithProviders } from './test-providers';
 
+// 제목만 확인하는 테스트에서는 라우터의 화면 포커스 이벤트를 실행하지 않습니다.
+jest.mock('expo-router', () => ({
+  ...jest.requireActual<typeof import('expo-router')>('expo-router'),
+  useFocusEffect: jest.fn(),
+}));
+
 jest.mock('../src/auth/runtime', () => ({
   // 제목 스모크 테스트에서는 응답보다 화면 진입이 중요하므로 타이머 없는 대기 요청을 사용합니다.
   getApiClient: () => ({ GET: () => new Promise<never>(() => undefined) }),

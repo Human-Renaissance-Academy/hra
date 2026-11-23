@@ -34,20 +34,20 @@ export function HomeGreetingHeader({ greeting, roleLabel }: HomeGreetingHeaderPr
   );
 }
 
-/** 학사 기능이 비활성일 때에도 실행 가능한 자료실 바로가기를 하나 제공합니다. */
-export interface HomeResourceActionProps {
-  readonly role: string | null;
+/** 홈에서 과제 목록이나 자료실로 이동하는 기본 행동을 한 개 표시합니다. */
+interface HomePrimaryActionProps {
+  readonly label: string;
   readonly onPress: () => void;
+  readonly testID: string;
 }
-export function HomeResourceAction({ role, onPress }: HomeResourceActionProps) {
-  const label = role === 'FACULTY' ? '자료 보기' : '학습자료 보기';
+export function HomePrimaryAction({ label, onPress, testID }: HomePrimaryActionProps) {
   return (
     <Card
       variant="outlined"
       padding="md"
       onPress={onPress}
       accessibilityLabel={label}
-      testID="home-resource-action"
+      testID={testID}
     >
       <AppText variant="subheading">{label}</AppText>
     </Card>

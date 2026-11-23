@@ -44,8 +44,7 @@ export const homeStrings = {
   assignments: {
     title: '내 과제',
     subtitle: '제출이 필요한 학사 과제 현황',
-    viewAll: '전체 보기',
-    viewAllA11y: '내 과제 목록으로 이동',
+    openList: '내 과제 목록 보기',
     loadingA11y: '내 과제 현황을 불러오는 중입니다',
     pendingCountLabel: (count: number) => `미제출 과제 ${count}건`,
     completedBadge: '완료',

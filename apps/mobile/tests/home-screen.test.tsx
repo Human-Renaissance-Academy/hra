@@ -5,8 +5,8 @@
  * - 초기 스켈레톤 로딩, 성공 시 KST 벽시계 일정·최근 공지·미제출 과제 카드 렌더링 및 이동 검증
  * - 섹션별 독립 빈 상태·오류+재시도 및 503 DISABLED 중립 안내 카드 검증
  */
-import { fireEvent, render, waitFor } from '@testing-library/react-native';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { act, fireEvent, render, waitFor, within } from '@testing-library/react-native';
+import { focusManager, QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import HomeScreen from '../app/(app)/(tabs)/index';
 import { createApiClient } from '../src/api/client';
 import { AuthContext } from '../src/auth/auth-context';
@@ -19,6 +19,8 @@ import { authValue } from './screen-fixtures';
 const mockPush = jest.fn();
 
 jest.mock('expo-router', () => ({
+  useFocusEffect: (effect: () => void | (() => void)) =>
+    jest.requireActual<typeof import('react')>('react').useEffect(effect, [effect]),
   useRouter: () => ({ push: mockPush }),
 }));
 
@@ -69,6 +71,7 @@ afterEach(() => {
   for (const client of activeClients.splice(0)) {
     client.clear();
   }
+  focusManager.setFocused(undefined);
   jest.useRealTimers();
 });
 
@@ -93,6 +96,8 @@ test('초기 로딩 중에는 세 섹션 모두 독립 스켈레톤을 표시한
   expect(view.getByTestId('home-schedule-skeleton')).toBeTruthy();
   expect(view.getByTestId('home-notices-skeleton')).toBeTruthy();
   expect(view.getByTestId('home-assignments-skeleton')).toBeTruthy();
+  expect(within(view.getByTestId('home-assignments-section')).queryAllByRole('button')).toHaveLength(0);
+  expect(view.queryByTestId('home-assignment-list-action')).toBeNull();
   await view.unmount();
 });
 
@@ -257,5 +262,79 @@ test('각 섹션이 비어 있거나 오류가 발생해도 독립적으로 표�
   });
   await fireEvent.press(view.getByTestId('home-resource-action'));
   expect(mockPush).toHaveBeenLastCalledWith('/(app)/(tabs)/resources');
+  await view.unmount();
+});
+
+test('과제 다음 페이지가 있으면 전체 건수 없이 내 과제 목록으로 이동한다', async () => {
+  const send = jest.fn(async (request: Request) => {
+    const { pathname } = new URL(request.url);
+    if (pathname === '/api/v1/schedule') return jsonResponse({ events: [] });
+    if (pathname === '/api/v1/notices') return jsonResponse({ notices: [] });
+    return jsonResponse({
+      assignments: Array.from({ length: 5 }, (_, index) => ({
+        assignmentId: `완료된-과제-${index}`,
+        title: '마감된 과제',
+        status: 'CLOSED',
+        dueAt: '2026-10-01T14:59:00.000Z',
+        submission: null,
+      })),
+      page: { page: 1, pageSize: 5, hasNextPage: true },
+    });
+  });
+  mockedGetApiClient.mockReturnValue(
+    createApiClient({ baseUrl: 'https://example.test', fetch: send }),
+  );
+
+  const view = await renderHome(authValue({
+    status: 'signedIn',
+    user: { id: 'member-1', name: '홍길동', role: 'MEMBER' },
+    role: 'MEMBER',
+  }));
+  const link = await view.findByRole('button', { name: homeStrings.assignments.openList });
+  expect(view.queryByTestId('home-assignments-card')).toBeNull();
+  expect(view.queryByTestId('home-resource-action')).toBeNull();
+  expect(send.mock.calls.filter(([request]) => new URL(request.url).pathname === '/api/v1/assignments')).toHaveLength(1);
+  await fireEvent.press(link);
+  expect(mockPush).toHaveBeenLastCalledWith('/assignments');
+  await view.unmount();
+});
+
+test('KST 월이 바뀐 뒤 앱으로 돌아오면 새 달 일정을 조회한다', async () => {
+  const send = jest.fn(async (request: Request) => {
+    const url = new URL(request.url);
+    if (url.pathname === '/api/v1/notices') return jsonResponse({ notices: [] });
+    const month = Number(url.searchParams.get('month'));
+    return jsonResponse({
+      events: [{
+        id: `schedule-${month}`,
+        calendarDate: month === 10 ? '2026-10-31' : '2026-11-02',
+        startTime: '19:00',
+        endTime: '21:00',
+        eventType: 'CLASS',
+        title: month === 10 ? '십월 수업' : '십일월 수업',
+        weekNumber: null,
+        cohort: null,
+      }],
+    });
+  });
+  mockedGetApiClient.mockReturnValue(
+    createApiClient({ baseUrl: 'https://example.test', fetch: send }),
+  );
+
+  const view = await renderHome(authValue({
+    status: 'signedIn',
+    user: { id: 'faculty-1', name: '박교수', role: 'FACULTY' },
+    role: 'FACULTY',
+  }));
+  expect(await view.findByText('십월 수업')).toBeTruthy();
+
+  await act(() => {
+    focusManager.setFocused(false);
+    jest.setSystemTime(new Date('2026-10-31T15:00:00.000Z'));
+    focusManager.setFocused(true);
+  });
+
+  expect(await view.findByText('십일월 수업')).toBeTruthy();
+  expect(view.queryByText('십월 수업')).toBeNull();
   await view.unmount();
 });

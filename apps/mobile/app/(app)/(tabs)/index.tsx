@@ -7,9 +7,9 @@
  *   실제 미제출 과제(MEMBER 전용) 또는 자료실 CTA를 한 개만 노출
  * - 당겨서 새로고침 시 활성 섹션 쿼리를 일괄 재조회하며 모든 쿼리 키를 사용자 ID로 격리
  */
-import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { useRouter } from 'expo-router';
+import { useCallback, useState } from 'react';
+import { focusManager, useQuery } from '@tanstack/react-query';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { toKoreanMessage } from '../../../src/api/errors';
 import { getApiClient } from '../../../src/auth/runtime';
 import { useAuth } from '../../../src/auth/use-auth';
@@ -17,7 +17,7 @@ import {
   HomeAssignmentsSection,
   HomeGreetingHeader,
   HomeNoticesSection,
-  HomeResourceAction,
+  HomePrimaryAction,
   HomeScheduleSection,
 } from '../../../src/features/home/components';
 import {
@@ -29,6 +29,7 @@ import {
   resolveHomeAssignmentsState,
   selectHomeUpcomingSchedules,
 } from '../../../src/features/home/model';
+import { homeStrings } from '../../../src/features/home/strings';
 import { apiQueryOptions } from '../../../src/query/client';
 import { Screen, useRefresh } from '../../../src/ui';
 
@@ -42,6 +43,22 @@ export default function HomeScreen() {
 
   const [now, setNow] = useState(Date.now);
   const { year, month } = getCurrentKstYearMonth(now);
+
+  // 탭·앱에 돌아오거나 분이 지나면 현재 시각과 KST 일정 조회 월을 다시 계산합니다.
+  useFocusEffect(
+    useCallback(() => {
+      const updateNow = () => setNow(Date.now());
+      updateNow();
+      const interval = setInterval(updateNow, 60_000);
+      const unsubscribe = focusManager.subscribe((focused) => {
+        if (focused) updateNow();
+      });
+      return () => {
+        clearInterval(interval);
+        unsubscribe();
+      };
+    }, []),
+  );
 
   // 1) 다가오는 일정: 현재 KST 연·월 일정 조회
   const scheduleQuery = useQuery(
@@ -87,7 +104,7 @@ export default function HomeScreen() {
             params: { query: { pageSize: 5 } },
             signal,
           });
-          return data?.assignments ?? [];
+          return data ?? null;
         },
       ),
       enabled: shouldFetchAssignments,
@@ -124,12 +141,16 @@ export default function HomeScreen() {
 
   const assignmentsResolution = resolveHomeAssignmentsState({
     role: effectiveRole,
-    assignments: assignmentsQuery.data,
+    assignments: assignmentsQuery.data?.assignments,
     error: assignmentsQuery.isError ? assignmentsQuery.error : undefined,
     now,
   });
 
-  // 비활성·0건·다른 역할은 실행 가능한 자료실 바로가기 한 개로 대체합니다.
+  // 다음 페이지가 있는 경우 첫 페이지의 건수로 전체 과제 상태를 단정하지 않습니다.
+  const showAssignmentList =
+    shouldFetchAssignments &&
+    assignmentsResolution.kind === 'ready' &&
+    assignmentsQuery.data?.page.hasNextPage === true;
   const showAssignmentSection =
     shouldFetchAssignments &&
     (assignmentsQuery.isPending ||
@@ -154,7 +175,13 @@ export default function HomeScreen() {
         onPressViewAll={() => router.push('/(app)/(tabs)/schedule')}
       />
 
-      {showAssignmentSection ? (
+      {showAssignmentList ? (
+        <HomePrimaryAction
+          label={homeStrings.assignments.openList}
+          onPress={() => router.push('/assignments')}
+          testID="home-assignment-list-action"
+        />
+      ) : showAssignmentSection ? (
         <HomeAssignmentsSection
           isPending={assignmentsQuery.isPending}
           resolution={assignmentsResolution}
@@ -162,9 +189,10 @@ export default function HomeScreen() {
           onPressAssignments={() => router.push('/assignments')}
         />
       ) : (
-        <HomeResourceAction
-          role={effectiveRole}
+        <HomePrimaryAction
+          label={effectiveRole === 'FACULTY' ? '자료 보기' : '학습자료 보기'}
           onPress={() => router.push('/(app)/(tabs)/resources')}
+          testID="home-resource-action"
         />
       )}
 

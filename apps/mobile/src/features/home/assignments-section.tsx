@@ -35,16 +35,11 @@ export function HomeAssignmentsSection({
   onRetry,
   onPressAssignments,
 }: HomeAssignmentsSectionProps) {
-  const showAction = resolution.kind === 'ready';
-
   return (
     <View style={styles.section} testID="home-assignments-section">
       <SectionHeader
         title={homeStrings.assignments.title}
         subtitle={homeStrings.assignments.subtitle}
-        actionLabel={showAction ? homeStrings.assignments.viewAll : undefined}
-        actionAccessibilityLabel={homeStrings.assignments.viewAllA11y}
-        onActionPress={showAction ? onPressAssignments : undefined}
       />
       {isPending ? (
         <SkeletonList
