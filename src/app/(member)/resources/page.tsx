@@ -130,7 +130,9 @@ export default async function ResourcesPage({ searchParams }: Props) {
           : "mx-auto max-w-7xl px-4 pt-6 pb-12 sm:px-6 sm:py-20 md:py-32"
       }
     >
-      <section className={portalRole && !isAdmin ? "sr-only" : "mb-8 space-y-3 sm:mb-14 sm:space-y-4"}>
+      <section
+        className={portalRole && !isAdmin ? "sr-only" : "mb-8 space-y-3 sm:mb-14 sm:space-y-4"}
+      >
         <div className="flex items-center gap-3">
           <div
             className={
