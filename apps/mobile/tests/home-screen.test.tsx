@@ -118,6 +118,18 @@ test('성공 시 일정·공지·과제 요약을 표시하고 각 경로로 이
             cohort: { id: 'c-1', name: '15기' },
             sessions: [],
           },
+          {
+            id: 'sched-2',
+            calendarDate: '2026-10-19',
+            startTime: '19:00',
+            endTime: '21:00',
+            eventType: 'CLASS',
+            title: '다음날 두 번째 수업',
+            weekNumber: 5,
+            description: null,
+            cohort: { id: 'c-1', name: '15기' },
+            sessions: [],
+          },
         ],
       });
     }
@@ -170,6 +182,7 @@ test('성공 시 일정·공지·과제 요약을 표시하고 각 경로로 이
 
   // Then: KST 벽시계 시각 그대로 표시 및 공지/과제 데이터 렌더링
   expect(view.getByText('2026-10-18 (일) 19:00–21:00')).toBeTruthy();
+  expect(view.queryByText('다음날 두 번째 수업')).toBeNull();
   expect(view.getByText('가을 학기 안내')).toBeTruthy();
   expect(view.getByText('미제출 과제 1건')).toBeTruthy();
   expect(view.getByText('D-2')).toBeTruthy();
@@ -231,7 +244,8 @@ test('각 섹션이 비어 있거나 오류가 발생해도 독립적으로 표�
   // Then: 공지는 빈 상태, 과제는 중립 안내가 표시됨
   await waitFor(() => {
     expect(view.getByTestId('home-notices-empty')).toBeTruthy();
-    expect(view.getByText(homeStrings.assignments.academicDisabled)).toBeTruthy();
+    expect(view.getByTestId('home-resource-action')).toBeTruthy();
+    expect(view.queryByText(homeStrings.assignments.academicDisabled)).toBeNull();
   });
 
   // When: 일정 섹션 다시 시도 버튼 클릭
