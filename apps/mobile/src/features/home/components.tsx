@@ -7,6 +7,7 @@
  * - 내 과제 섹션(HomeAssignmentsSection) 재수출
  */
 import { StyleSheet, View } from 'react-native';
+import { ko } from '../../i18n/ko';
 import { theme } from '../../theme';
 import { AppText, Card, Chip, EmptyState, ErrorState, SectionHeader, SkeletonList } from '../../ui';
 import type { HomeNoticeItemView, HomeScheduleItemView } from './model';
@@ -23,9 +24,12 @@ export interface HomeGreetingHeaderProps {
 /** 인사말과 역할만 표시합니다. 별도 홍보 카드·설명은 넣지 않습니다. */
 export function HomeGreetingHeader({ greeting, roleLabel }: HomeGreetingHeaderProps) {
   return (
-    <View style={styles.greetingTopRow} testID="home-greeting-card">
-      <AppText variant="heading" testID="home-greeting-text">{greeting}</AppText>
-      <Chip label={roleLabel} tone="brand" icon="person-outline" testID="home-role-chip" />
+    <View style={styles.greetingContainer} testID="home-greeting-card">
+      <AppText variant="title">{ko.tabs.home}</AppText>
+      <View style={styles.greetingTopRow}>
+        <AppText variant="heading" testID="home-greeting-text">{greeting}</AppText>
+        <Chip label={roleLabel} tone="brand" icon="person-outline" testID="home-role-chip" />
+      </View>
     </View>
   );
 }
@@ -171,7 +175,6 @@ export function HomeNoticesSection({
                 <AppText variant="caption" tone="secondary">{item.dateText}</AppText>
               </View>
               <AppText variant="subheading" style={styles.itemTitle}>{item.title}</AppText>
-
             </Card>
           ))}
         </View>
@@ -181,6 +184,9 @@ export function HomeNoticesSection({
 }
 
 const styles = StyleSheet.create({
+  greetingContainer: {
+    gap: theme.spacing.xs,
+  },
   greetingTopRow: {
     flexDirection: 'row',
     alignItems: 'center',
