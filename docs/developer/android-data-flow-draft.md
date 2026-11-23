@@ -18,6 +18,6 @@
 ## 출시용 증거가 남은 항목
 
 - #578의 출시 AAB와 #579의 합성 계정 실기기 검증에서 연결 호스트·TLS·앱 권한·SDK·백업과 전송 흐름을 확인합니다. 특히 PDF의 Vercel 전송과 시스템 뷰어·공유 경로를 포함합니다. 운영 호스팅·DB·Blob의 로그 범위, 보존·삭제·복구, 처리 담당자는 승인된 운영 정책과 대조합니다. [개인정보 보존 및 파기 이슈 #142](https://github.com/Human-Renaissance-Academy/hra/issues/142)
-- Android 라우트에는 현재 비밀번호 로그인과 승인 대기 화면이 있으며 앱 내 계정 생성·삭제 요청 경로는 발견되지 않았습니다. 웹에는 별도 회원가입 경로가 있으며, 관리자 회원 삭제와 모바일 단일·전체 로그아웃은 각각 관리자 작업 및 세션 회수입니다. 출시 후보에서 가입 화면이나 외부 링크를 통한 계정 생성 가능성을 확인한 뒤 Console의 계정 삭제 질문 적용 여부를 판단합니다.
+- 계정 생성 지원 여부와 관계없이 모든 개발자는 Play Console의 데이터 보안 설문에서 데이터 삭제 질문에 답해야 합니다. 앱에서 계정을 만들 수 있거나 앱이 외부 가입 절차로 안내하는 경우, 앱 안과 외부 웹 모두에서 계정과 관련 데이터의 삭제를 요청할 수 있어야 합니다. 현재 Android 라우트에서 확인한 접근 경로는 비밀번호 로그인과 승인 대기이며, 가입·삭제 요청 경로는 발견되지 않았습니다. 웹에는 별도 회원가입 경로가 있습니다. 관리자 회원 삭제는 관리자 작업이고, 모바일 단일·전체 로그아웃은 세션을 회수합니다. 출시 후보에서 앱이 웹 회원가입으로 안내하는지 확인하고, 삭제 경로 제공 요건이 적용되면 앱 안과 외부 웹의 실제 삭제 요청 경로를 검증합니다. [Google Play 계정 삭제 안내](https://support.google.com/googleplay/android-developer/answer/13327111)
 - 프로필의 개인정보 처리방침 버튼은 설정에 유효한 URL이 있을 때만 노출됩니다. 현재 기본값은 빈 문자열입니다. 공개 정책 URL과 앱 내 진입점·담당자·학사 보존 예외는 승인된 내용과 출시 후보에서 확인합니다. `apps/mobile/src/features/profile/{config,model,components}.*`
 - Console의 수집·공유·삭제·전송 암호화·콘텐츠 등급·대상 연령·광고 응답은 출시 후보와 제출 시점에 확인합니다. 로그인 보호 화면을 위한 별도 합성 심사 계정과 안내도 실제 경로로 검증합니다. [Google Play 사용자 데이터 정책](https://support.google.com/googleplay/android-developer/answer/10144311) · [데이터 보안 설문 안내](https://support.google.com/googleplay/android-developer/answer/10787469) · [계정 삭제 안내](https://support.google.com/googleplay/android-developer/answer/13327111)
