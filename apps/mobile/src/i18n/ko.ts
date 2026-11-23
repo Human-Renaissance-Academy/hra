@@ -3,7 +3,7 @@ export const ko = {
   dates: { weekdays: ['일', '월', '화', '수', '목', '금', '토'], dueToday: '오늘 마감', closed: '마감됨' },
   files: { fallbackName: '자료', open: 'PDF 열기' },
   submission: { invalidFile: '비어 있지 않은 PDF 파일 한 개를 50MiB 이하로 선택해 주세요.' },
-  tabs: { home: '홈', notices: '공지', schedule: '일정', resources: '자료실', profile: '내 정보' },
+  tabs: { home: '홈', notices: '공지', schedule: '일정', resources: '자료', profile: '내 정보' },
   login: '로그인',
   auth: {
     email: '이메일', password: '비밀번호', showPassword: '비밀번호 표시', hidePassword: '비밀번호 숨기기',
@@ -40,7 +40,7 @@ export const ko = {
       home: '홈 탭',
       notices: '공지 탭',
       schedule: '일정 탭',
-      resources: '자료실 탭',
+      resources: '자료 탭',
       profile: '내 정보 탭',
     },
   },

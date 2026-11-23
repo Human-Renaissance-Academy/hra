@@ -17,6 +17,8 @@ import { homeStrings } from '../src/features/home/strings';
 import { authValue } from './screen-fixtures';
 
 jest.mock('expo-router', () => ({
+  useFocusEffect: (effect: () => void | (() => void)) =>
+    jest.requireActual<typeof import('react')>('react').useEffect(effect, [effect]),
   useRouter: () => ({ push: jest.fn() }),
 }));
 
@@ -69,7 +71,10 @@ afterEach(() => {
   jest.useRealTimers();
 });
 
-test('FACULTY와 ADMIN 계정은 과제 API를 호출하지 않고 중립 안내를 표시한다', async () => {
+test.each([
+  ['FACULTY', '교수진'],
+  ['ADMIN', '관리자'],
+] as const)('%s 계정은 과제 API를 호출하지 않고 자료 바로가기를 표시한다', async (role, roleLabel) => {
   // Given
   const send = jest.fn(async (request: Request) => {
     const url = new URL(request.url);
@@ -88,21 +93,22 @@ test('FACULTY와 ADMIN 계정은 과제 API를 호출하지 않고 중립 안내
     createApiClient({ baseUrl: 'https://example.test', fetch: send }),
   );
 
-  const facultyAuth = authValue({
+  const auth = authValue({
     status: 'signedIn',
-    user: { id: 'faculty-1', name: '박교수', role: 'FACULTY' },
-    role: 'FACULTY',
+    user: { id: 'staff-1', name: '박교수', role },
+    role,
   });
 
   // When
-  const view = await renderHome(facultyAuth);
+  const view = await renderHome(auth);
   await waitFor(() => {
     expect(view.getByTestId('home-schedule-empty')).toBeTruthy();
   });
 
   // Then
-  expect(view.getByLabelText('교수진')).toBeTruthy();
-  expect(view.getByText(homeStrings.assignments.roleUnavailable)).toBeTruthy();
+  expect(view.getByLabelText(roleLabel)).toBeTruthy();
+  expect(view.getByTestId('home-resource-action')).toBeTruthy();
+  expect(view.queryByText(homeStrings.assignments.roleUnavailable)).toBeNull();
   expect(
     send.mock.calls.some(([req]) => new URL(req.url).pathname === '/api/v1/assignments'),
   ).toBe(false);

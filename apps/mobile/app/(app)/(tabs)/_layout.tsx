@@ -1,5 +1,5 @@
 /**
- * 역할: 한국어 다섯 탭(홈, 공지, 일정, 자료실, 내 정보)의 하단 탭 바 및 상단 헤더 레이아웃
+ * 역할: 한국어 네 개 하단 탭(홈, 일정, 자료실, 내 정보)과 숨긴 공지 라우트의 하단 탭 바 및 상단 헤더 레이아웃
  * 사용 위치: app/(app)/(tabs)/_layout.tsx (승인 완료 회원의 기본 탐색 셸)
  * 주요 기능:
  * - 각 탭의 활성/비활성 Ionicons 아이콘, 한국어 제목 및 탭 접근성 레이블(ko.ui.tabA11y) 설정
@@ -49,6 +49,8 @@ export default function TabLayout() {
       <Tabs.Screen
         name="notices"
         options={{
+          // 공지 목록·상세 경로는 유지하되 하단 탭에서만 숨깁니다.
+          href: null,
           title: ko.tabs.notices,
           tabBarAccessibilityLabel: ko.ui.tabA11y.notices,
           tabBarIcon: ({ color, focused, size }) =>
