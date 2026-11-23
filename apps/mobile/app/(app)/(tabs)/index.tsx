@@ -3,8 +3,8 @@
  * 사용 위치: app/(app)/(tabs)/index.tsx
  * 주요 기능:
  * - 로그인한 사용자의 인사말('안녕하세요, {name}님')과 한국어 역할 배지 표시
- * - 다가오는 일정(현재 KST 월 GET /api/v1/schedule?year&month), 최근 공지(GET /api/v1/notices?page=1&pageSize=3),
- *   내 과제(MEMBER 전용 GET /api/v1/assignments?pageSize=5) 세 섹션을 독립 로딩·오류·빈 상태로 렌더링
+ * - 다가오는 일정 1건(현재 KST 월 GET /api/v1/schedule?year&month), 최근 공지(GET /api/v1/notices?page=1&pageSize=3),
+ *   실제 미제출 과제(MEMBER 전용) 또는 자료실 CTA를 한 개만 노출
  * - 당겨서 새로고침 시 활성 섹션 쿼리를 일괄 재조회하며 모든 쿼리 키를 사용자 ID로 격리
  */
 import { useState } from 'react';
@@ -17,6 +17,7 @@ import {
   HomeAssignmentsSection,
   HomeGreetingHeader,
   HomeNoticesSection,
+  HomeResourceAction,
   HomeScheduleSection,
 } from '../../../src/features/home/components';
 import {
@@ -110,7 +111,7 @@ export default function HomeScreen() {
   const roleLabel = formatRoleLabel(effectiveRole);
 
   const scheduleItems = scheduleQuery.data
-    ? selectHomeUpcomingSchedules(scheduleQuery.data, now, 3)
+    ? selectHomeUpcomingSchedules(scheduleQuery.data, now, 1)
     : [];
   const scheduleError = scheduleQuery.isError
     ? toKoreanMessage(scheduleQuery.error)
@@ -127,6 +128,13 @@ export default function HomeScreen() {
     error: assignmentsQuery.isError ? assignmentsQuery.error : undefined,
     now,
   });
+
+  // 비활성·0건·다른 역할은 실행 가능한 자료실 바로가기 한 개로 대체합니다.
+  const showAssignmentSection =
+    shouldFetchAssignments &&
+    (assignmentsQuery.isPending ||
+      assignmentsResolution.kind === 'error' ||
+      (assignmentsResolution.kind === 'ready' && assignmentsResolution.summary.pendingCount > 0));
 
   return (
     <Screen
@@ -146,6 +154,20 @@ export default function HomeScreen() {
         onPressViewAll={() => router.push('/(app)/(tabs)/schedule')}
       />
 
+      {showAssignmentSection ? (
+        <HomeAssignmentsSection
+          isPending={assignmentsQuery.isPending}
+          resolution={assignmentsResolution}
+          onRetry={() => void assignmentsQuery.refetch()}
+          onPressAssignments={() => router.push('/assignments')}
+        />
+      ) : (
+        <HomeResourceAction
+          role={effectiveRole}
+          onPress={() => router.push('/(app)/(tabs)/resources')}
+        />
+      )}
+
       <HomeNoticesSection
         isPending={isAuthenticated && noticesQuery.isPending}
         errorMessage={noticesError}
@@ -153,13 +175,6 @@ export default function HomeScreen() {
         onRetry={() => void noticesQuery.refetch()}
         onPressViewAll={() => router.push('/(app)/(tabs)/notices')}
         onPressNotice={(noticeId) => router.push(`/notices/${noticeId}`)}
-      />
-
-      <HomeAssignmentsSection
-        isPending={shouldFetchAssignments && assignmentsQuery.isPending}
-        resolution={assignmentsResolution}
-        onRetry={() => void assignmentsQuery.refetch()}
-        onPressAssignments={() => router.push('/assignments')}
       />
     </Screen>
   );
