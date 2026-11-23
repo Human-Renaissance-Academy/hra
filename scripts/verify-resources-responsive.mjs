@@ -19,7 +19,11 @@ import { fileURLToPath } from "node:url";
 import { setTimeout as delay } from "node:timers/promises";
 import { createQaPostgres } from "../tests/support/resource-qa-postgres.mjs";
 import { exportQaSchemaSql } from "../tests/support/qa-schema-export.mjs";
-import { installResourcesResponsiveFixture } from "../tests/support/resources-responsive-fixture.mjs";
+import {
+  installResourcesResponsiveFixture,
+  resourcesResponsiveIds,
+  resourcesResponsiveUsers,
+} from "../tests/support/resources-responsive-fixture.mjs";
 
 const repository = dirname(dirname(fileURLToPath(import.meta.url)));
 // 외부 자격 증명·NODE_OPTIONS를 상속하지 않고 실행에 필요한 시스템 값만 자식 환경으로 복사합니다.
@@ -33,7 +37,8 @@ const check = (condition, code) => {
 };
 let cluster, server, serverDone;
 // spec의 필수 사례 수. 사례를 추가·삭제하면 함께 바꿉니다.
-const EXPECTED_BROWSER_CASES = 7;
+const documentMode = process.argv.length === 3 && process.argv[2] === "--class-log-documents";
+const EXPECTED_BROWSER_CASES = documentMode ? 3 : 7;
 
 /** 임의 포트 번호만 확인하고 실제 수신은 Next 자식 프로세스가 맡습니다. */
 async function availablePort() {
@@ -48,7 +53,7 @@ async function availablePort() {
 }
 
 try {
-  check(process.argv.length === 2, "ARGUMENTS");
+  check(process.argv.length === 2 || documentMode, "ARGUMENTS");
   // Next가 환경 파일을 자동으로 읽어 운영 비밀값이 섞이지 않도록 파일이 없는 체크아웃에서만 실행합니다.
   check(
     ![
@@ -69,6 +74,29 @@ try {
   cluster.sql(schemaSql);
   cluster.sql(readFileSync(join(repository, "scripts/sql/rate-limit-reservations.sql"), "utf8"));
   installResourcesResponsiveFixture(cluster);
+  if (documentMode) {
+    for (const name of ["class-log-documents", "class-log-document-requests"]) {
+      cluster.sql(readFileSync(join(repository, `scripts/migrate-${name}.sql`), "utf8"));
+    }
+    // 실제 Blob 없이 확정본의 목록·권한·표시를 검증하는 합성 레코드입니다.
+    const log = "f0841000-0000-4000-8000-000000000001";
+    const pdf = "f0842000-0000-4000-8000-000000000001";
+    const hangul = "f0842000-0000-4000-8000-000000000002";
+    cluster.sql(`
+      BEGIN;
+      INSERT INTO class_logs (id, title, content, class_date, cohort_id, author_id)
+      VALUES ('${log}', '합성 문서 수업일지', '', '2026-11-19 15:00',
+              '${resourcesResponsiveIds.cohortA}', '${resourcesResponsiveUsers.member.id}');
+      INSERT INTO class_log_document_records (class_log_id, cohort_id, class_day, week_number)
+      VALUES ('${log}', '${resourcesResponsiveIds.cohortA}', '2026-11-20', 7);
+      INSERT INTO class_log_document_files (id, class_log_id, format, byte_size, file_name, storage_key)
+      VALUES ('${pdf}', '${log}', 'PDF', 12, '합성.pdf', 'class-log-documents/${pdf}/original'),
+             ('${hangul}', '${log}', 'HWPX', 12, '합성.hwpx', 'class-log-documents/${hangul}/original');
+      INSERT INTO class_log_document_revisions (class_log_id, version, pdf_file_id, hangul_file_id)
+      VALUES ('${log}', 1, '${pdf}', NULL), ('${log}', 2, '${pdf}', '${hangul}');
+      COMMIT;
+    `);
+  }
 
   // 2) production 빌드를 합성 인증 비밀값과 격리 DB 전송 어댑터로 시작합니다.
   const port = await availablePort();
@@ -91,6 +119,8 @@ try {
     BLOB_READ_WRITE_TOKEN: "",
     RESOURCE_PRIVATE_READ_WRITE_TOKEN: "",
     RESOURCE_PRIVATE_BLOB_HOST: "",
+    CLASS_LOG_DOCUMENTS_ENABLED: documentMode ? "true" : "false",
+    CLASS_LOG_DOCUMENT_WRITES_ENABLED: documentMode ? "true" : "false",
     NODE_OPTIONS: `--import=${JSON.stringify(join(repository, "tests/support/resource-qa-preload.mjs"))}`,
   };
   server = spawn(
@@ -142,7 +172,9 @@ try {
     [
       join(repository, "node_modules/@playwright/test/cli.js"),
       "test",
-      "tests/e2e/resources-responsive.spec.ts",
+      documentMode
+        ? "tests/e2e/class-log-documents.spec.ts"
+        : "tests/e2e/resources-responsive.spec.ts",
       "--workers=1",
       // 화면 출력(line)과 함께 실행 건수 확인용 JSON 결과를 임시 클러스터 디렉터리에 남깁니다.
       "--reporter=line,json",
@@ -155,6 +187,7 @@ try {
         CI: "true",
         PLAYWRIGHT_BASE_URL: baseUrl,
         HRA_RESOURCES_RESPONSIVE_QA: "true",
+        HRA_CLASS_LOG_DOCUMENT_QA: documentMode ? "true" : "false",
         PLAYWRIGHT_JSON_OUTPUT_FILE: reportPath,
       },
     },
@@ -180,7 +213,9 @@ try {
     "BROWSER_CASE_COUNT",
   );
   console.log(
-    "PASS 자료실 반응형 320·375·390·768·1280px (격리 DB·실제 credentials·MEMBER/FACULTY)",
+    documentMode
+      ? "PASS 문서형 수업일지 조회·수정본·공유 320·390·1280px (격리 DB·실제 credentials)"
+      : "PASS 자료실 반응형 320·375·390·768·1280px (격리 DB·실제 credentials·MEMBER/FACULTY)",
   );
 } catch (error) {
   // 원문 오류에는 SQL·연결 정보가 포함될 수 있어 고정 진단 코드만 출력합니다.

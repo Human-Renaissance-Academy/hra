@@ -42,6 +42,8 @@ Production·Preview·Development는 DB·공개/비공개 Blob·OAuth·세션 비
 | `AUTH_KAKAO_EMAIL_SCOPE` | 승인한 Kakao 이메일 동의 요청 | Development / Preview / Production; 환경별 독립 설정; Preview에 Production 자격정보·연결 상속 금지 | 아니요 | 제공자 콘솔·계정 연결 정책 확인 후 true | 정확한 true가 아니면 이메일 동의를 추가 요청하지 않음 | 앱 예시 |
 | `AUTH_KAKAO_ID` | Kakao OAuth REST client ID | Development / Preview / Production; 환경별 독립 설정; Preview에 Production 자격정보·연결 상속 금지 | 아니요 | Kakao 로그인을 제공할 때 secret과 함께 | ID·secret 중 하나라도 없으면 Kakao 제공자·버튼 비활성 | 앱 예시 |
 | `AUTH_KAKAO_SECRET` | Kakao OAuth client secret | Development / Preview / Production; 환경별 독립 설정; Preview에 Production 자격정보·연결 상속 금지 | 예 | Kakao 로그인을 제공할 때 ID와 함께 | ID·secret 중 하나라도 없으면 Kakao 제공자·버튼 비활성 | 앱 예시 |
+| `CLASS_LOG_DOCUMENT_WRITES_ENABLED` | 주차별 수업일지 문서 등록·수정본 확정 | Development / Preview / Production; 환경별 독립 설정; Preview에 Production 자격정보·연결 상속 금지 | 아니요 | CLASS_LOG_DOCUMENTS_ENABLED와 함께 true; 보존·정리 절차 검증과 승인 필요 | 정확한 true가 아니면 예약·확정을 막고 활성화된 읽기는 유지 | 앱 예시 |
+| `CLASS_LOG_DOCUMENTS_ENABLED` | 주차별 수업일지 문서 이력·읽기 | Development / Preview / Production; 환경별 독립 설정; Preview에 Production 자격정보·연결 상속 금지 | 아니요 | 수업일지 문서 SQL 2개, 운영 승인과 비공개 저장소 준비 | 정확한 true가 아니면 기존 수업일지 경로만 제공 | 앱 예시 |
 | `CRON_SECRET` | cleanup API Bearer 인증 | Development / Preview / Production; 환경별 독립 설정; Preview에 Production 자격정보·연결 상속 금지 | 예 | 승인된 환경의 예약/수동 cleanup 호출 | 세 cleanup API(요청 제한·학사 제출 파일·모바일 세션)에서 누락 503, 인증 실패 401; 학사·모바일 세션 cleanup 일정은 미등록 | 앱 예시 |
 | `DATABASE_URL` | Neon DB 접속 | Development / Preview / Production; 환경별 독립 설정; Preview에 Production 자격정보·연결 상속 금지 | 예 | DB 기능·상태 점검·DB 운영 명령 | 미설정 시 DB 호출 오류, health 503. 앱은 Neon HTTP 드라이버이며 일반 로컬 PG URL로 대체하지 않음 | 앱 예시 |
 | `HEALTH_CHECK_SECRET` | health 상세 응답 인증 | Development / Preview / Production; 환경별 독립 설정; Preview에 Production 자격정보·연결 상속 금지 | 예 | 허용한 운영자가 상세 상태를 조회할 때만 | 없으면 상세 정보 숨김; 기본 DB 점검과 HTTP 200/503은 수행 | 앱 예시 |
@@ -113,6 +115,7 @@ Production·Preview·Development는 DB·공개/비공개 Blob·OAuth·세션 비
 | `HRA_ATTENDANCE_STAFF_PASSWORD` | 이번 실행의 합성 운영 인력 비밀번호 | Development 합성 검증 / CI 격리 실행; 합성 계정·격리 DB; 공급자 QA는 승인한 전용 namespace·원장만 | 예 | 전용 출결 UI 로그인 | 없으면 합성 계정 로그인 불가; 운영 비밀번호 재사용 금지 | 앱 예시에 넣지 않음 |
 | `HRA_ATTENDANCE_STUDENT_EMAIL` | 이번 실행의 합성 학생 이메일 | Development 합성 검증 / CI 격리 실행; 합성 계정·격리 DB; 공급자 QA는 승인한 전용 namespace·원장만 | 아니요 | 전용 출결 UI 로그인 | 없으면 합성 계정 로그인 불가; 실제 계정 사용 금지 | 앱 예시에 넣지 않음 |
 | `HRA_ATTENDANCE_STUDENT_PASSWORD` | 이번 실행의 합성 학생 비밀번호 | Development 합성 검증 / CI 격리 실행; 합성 계정·격리 DB; 공급자 QA는 승인한 전용 namespace·원장만 | 예 | 전용 출결 UI 로그인 | 없으면 합성 계정 로그인 불가; 운영 비밀번호 재사용 금지 | 앱 예시에 넣지 않음 |
+| `HRA_CLASS_LOG_DOCUMENT_QA` | 수업일지 문서 화면 격리 QA 시나리오 | Development 합성 검증 / CI 격리 실행; 합성 계정·격리 DB; 공급자 QA는 승인한 전용 namespace·원장만 | 아니요 | 자료실 QA 실행기의 --class-log-documents 실행에서 true를 전달 | true가 아니면 전용 문서 화면 QA를 건너뜀 | 앱 예시에 넣지 않음 |
 | `HRA_G1_APP_ORIGIN` | G1 격리 앱 origin | Development 합성 검증 / CI 격리 실행; 합성 계정·격리 DB; 공급자 QA는 승인한 전용 namespace·원장만 | 아니요 | G1 실행기가 생성 | 없거나 준비되지 않으면 G1 네트워크 검증 불가 | 앱 예시에 넣지 않음 |
 | `HRA_G1_STORE_ORIGIN` | G1 로컬 private 저장소 origin | Development 합성 검증 / CI 격리 실행; 합성 계정·격리 DB; 공급자 QA는 승인한 전용 namespace·원장만 | 아니요 | G1 실행기가 생성 | 없거나 준비되지 않으면 로컬 저장소 검증 불가; 운영 저장소 사용 금지 | 앱 예시에 넣지 않음 |
 | `HRA_PUBLIC_E2E_LIST` | 확장 공개 reporter의 수집 전용 구분 | Development 합성 검증 / CI 격리 실행; 합성 계정·격리 DB; 공급자 QA는 승인한 전용 namespace·원장만 | 아니요 | 격리 실행기의 --list 단계에서만 true | true가 아니면 필수 24개 사례의 실제 완료까지 검증 | 앱 예시에 넣지 않음 |

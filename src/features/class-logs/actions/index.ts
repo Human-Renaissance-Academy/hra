@@ -26,6 +26,7 @@ import { z } from "zod/v4";
 import { db } from "@/lib/db";
 import { classLogImages, classLogs, users } from "@/lib/db/schema";
 import { requireAdmin } from "@/lib/admin";
+import { isClassLogDocumentRecord } from "@/features/class-logs/documents/write-repository";
 import { maxMarkdownBodyLength } from "@/lib/server-action-input-limits";
 import { auth } from "@/lib/auth";
 import { logServerError } from "@/lib/errors";
@@ -460,13 +461,13 @@ export async function updateClassLog(id: string, formData: FormData): Promise<Cl
     // 1단계) 텍스트 필드부터 저장한다.
     //   이미지 교체 로직과 분리해 두면, 이미지 처리 중 실패해도 텍스트 수정은 이미 반영되어
     //   사용자가 재시도 시 이미지만 다시 올리면 되도록 UX 가 단순해진다.
+    const documentRecord = await isClassLogDocumentRecord(parsedId.data);
     await db
       .update(classLogs)
       .set({
         title: parsed.data.title,
         content: parsed.data.content,
-        classDate,
-        cohortId: parsed.data.cohortId || null,
+        ...(documentRecord ? {} : { classDate, cohortId: parsed.data.cohortId || null }),
       })
       .where(eq(classLogs.id, parsedId.data));
 
@@ -592,6 +593,10 @@ export async function deleteClassLog(id: string): Promise<ClassLogActionState> {
         success: false,
         error: "수업일지를 찾을 수 없습니다.",
       };
+    }
+
+    if (await isClassLogDocumentRecord(parsedId.data)) {
+      return { success: false, error: "수정 이력이 있는 문서형 수업일지는 삭제할 수 없습니다." };
     }
 
     const attachedImageRows = await db

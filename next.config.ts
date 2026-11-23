@@ -78,6 +78,16 @@ const nextConfig: NextConfig = {
         headers: [{ key: "Content-Security-Policy", value: inlinePdfCsp }],
       },
       {
+        // 수업일지 원본은 PDF 여부나 inline 쿼리에 관계없이 첨부로 내려받습니다.
+        source: "/api/resources/class-log-documents/:id/download",
+        headers: [{ key: "Content-Security-Policy", value: attachmentCsp }],
+      },
+      {
+        // 문서형 일지 PDF는 별도 주소에서 최상위 탭으로 열며 같은 sandbox로 응답합니다.
+        source: "/api/resources/class-log-documents/:id/preview",
+        headers: [{ key: "Content-Security-Policy", value: attachmentCsp }],
+      },
+      {
         // Next의 정적 헤더가 Route 응답보다 우선하므로 학사 파일 sandbox를 마지막에 고정한다.
         source: "/api/academic/submissions/:id/file/:fileId",
         headers: [{ key: "Content-Security-Policy", value: "sandbox; default-src 'none'" }],
