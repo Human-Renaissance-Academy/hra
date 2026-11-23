@@ -4,6 +4,21 @@
 
 ---
 
+## [0.4.0](https://github.com/Human-Renaissance-Academy/hra/compare/v0.3.0...v0.4.0) (2026-11-23)
+
+
+### 새 기능
+
+* **db:** 수업일지 원본과 수정 이력을 DB 제약으로 보호한다 ([5414842](https://github.com/Human-Renaissance-Academy/hra/commit/541484217ae013deea9e653c807afb4e322e822b)), closes [#636](https://github.com/Human-Renaissance-Academy/hra/issues/636)
+* **mobile:** 로그인 후 4탭·학생 교수 홈 최소화 ([90fb55b](https://github.com/Human-Renaissance-Academy/hra/commit/90fb55b1e963324c15afdb23af24b61c21503f95)), closes [#633](https://github.com/Human-Renaissance-Academy/hra/issues/633)
+* **resources:** 수업일지 원본과 수정본을 자료실에 연결한다 ([f4d82dc](https://github.com/Human-Renaissance-Academy/hra/commit/f4d82dcec40595a6d84bb1e4d67e153caf681c11)), closes [#636](https://github.com/Human-Renaissance-Academy/hra/issues/636)
+* **web:** 로그인 후 학사포털을 핵심 동선으로 간소화 ([a8417e1](https://github.com/Human-Renaissance-Academy/hra/commit/a8417e14df31bc311ddc73e6de0985d2f7e6c047)), closes [#632](https://github.com/Human-Renaissance-Academy/hra/issues/632)
+
+
+### 버그 수정
+
+* **resources:** 상세에서 돌아갈 때 자료 분류를 유지한다 ([2b53532](https://github.com/Human-Renaissance-Academy/hra/commit/2b5353226b22f0e08b51389a83fb11ef3f6d4175)), closes [#632](https://github.com/Human-Renaissance-Academy/hra/issues/632)
+
 ## [0.3.0](https://github.com/Human-Renaissance-Academy/hra/compare/v0.2.2...v0.3.0) (2026-11-22)
 
 
