@@ -290,12 +290,20 @@ test.describe("회원 자료실 반응형 (#601)", () => {
       );
       await expectNoHorizontalOverflow(page);
 
-      // 11) 상세 이동: 수업일지 상세가 열립니다.
+      // 11) 수업일지 상세의 목록 링크는 수업일지 분류를 다시 선택합니다.
       await group.getByRole("button", { name: "주차별 수업일지", exact: true }).click();
       await logLink.click();
       await expect(page).toHaveURL(new RegExp(`/resources/${ids.log}$`));
       await expect(page.getByText(titles.log).first()).toBeVisible();
       await expectNoHorizontalOverflow(page);
+      await page.getByRole("link", { name: "목록으로" }).click();
+      await expect(page).toHaveURL(
+        (url) =>
+          url.pathname === "/resources" && url.searchParams.get("category") === "주차별 수업일지",
+      );
+      await expect(
+        group.getByRole("button", { name: "주차별 수업일지", exact: true }),
+      ).toHaveAttribute("aria-pressed", "true");
 
       // 학습자료 바로가기에서 기수 텍스트를 열고 돌아오면 URL의 자료 분류가 유지됩니다.
       await page.setViewportSize({ width, height: 480 });
@@ -320,6 +328,17 @@ test.describe("회원 자료실 반응형 (#601)", () => {
       await list.getByRole("link", { name: titles.weeklyBody, exact: true }).click();
       await expect(page).toHaveURL(new RegExp(`/resources/weekly-texts/${ids.weeklyBody}$`));
       await page.goBack();
+      await expect(
+        group.getByRole("button", { name: "주차별 텍스트", exact: true }),
+      ).toHaveAttribute("aria-pressed", "true");
+
+      // 브라우저 뒤로가기와 상세 화면의 목록 링크 모두 주차별 텍스트 분류로 돌아옵니다.
+      await list.getByRole("link", { name: titles.weeklyBody, exact: true }).click();
+      await page.getByRole("link", { name: "목록으로" }).click();
+      await expect(page).toHaveURL(
+        (url) =>
+          url.pathname === "/resources" && url.searchParams.get("category") === "주차별 텍스트",
+      );
       await expect(
         group.getByRole("button", { name: "주차별 텍스트", exact: true }),
       ).toHaveAttribute("aria-pressed", "true");
