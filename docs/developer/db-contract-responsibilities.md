@@ -1,6 +1,6 @@
 # DB 변경 검증 정본별 책임과 중복 필드
 
-이 문서는 [#364](https://github.com/Human-Renaissance-Academy/hra-website/issues/364)의 첫 번째 완료 조건에 대한 **현황 비교표**입니다. 기준은 `origin/main`의 정적 검토이며 운영 DB·migration 적용은 확인하지 않았습니다. 이 문서는 코드·계약 파일을 바꾸지 않고, 어떤 검사도 제거하거나 완화하자고 제안하지 않습니다.
+이 문서는 [#364](https://github.com/Human-Renaissance-Academy/hra-website/issues/364)의 **DB 계약 현황과 migration 도구 비교**를 기록합니다. 근거는 저장소의 코드·테스트, 잠금 파일에 고정된 패키지 소스, Drizzle 공식 문서입니다.
 
 - 운영 적용 게이트 구축은 [#280](https://github.com/Human-Renaissance-Academy/hra-website/issues/280) 소관입니다. 아래 "향후 유도 가능" 항목은 **#280의 운영 경계가 준비된 뒤에만 검토할 수 있는 후보이며 아직 하나도 구현되지 않았습니다.**
 - 실제 versioned manifest는 `state: "unset"`, `migrations: []`입니다. 후보 파일·검사 통과는 운영 적용 가능 상태가 아닙니다.
@@ -92,7 +92,22 @@ SQL 1개 추가 시 최소 3곳(파일·inventory·계약), fresh 후보까지 �
 
 유지해야 하는 것(변경 대상 아님): fresh install·기존 DB upgrade/restore·경합·중단·재시도·commit 결과 불확실성 검증, 미등록 SQL·불일치 이력·잘못된 성공 판정 실패 회귀, `observedDatabase`/`productionReady`가 항상 `false`인 경계.
 
-## 5. 이 문서가 확인하지 않은 것
+## 5. Drizzle Kit과 저장소 격리 적용기 비교
+
+저장소의 잠금 파일은 `drizzle-kit 0.31.11`, `drizzle-orm 0.45.4`를 사용합니다. 공식 문서의 예시는 최신 파일 구조를 설명하므로, 아래 PostgreSQL 실행 동작은 잠금 버전의 Kit `bin.cjs`의 `@neondatabase/serverless` 분기와 ORM `neon-serverless/migrator.js`, `migrator.js`, `pg-core/dialect.js`를 기준으로 확인했습니다. 저장소 적용기 열은 `scripts/_lib/db-migration-local-engine.mjs`와 `tests/integration/db-migration-local.test.mjs`의 계약입니다. [Drizzle generate](https://orm.drizzle.team/docs/drizzle-kit-generate) · [Drizzle migrate](https://orm.drizzle.team/docs/drizzle-kit-migrate)
+
+| 비교 항목 | Drizzle Kit PostgreSQL (Neon WebSocket) | 저장소 격리 적용기 |
+| --- | --- | --- |
+| SQL 생성과 사용자 SQL | `generate`가 Drizzle 스키마 스냅샷 차이로 SQL을 만들며, `--custom`으로 작성한 SQL을 같은 journal에 포함할 수 있습니다. 학사 함수·트리거·지연 FK 등 사용자 SQL은 직접 검토하고 등록해야 합니다. | 검토한 SQL 파일을 manifest 순서대로 실행합니다. 사용자 SQL은 파일 단위 트랜잭션 계약을 따라야 하며, 트랜잭션 밖에서 수행해야 하는 작업은 실행할 수 없습니다. |
+| 원자성 | 이력 스키마와 테이블을 준비하고 마지막 이력을 읽은 다음, 미적용 SQL 묶음과 해당 이력 행을 한 트랜잭션으로 적용합니다. | 파일 하나와 해당 이력 행을 같은 트랜잭션으로 커밋합니다. 중간 실패 시 이전에 확인된 파일까지 남습니다. |
+| 동시 실행 | 잠금 버전의 Neon 경로에서는 전용 migration 잠금을 획득하지 않고 트랜잭션 진입 전에 마지막 이력을 읽습니다. 채택 검토 시 별도 직렬화 방식이 필요합니다. | 같은 DB의 적용기는 물리 세션의 advisory lock을 얻은 뒤 이력을 다시 읽습니다. 경합·타임아웃은 격리 PostgreSQL 회귀에 포함됩니다. |
+| 이력과 재시도 | 이력에 해시와 적용 시각 키를 저장합니다. 재실행할 파일은 마지막 행의 시각 키로 판단합니다. 이 경로는 이전 행의 해시 전체나 현재 카탈로그를 대조하지 않고, COMMIT 응답 유실도 별도로 대조하지 않습니다. | manifest와 이력의 순서·해시, 해당 시점의 카탈로그를 대조합니다. COMMIT 응답이 유실되면 같은 소유 대상에 다시 연결해 일치하는 적용 상태를 확인한 뒤 멈추며, SQL을 자동 재실행하지 않습니다. |
+
+현재 표는 도구 선택의 근거입니다. 기존 격리 적용기에는 파일별 원자성·동시 실행·재시도·COMMIT 결과 대조의 회귀 증거가 있습니다. Drizzle Kit을 적용기로 검토한다면 위 차이를 기존 DB 복원본의 격리 리허설에서 검증해야 합니다. SQL 초안 생성에 Drizzle을 사용하는 선택은 DB 적용기 선택과 별개입니다.
+
+운영 적용기 선택은 [DB 변경 배포 게이트](database-change-procedure.md#db-change-gate)에 따른 기준 카탈로그·복원 증거·운영 승인 확보 뒤에 판단합니다. 선택한 적용기의 이력만 운영 정본으로 사용합니다. 저장소 manifest는 현재 `unset`이며 migration 항목은 0건입니다. 기존 격리 적용기는 `productionReady: false`를 반환합니다.
+
+## 6. 검증 범위
 
 - 운영 DB, migration 적용·승격 상태, 비교표 이후의 변경 효과.
 - 위 비교표의 "수정 지점 수"는 위 세 커밋 기준이며 모든 변경 유형을 대표하지 않습니다.

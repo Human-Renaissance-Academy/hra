@@ -2,6 +2,13 @@
   "version": 1,
   "sql": [
     {
+      "path": "scripts/migrate-class-log-documents.sql",
+      "role": "versioned_candidate",
+      "sha256": "e3509ebc4b8e1901c3f2034496b19a33e86cfbe3239063aad6ba89fd8ea51056",
+      "id": "class-log-documents",
+      "predecessors": []
+    },
+    {
       "path": "scripts/migrate-507-email-identity-unique.sql",
       "role": "versioned_candidate",
       "sha256": "223086a65fbc8358aec709ca18bbb88a679796fab531566c379306a2af277cb3",
