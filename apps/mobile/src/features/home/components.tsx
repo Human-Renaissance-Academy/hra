@@ -7,7 +7,6 @@
  * - 내 과제 섹션(HomeAssignmentsSection) 재수출
  */
 import { StyleSheet, View } from 'react-native';
-import { ko } from '../../i18n/ko';
 import { theme } from '../../theme';
 import { AppText, Card, Chip, EmptyState, ErrorState, SectionHeader, SkeletonList } from '../../ui';
 import type { HomeNoticeItemView, HomeScheduleItemView } from './model';
