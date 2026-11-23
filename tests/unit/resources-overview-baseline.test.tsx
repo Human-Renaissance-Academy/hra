@@ -103,7 +103,7 @@ beforeEach(() => {
 it("승인 회원의 다섯 자료 유형·경로·전역 날짜 순서와 탭 인자를 유지한다", async () => {
   const element = await ResourcesPage({ searchParams: Promise.resolve({ category: "주차별 텍스트" }) });
   const html = renderToStaticMarkup(element);
-  expect(html).toContain("자료실");
+  expect(html).toContain("학사포털");
   expect(html).not.toContain("/admin/resources/new");
   expect(mocks.requireReader).toHaveBeenCalledOnce();
   expect(mocks.findProfile).toHaveBeenCalledOnce();
