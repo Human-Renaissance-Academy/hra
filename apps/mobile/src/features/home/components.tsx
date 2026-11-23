@@ -21,18 +21,32 @@ export interface HomeGreetingHeaderProps {
   readonly roleLabel: string;
 }
 
-/** 홈 상단 화면 제목('홈'), 사용자 인사말, 역할 배지를 표시하는 헤더입니다. */
+/** 인사말과 역할만 표시합니다. 별도 홍보 카드·설명은 넣지 않습니다. */
 export function HomeGreetingHeader({ greeting, roleLabel }: HomeGreetingHeaderProps) {
   return (
-    <Card variant="subtle" padding="md" testID="home-greeting-card">
-      <View style={styles.greetingTopRow}>
-        <AppText variant="title">{ko.tabs.home}</AppText>
-        <Chip label={roleLabel} tone="brand" icon="person-outline" testID="home-role-chip" />
-      </View>
-      <View style={styles.greetingTextBlock}>
-        <AppText variant="heading" testID="home-greeting-text">{greeting}</AppText>
-        <AppText variant="bodySmall" tone="secondary">{homeStrings.greetingSubtitle}</AppText>
-      </View>
+    <View style={styles.greetingTopRow} testID="home-greeting-card">
+      <AppText variant="heading" testID="home-greeting-text">{greeting}</AppText>
+      <Chip label={roleLabel} tone="brand" icon="person-outline" testID="home-role-chip" />
+    </View>
+  );
+}
+
+/** 학사 기능이 비활성일 때에도 실행 가능한 자료실 바로가기를 하나 제공합니다. */
+export interface HomeResourceActionProps {
+  readonly role: string | null;
+  readonly onPress: () => void;
+}
+export function HomeResourceAction({ role, onPress }: HomeResourceActionProps) {
+  const label = role === 'FACULTY' ? '자료 보기' : '학습자료 보기';
+  return (
+    <Card
+      variant="outlined"
+      padding="md"
+      onPress={onPress}
+      accessibilityLabel={label}
+      testID="home-resource-action"
+    >
+      <AppText variant="subheading">{label}</AppText>
     </Card>
   );
 }
@@ -57,13 +71,12 @@ export function HomeScheduleSection({
     <View style={styles.section} testID="home-schedule-section">
       <SectionHeader
         title={homeStrings.schedule.title}
-        subtitle={homeStrings.schedule.subtitle}
         actionLabel={homeStrings.schedule.viewAll}
         actionAccessibilityLabel={homeStrings.schedule.viewAllA11y}
         onActionPress={onPressViewAll}
       />
       {isPending ? (
-        <SkeletonList count={2} accessibilityLabel={homeStrings.schedule.loadingA11y} testID="home-schedule-skeleton" />
+        <SkeletonList count={1} accessibilityLabel={homeStrings.schedule.loadingA11y} testID="home-schedule-skeleton" />
       ) : errorMessage ? (
         <Card variant="outlined" padding="sm">
           <ErrorState message={errorMessage} onRetry={onRetry} testID="home-schedule-error" />
@@ -124,7 +137,6 @@ export function HomeNoticesSection({
     <View style={styles.section} testID="home-notices-section">
       <SectionHeader
         title={homeStrings.notices.title}
-        subtitle={homeStrings.notices.subtitle}
         actionLabel={homeStrings.notices.viewAll}
         actionAccessibilityLabel={homeStrings.notices.viewAllA11y}
         onActionPress={onPressViewAll}
@@ -157,12 +169,10 @@ export function HomeNoticesSection({
             >
               <View style={styles.cardHeaderRow}>
                 {item.pinned ? <Chip label={homeStrings.notices.pinnedBadge} tone="brand" icon="pin" /> : null}
-                <AppText variant="caption" tone="secondary">{item.dateText} · {item.viewCountText}</AppText>
+                <AppText variant="caption" tone="secondary">{item.dateText}</AppText>
               </View>
               <AppText variant="subheading" style={styles.itemTitle}>{item.title}</AppText>
-              {item.excerpt ? (
-                <AppText variant="bodySmall" tone="secondary" numberOfLines={2}>{item.excerpt}</AppText>
-              ) : null}
+
             </Card>
           ))}
         </View>
@@ -177,10 +187,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: theme.spacing.sm,
-    marginBottom: theme.spacing.xs,
-  },
-  greetingTextBlock: {
-    gap: theme.spacing.xs,
+    flexWrap: 'wrap',
+    paddingVertical: theme.spacing.xs,
   },
   section: {
     gap: theme.spacing.sm,
