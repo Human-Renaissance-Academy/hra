@@ -11,13 +11,7 @@ type Props = {
   preview?: boolean;
 };
 
-export function ResourcePortal({
-  role,
-  cohortName,
-  userCohortId,
-  items,
-  preview = false,
-}: Props) {
+export function ResourcePortal({ role, cohortName, userCohortId, items, preview = false }: Props) {
   const faculty = role === "FACULTY";
   const suffix = preview ? "&view=" + (faculty ? "faculty" : "student") : "";
   const resourceHref = (category: string) =>
@@ -51,10 +45,7 @@ export function ResourcePortal({
     : { href: resourceHref("가이드북"), label: "가이드북" };
 
   return (
-    <section
-      aria-label={faculty ? "교수 학사포털" : "학생 학습포털"}
-      className="space-y-4"
-    >
+    <section aria-label={faculty ? "교수 학사포털" : "학생 학습포털"} className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-xl font-semibold text-slate-900 sm:text-2xl">
