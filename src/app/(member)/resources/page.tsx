@@ -229,7 +229,10 @@ export default async function ResourcesPage({ searchParams }: Props) {
       )}
 
       <section aria-labelledby="resource-library-heading" className="space-y-5">
-        <h2 id="resource-library-heading" className="text-xl font-bold text-slate-900 sm:text-2xl">
+        <h2
+          id="resource-library-heading"
+          className="scroll-mt-20 text-xl font-bold text-slate-900 sm:text-2xl"
+        >
           {portalRole ? "자료실 전체 보기" : "자료 목록"}
         </h2>
         <ResourcesTabs
