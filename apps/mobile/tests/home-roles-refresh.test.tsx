@@ -102,7 +102,8 @@ test('FACULTY와 ADMIN 계정은 과제 API를 호출하지 않고 중립 안내
 
   // Then
   expect(view.getByLabelText('교수진')).toBeTruthy();
-  expect(view.getByText(homeStrings.assignments.roleUnavailable)).toBeTruthy();
+  expect(view.getByTestId('home-resource-action')).toBeTruthy();
+  expect(view.queryByText(homeStrings.assignments.roleUnavailable)).toBeNull();
   expect(
     send.mock.calls.some(([req]) => new URL(req.url).pathname === '/api/v1/assignments'),
   ).toBe(false);
