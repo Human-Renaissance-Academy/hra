@@ -255,5 +255,7 @@ test('각 섹션이 비어 있거나 오류가 발생해도 독립적으로 표�
   await waitFor(() => {
     expect(view.getByTestId('home-schedule-empty')).toBeTruthy();
   });
+  await fireEvent.press(view.getByTestId('home-resource-action'));
+  expect(mockPush).toHaveBeenLastCalledWith('/(app)/(tabs)/resources');
   await view.unmount();
 });
