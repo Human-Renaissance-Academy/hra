@@ -114,7 +114,16 @@ test.describe("회원 자료실 반응형 (#601)", () => {
       await page.setViewportSize({ width, height: 900 });
       await login(page, baseURL, users.member);
       await page.goto("/resources");
-      await expect(page.getByRole("heading", { name: "자료실", level: 1 })).toBeVisible();
+      await expect(
+        page.getByRole("heading", { name: "자료실", exact: true, level: 1 }),
+      ).toBeVisible();
+      const portal = page.getByRole("region", { name: "학생 학습포털" });
+      await expect(portal.getByRole("heading", { name: "학생 학습포털" })).toBeVisible();
+      await expectWithinViewport(
+        portal.getByRole("link", { name: "내 학습자료 보기" }),
+        "학생 학습자료 바로가기",
+      );
+      await expect(page.getByRole("heading", { name: "자료실 전체 보기", level: 2 })).toBeVisible();
       await expectNoHorizontalOverflow(page);
 
       // 1) 다섯 카테고리: 모두 화면 안에 있고 기본 선택은 가이드북, 클릭하면 aria-pressed가 하나만 바뀝니다.
@@ -281,12 +290,39 @@ test.describe("회원 자료실 반응형 (#601)", () => {
       );
       await expectNoHorizontalOverflow(page);
 
-      // 11) 상세 이동: 수업일지 상세가 열리고 뒤로 가기로 목록에 돌아옵니다.
+      // 11) 상세 이동: 수업일지 상세가 열립니다.
       await group.getByRole("button", { name: "주차별 수업일지", exact: true }).click();
       await logLink.click();
       await expect(page).toHaveURL(new RegExp(`/resources/${ids.log}$`));
       await expect(page.getByText(titles.log).first()).toBeVisible();
       await expectNoHorizontalOverflow(page);
+
+      // 학습자료 바로가기에서 기수 텍스트를 열고 돌아오면 URL의 자료 분류가 유지됩니다.
+      await page.setViewportSize({ width, height: 480 });
+      await page.goto("/resources");
+      const library = page.getByRole("heading", { name: "자료실 전체 보기", level: 2 });
+      const initialLibraryY = await library.evaluate(
+        (element) => element.getBoundingClientRect().top,
+      );
+      await portal.getByRole("link", { name: "내 학습자료 보기" }).click();
+      await expect(page).toHaveURL(
+        `/resources?category=${encodeURIComponent("주차별 텍스트")}#resource-library-heading`,
+      );
+      await expect(
+        group.getByRole("button", { name: "주차별 텍스트", exact: true }),
+      ).toHaveAttribute("aria-pressed", "true");
+      await expect
+        .poll(async () => {
+          const y = (await library.boundingBox())?.y;
+          return y !== undefined && y > 64 && y < initialLibraryY;
+        })
+        .toBe(true);
+      await list.getByRole("link", { name: titles.weeklyBody, exact: true }).click();
+      await expect(page).toHaveURL(new RegExp(`/resources/weekly-texts/${ids.weeklyBody}$`));
+      await page.goBack();
+      await expect(
+        group.getByRole("button", { name: "주차별 텍스트", exact: true }),
+      ).toHaveAttribute("aria-pressed", "true");
     });
   }
 
@@ -298,6 +334,11 @@ test.describe("회원 자료실 반응형 (#601)", () => {
       await page.setViewportSize({ width, height: 900 });
       await login(page, baseURL, users.faculty);
       await page.goto("/resources?category=강의 자료");
+      const portal = page.getByRole("region", { name: "교수 학사포털" });
+      await expect(portal.getByRole("heading", { name: "교수 학사포털" })).toBeVisible();
+      const portalUpload = portal.getByRole("link", { name: "강의자료 등록" });
+      await expect(portalUpload).toHaveAttribute("href", "/resources/class-materials");
+      await expectWithinViewport(portalUpload, "교수 강의자료 등록");
       const group = page.getByRole("group", { name: "자료 종류" });
       await expect(group.getByRole("button", { name: "강의 자료", exact: true })).toHaveAttribute(
         "aria-pressed",

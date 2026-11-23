@@ -130,7 +130,7 @@ export default async function ResourcesPage({ searchParams }: Props) {
           : "mx-auto max-w-7xl px-4 pt-6 pb-12 sm:px-6 sm:py-20 md:py-32"
       }
     >
-      <section className={portalRole ? "mb-5 space-y-3" : "mb-8 space-y-3 sm:mb-14 sm:space-y-4"}>
+      <section className={portalRole && !isAdmin ? "mb-2" : "mb-8 space-y-3 sm:mb-14 sm:space-y-4"}>
         <div className="flex items-center gap-3">
           <div
             className={
@@ -217,7 +217,7 @@ export default async function ResourcesPage({ searchParams }: Props) {
       </section>
 
       {portalRole && (
-        <div className="mb-10">
+        <div className="mb-6">
           <ResourcePortal
             role={portalRole}
             cohortName={isAdmin ? null : cohortName}
@@ -229,8 +229,11 @@ export default async function ResourcesPage({ searchParams }: Props) {
       )}
 
       <section aria-labelledby="resource-library-heading" className="space-y-5">
-        <h2 id="resource-library-heading" className="text-xl font-bold text-slate-900 sm:text-2xl">
-          {portalRole ? "전체 자료 찾아보기" : "자료 목록"}
+        <h2
+          id="resource-library-heading"
+          className="scroll-mt-20 text-xl font-bold text-slate-900 sm:text-2xl"
+        >
+          {portalRole ? "자료실 전체 보기" : "자료 목록"}
         </h2>
         <ResourcesTabs
           key={initialCategory}
