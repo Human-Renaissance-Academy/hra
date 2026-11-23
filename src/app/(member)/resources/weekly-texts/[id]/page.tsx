@@ -7,7 +7,7 @@ import { notFound } from "next/navigation";
 import { z } from "zod/v4";
 import { MarkdownViewer } from "@/components/markdown/markdown-viewer";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button-variants";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { auth } from "@/lib/auth";
 import { requireSharedResourceReader } from "@/lib/resource-access";
@@ -53,11 +53,15 @@ export default async function WeeklyTextViewerPage({ params }: WeeklyTextViewerP
   return (
     <div className="mx-auto max-w-5xl px-4 py-12 sm:px-6 sm:py-20 md:py-32">
       <div className="mb-8">
-        <Link href="/resources">
-          <Button variant="ghost" className="text-[#666666] hover:bg-gray-50 hover:text-[#1a1a1a]">
-            <ArrowLeft className="size-4" />
-            목록으로
-          </Button>
+        <Link
+          href={{ pathname: "/resources", query: { category: "주차별 텍스트" } }}
+          className={buttonVariants({
+            variant: "ghost",
+            className: "text-[#666666] hover:bg-gray-50 hover:text-[#1a1a1a]",
+          })}
+        >
+          <ArrowLeft className="size-4" />
+          목록으로
         </Link>
       </div>
 
