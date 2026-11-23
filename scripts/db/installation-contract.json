@@ -15,6 +15,40 @@
   },
   "sources": [
     {
+      "ref": "scripts/migrate-class-log-document-requests.sql",
+      "phase": "custom-definition",
+      "fresh": {
+        "disposition": "unresolved",
+        "required": false,
+        "reason": "문서형 일지의 저장 구조를 전제로 하는 예약·확정의 검토 후보이며 기존 신규 설치 실행 순서에서 제외한다."
+      },
+      "objects": [
+        "class-log-document-request-table",
+        "class-log-document-request-writer"
+      ],
+      "requires": [
+        "class-log-document-tables"
+      ],
+      "checks": [
+        "동일 요청 복구와 현재 역할·기수 재확인, 만료·기준 버전·중복 등록의 원자적 거부를 격리 DB에서 검증한다."
+      ],
+      "evidence": [
+        {
+          "file": "scripts/migrate-class-log-document-requests.sql",
+          "line": 1,
+          "note": "예약 및 최종 확정의 PostgreSQL 원문이다."
+        },
+        {
+          "file": "tests/unit/class-log-document-requests-postgres.test.ts",
+          "line": 1,
+          "note": "요청 키·권한·수정본의 소유 격리 환경 검증이다."
+        }
+      ],
+      "unresolved": [
+        "운영 대상과 이전 파일 보존, 예약 파일 정리, 권한 및 Private Blob 검증·활성화는 별도 승인 범위다."
+      ]
+    },
+    {
       "ref": "scripts/migrate-class-log-documents.sql",
       "phase": "custom-definition",
       "fresh": {
@@ -1964,6 +1998,57 @@
   ],
   "objects": [
     {
+      "id": "class-log-document-request-writer",
+      "kind": "function-set",
+      "names": [
+        "public.write_class_log_document_request"
+      ],
+      "owner": "scripts/migrate-class-log-document-requests.sql",
+      "definitions": [
+        {
+          "source": "scripts/migrate-class-log-document-requests.sql",
+          "relationship": "primary",
+          "reason": "앱 서버만 사용하는 문서 예약 및 확정 계약의 정본이다."
+        }
+      ],
+      "requires": [
+        "class-log-document-request-table",
+        "class-log-document-tables"
+      ],
+      "checks": [
+        "동일 요청 복구와 현재 역할·기수 재확인, 만료·기준 버전·중복 등록의 원자적 거부를 격리 DB에서 검증한다."
+      ],
+      "unresolved": [
+        "운영 대상과 이전 파일 보존, 예약 파일 정리, 권한 및 Private Blob 검증·활성화는 별도 승인 범위다."
+      ],
+      "requiredForFresh": false
+    },
+    {
+      "id": "class-log-document-request-table",
+      "kind": "table-set",
+      "names": [
+        "public.class_log_document_requests"
+      ],
+      "owner": "scripts/migrate-class-log-document-requests.sql",
+      "definitions": [
+        {
+          "source": "scripts/migrate-class-log-document-requests.sql",
+          "relationship": "primary",
+          "reason": "앱 서버만 사용하는 문서 예약 및 확정 계약의 정본이다."
+        }
+      ],
+      "requires": [
+        "class-log-document-tables"
+      ],
+      "checks": [
+        "동일 요청 복구와 현재 역할·기수 재확인, 만료·기준 버전·중복 등록의 원자적 거부를 격리 DB에서 검증한다."
+      ],
+      "unresolved": [
+        "운영 대상과 이전 파일 보존, 예약 파일 정리, 권한 및 Private Blob 검증·활성화는 별도 승인 범위다."
+      ],
+      "requiredForFresh": false
+    },
+    {
       "id": "class-log-document-tables",
       "kind": "table-set",
       "names": [
@@ -3808,6 +3893,7 @@
         }
       ],
       "exclusions": [
+        {"ref": "scripts/migrate-class-log-document-requests.sql", "reason": "문서 등록·수정본 확정은 별도 회귀에서 검증하며 기존 신규 설치 적용에는 포함하지 않는다."},
         {"ref": "scripts/migrate-class-log-documents.sql", "reason": "수업일지 문서 구조는 전용 격리 테스트에서 검증하며 이 기존 설치 fixture에서는 적용하지 않는다."},
         {
           "ref": "scripts/migrate-507-email-identity-unique.sql",
@@ -4009,6 +4095,7 @@
         }
       ],
       "exclusions": [
+        {"ref": "scripts/migrate-class-log-document-requests.sql", "reason": "문서 등록·수정본 확정은 별도 회귀에서 검증하며 기존 신규 설치 적용에는 포함하지 않는다."},
         {"ref": "scripts/migrate-class-log-documents.sql", "reason": "수업일지 문서 구조는 전용 격리 테스트에서 검증하며 이 기존 설치 fixture에서는 적용하지 않는다."},
         {
           "ref": "scripts/migrate-507-email-identity-unique.sql",

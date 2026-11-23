@@ -2,6 +2,15 @@
   "version": 1,
   "sql": [
     {
+      "path": "scripts/migrate-class-log-document-requests.sql",
+      "role": "versioned_candidate",
+      "sha256": "4986926aea15a50ecf38e185496a74aeb362220c8fa52bebb988de407cdd583f",
+      "id": "class-log-document-requests",
+      "predecessors": [
+        "class-log-documents"
+      ]
+    },
+    {
       "path": "scripts/migrate-class-log-documents.sql",
       "role": "versioned_candidate",
       "sha256": "e3509ebc4b8e1901c3f2034496b19a33e86cfbe3239063aad6ba89fd8ea51056",

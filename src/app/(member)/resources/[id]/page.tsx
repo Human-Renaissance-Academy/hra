@@ -1,3 +1,7 @@
+import { ClassLogDocumentForm } from "../class-logs/_components/class-log-document-form";
+import { ClassLogDocumentShare } from "../class-logs/_components/class-log-document-share";
+import { listClassLogDocumentHistory } from "@/features/class-logs/documents/read-service";
+import { isClassLogDocumentAuthor } from "@/features/class-logs/documents/write-repository";
 import { getSiteConfig } from "@/lib/site-url";
 import type { Metadata } from "next";
 import { formatKstDate as formatDate } from "@/lib/date-time";
@@ -57,6 +61,15 @@ export default async function ResourceDetailPage({ params }: ResourceDetailPageP
   }
 
   const { log, images } = data;
+  const history =
+    process.env.CLASS_LOG_DOCUMENTS_ENABLED === "true"
+      ? await listClassLogDocumentHistory(log.id)
+      : null;
+  const latest = history?.revisions[0];
+  const mayRevise =
+    process.env.CLASS_LOG_DOCUMENT_WRITES_ENABLED === "true" &&
+    !!latest &&
+    (session.user.role === "ADMIN" || (await isClassLogDocumentAuthor(log.id, session.user.id)));
 
   recordWebClassLogRead(session.user.role, log.id);
 
@@ -109,6 +122,64 @@ export default async function ResourceDetailPage({ params }: ResourceDetailPageP
             <h2 className="text-base font-semibold text-[#1a1a1a]">내용</h2>
             <MarkdownViewer trustedSiteOrigin={getSiteConfig().url} body={log.content} />
           </section>
+
+          {history && latest && (
+            <section className="space-y-4" aria-labelledby="class-log-document-heading">
+              <h2 id="class-log-document-heading" className="text-base font-semibold">
+                {history.weekNumber}주차 파일
+              </h2>
+              <ClassLogDocumentShare />
+              {history.revisions.map((revision) => (
+                <details
+                  key={revision.version}
+                  open={revision.version === latest.version}
+                  className="space-y-2"
+                >
+                  <summary className="cursor-pointer font-medium">
+                    버전 {revision.version}
+                    {revision.version === latest.version ? " · 최신본" : ""}
+                    {" · "}
+                    {formatDate(new Date(revision.createdAt))}
+                  </summary>
+                  {revision.changeNote && <p className="text-sm">{revision.changeNote}</p>}
+                  <ul className="space-y-2">
+                    {[revision.pdf, revision.hangul].map(
+                      (file) =>
+                        file && (
+                          <li key={file.id} className="break-all">
+                            <a
+                              className="underline"
+                              href={`/api/resources/class-log-documents/${file.id}/download`}
+                            >
+                              {file.fileName} 내려받기
+                            </a>
+                            {file.format === "PDF" && (
+                              <a
+                                className="ml-2 underline"
+                                href={`/api/resources/class-log-documents/${file.id}/preview`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                              >
+                                PDF 열기
+                              </a>
+                            )}
+                            <span className="ml-2 text-xs text-muted-foreground">
+                              {file.format} · {formatDate(new Date(file.uploadedAt))}
+                            </span>
+                          </li>
+                        ),
+                    )}
+                  </ul>
+                </details>
+              ))}
+              {mayRevise && (
+                <details>
+                  <summary className="cursor-pointer font-medium">수정본 등록</summary>
+                  <ClassLogDocumentForm mode="revision" logId={log.id} version={latest.version} />
+                </details>
+              )}
+            </section>
+          )}
 
           {images.length > 0 ? (
             <section className="space-y-3">

@@ -1,3 +1,5 @@
+import { ClassLogDocumentForm } from "./_components/class-log-document-form";
+import { listClassLogDocumentSummaries } from "@/features/class-logs/documents/read-service";
 import type { Metadata } from "next";
 import { formatKstDate as formatDate } from "@/lib/date-time";
 import Link from "next/link";
@@ -17,7 +19,6 @@ export const metadata: Metadata = {
 };
 
 export const dynamic = "force-dynamic";
-
 
 const stripMarkdown = (value: string) =>
   value
@@ -43,7 +44,11 @@ const getExcerpt = (value: string, length = 120) => {
   return `${normalized.slice(0, length)}...`;
 };
 
-export default async function ClassLogsPage() {
+export default async function ClassLogsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ week?: string | string[]; cohort?: string | string[] }>;
+}) {
   const session = await requireSharedResourceReader();
   const role = session?.user?.role;
   const canUpload = role === "ADMIN" || role === "FACULTY" || role === "MEMBER";
@@ -69,6 +74,7 @@ export default async function ClassLogsPage() {
             title: classLogs.title,
             content: classLogs.content,
             classDate: classLogs.classDate,
+            cohortId: classLogs.cohortId,
             createdAt: classLogs.createdAt,
             viewCount: classLogs.viewCount,
             authorName: users.name,
@@ -97,6 +103,27 @@ export default async function ClassLogsPage() {
       .orderBy(asc(reportTemplates.order), asc(reportTemplates.createdAt)),
   ]);
 
+  const documentsEnabled = process.env.CLASS_LOG_DOCUMENTS_ENABLED === "true";
+  const query = documentsEnabled ? await searchParams : {};
+  const summaries = documentsEnabled
+    ? await listClassLogDocumentSummaries(logs.map((log) => log.id))
+    : [];
+  const documentByLog = new Map(summaries.map((summary) => [summary.classLogId, summary]));
+  const weeks = [...new Set(summaries.map((summary) => summary.weekNumber))].sort((a, b) => a - b);
+  const week =
+    typeof query.week === "string" && weeks.includes(Number(query.week))
+      ? Number(query.week)
+      : undefined;
+  const cohort =
+    isAdminOrFaculty && cohortRows.some((row) => row.id === query.cohort)
+      ? query.cohort
+      : undefined;
+  const displayedLogs = logs.filter(
+    (log) =>
+      (!week || documentByLog.get(log.id)?.weekNumber === week) &&
+      (!cohort || log.cohortId === cohort),
+  );
+
   return (
     <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 sm:py-20 md:py-32">
       <div className="mb-8">
@@ -120,12 +147,26 @@ export default async function ClassLogsPage() {
 
       <section className="mb-10 sm:mb-12">
         {canUpload ? (
-          <MemberClassLogUploadForm
-            action={createClassLogAsMember}
-            cohorts={cohortRows}
-            userCohortId={userCohortId}
-            templates={templateRows}
-          />
+          <>
+            {process.env.CLASS_LOG_DOCUMENTS_ENABLED === "true" &&
+              process.env.CLASS_LOG_DOCUMENT_WRITES_ENABLED === "true" &&
+              !isMemberWithoutCohort && (
+                <details className="mb-6">
+                  <summary className="cursor-pointer font-medium">파일로 수업일지 등록</summary>
+                  <ClassLogDocumentForm
+                    mode="create"
+                    cohorts={cohortRows}
+                    lockedCohortId={role === "MEMBER" ? userCohortId : null}
+                  />
+                </details>
+              )}
+            <MemberClassLogUploadForm
+              action={createClassLogAsMember}
+              cohorts={cohortRows}
+              userCohortId={userCohortId}
+              templates={templateRows}
+            />
+          </>
         ) : (
           <Card className="rounded-[28px] border-[#D9D9D9] bg-white py-0 shadow-[var(--shadow-soft)]">
             <CardHeader className="border-b border-[#D9D9D9] py-6">
@@ -152,9 +193,53 @@ export default async function ClassLogsPage() {
                 : "내 기수 목록"}
           </h2>
           <Badge variant="outline" className="border-[#D9D9D9] bg-white text-[#666666]">
-            {logs.length}개
+            {displayedLogs.length}개
           </Badge>
         </div>
+
+        {documentsEnabled && !isMemberWithoutCohort && (
+          <form
+            method="get"
+            className="mb-5 flex flex-wrap items-end gap-3"
+            aria-label="수업일지 검색"
+          >
+            {isAdminOrFaculty && (
+              <label className="grid gap-1 text-sm">
+                기수
+                <select
+                  name="cohort"
+                  defaultValue={cohort ?? ""}
+                  className="rounded border bg-background p-2"
+                >
+                  <option value="">전체 기수</option>
+                  {cohortRows.map((row) => (
+                    <option key={row.id} value={row.id}>
+                      {row.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
+            <label className="grid gap-1 text-sm">
+              주차
+              <select
+                name="week"
+                defaultValue={week ?? ""}
+                className="rounded border bg-background p-2"
+              >
+                <option value="">전체 주차</option>
+                {weeks.map((value) => (
+                  <option key={value} value={value}>
+                    {value}주차
+                  </option>
+                ))}
+              </select>
+            </label>
+            <button type="submit" className="rounded border bg-background p-2 text-sm">
+              조회
+            </button>
+          </form>
+        )}
 
         {isMemberWithoutCohort ? (
           <Card className="rounded-2xl border-[#D9D9D9] bg-white py-10 shadow-[var(--shadow-soft)]">
@@ -162,7 +247,7 @@ export default async function ClassLogsPage() {
               아직 기수가 배정되지 않았습니다. 관리자에게 문의해주세요.
             </CardContent>
           </Card>
-        ) : logs.length === 0 ? (
+        ) : displayedLogs.length === 0 ? (
           <Card className="rounded-2xl border-[#D9D9D9] bg-white py-10 shadow-[var(--shadow-soft)]">
             <CardContent className="text-center text-base text-[#666666]">
               등록된 수업일지가 없습니다.
@@ -170,33 +255,42 @@ export default async function ClassLogsPage() {
           </Card>
         ) : (
           <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
-            {logs.map((log) => (
-              <Link key={log.id} href={`/resources/${log.id}`}>
-                <Card className="h-full rounded-2xl border-[#D9D9D9] bg-white text-[#1a1a1a] shadow-[var(--shadow-soft)] transition hover:border-blue-400 hover:bg-gray-50">
-                  <CardHeader className="space-y-3">
-                    <div className="flex flex-wrap items-center gap-2 text-xs text-[#666666]">
-                      <Badge
-                        variant="secondary"
-                        className="border border-[#D9D9D9] bg-gray-50 text-[#666666]"
-                      >
-                        {formatDate(log.classDate)}
-                      </Badge>
-                      <span>{log.authorName ?? "삭제된 사용자"}</span>
-                      <span className="inline-flex items-center gap-1">
-                        <Eye className="size-3.5" />
-                        조회 {log.viewCount}
-                      </span>
-                    </div>
-                    <CardTitle className="line-clamp-2 text-lg">{log.title}</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <CardDescription className="line-clamp-3 text-sm leading-6 text-[#666666]">
-                      {getExcerpt(log.content)}
-                    </CardDescription>
-                  </CardContent>
-                </Card>
-              </Link>
-            ))}
+            {displayedLogs.map((log) => {
+              const document = documentByLog.get(log.id);
+              return (
+                <Link key={log.id} href={`/resources/${log.id}`}>
+                  <Card className="h-full rounded-2xl border-[#D9D9D9] bg-white text-[#1a1a1a] shadow-[var(--shadow-soft)] transition hover:border-blue-400 hover:bg-gray-50">
+                    <CardHeader className="space-y-3">
+                      <div className="flex flex-wrap items-center gap-2 text-xs text-[#666666]">
+                        <Badge
+                          variant="secondary"
+                          className="border border-[#D9D9D9] bg-gray-50 text-[#666666]"
+                        >
+                          {formatDate(log.classDate)}
+                        </Badge>
+                        {document && (
+                          <span>
+                            {document.weekNumber}주차 ·{" "}
+                            {[document.pdf && "PDF", document.hangul].filter(Boolean).join(" · ")}
+                          </span>
+                        )}
+                        <span>{log.authorName ?? "삭제된 사용자"}</span>
+                        <span className="inline-flex items-center gap-1">
+                          <Eye className="size-3.5" />
+                          조회 {log.viewCount}
+                        </span>
+                      </div>
+                      <CardTitle className="line-clamp-2 text-lg">{log.title}</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <CardDescription className="line-clamp-3 text-sm leading-6 text-[#666666]">
+                        {getExcerpt(log.content)}
+                      </CardDescription>
+                    </CardContent>
+                  </Card>
+                </Link>
+              );
+            })}
           </div>
         )}
       </section>

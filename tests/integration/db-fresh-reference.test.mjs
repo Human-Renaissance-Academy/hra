@@ -104,9 +104,9 @@ test(
           assert.match(value, /^[a-f0-9]{64}$/);
         assert.equal(reference.provenance.toolVersion, "0.31.11");
         // #507·#165·#159·#161·#162·#163·#636 검토 SQL은 목록에만 추가하며 이 기존 reference 실행 순서에는 편입하지 않습니다.
-        assert.equal(reference.provenance.inventoryLegacySqlSourceCount, 26);
+        assert.equal(reference.provenance.inventoryLegacySqlSourceCount, 27);
         assert.equal(reference.provenance.inventoryCandidateSqlSourceCount, 20);
-        assert.equal(reference.provenance.inventoryTotalSqlSourceCount, 46);
+        assert.equal(reference.provenance.inventoryTotalSqlSourceCount, 47);
         assert.equal(reference.provenance.rawSqlSourceCount, 18);
         ensure(
           reference.prefixes.every(
@@ -146,7 +146,9 @@ test(
         );
         ensure(
           reference.prefixes.every(
-            (prefix) => prefix.source !== "scripts/migrate-class-log-documents.sql",
+            (prefix) =>
+              prefix.source !== "scripts/migrate-class-log-documents.sql" &&
+              prefix.source !== "scripts/migrate-class-log-document-requests.sql",
           ),
           "FRESH_CLASS_LOG_DOCUMENT_CANDIDATE_NOT_APPLIED",
         );
