@@ -75,6 +75,7 @@ nav:
       - 카카오 기존 계정 연결: operations/kakao-legacy-binding.md
   - 자료실과 모집:
       - 자료실 조회 권한: resource-access-policy.md
+      - 주차별 수업일지 문서·수정본 설계: developer/class-log-document-design.md
       - 자료 파일 접근: resource-file-access-policy.md
       - 보고서 자료실 범위: REPORT-ARCHIVE-SCOPE.md
       - 보고서 저장 방식 결정: REPORT-STORAGE-DECISION.md
