@@ -15,6 +15,36 @@
   },
   "sources": [
     {
+      "ref": "scripts/migrate-class-log-documents.sql",
+      "phase": "custom-definition",
+      "fresh": {
+        "disposition": "unresolved",
+        "required": false,
+        "reason": "신규·기존 격리 DB의 수업일지 문서 구조 계약 후보이며 앱 쓰기와 운영 적용은 후속 작업이다."
+      },
+      "objects": [
+        "class-log-document-tables",
+        "class-log-document-guards"
+      ],
+      "requires": [
+        "web-base"
+      ],
+      "checks": [
+        "기존 일지의 열과 행을 유지하고 새 설치·기존 행·중복 적용의 원자 실패를 격리 PostgreSQL에서 검증한다.",
+        "파일 슬롯·최초 및 이전 버전·이력 보존 제약을 대조한다."
+      ],
+      "evidence": [
+        {
+          "file": "scripts/migrate-class-log-documents.sql",
+          "line": 1,
+          "note": "문서 기록·파일·수정본과 확정 이력 보호의 SQL 원문이다."
+        }
+      ],
+      "unresolved": [
+        "쓰기 서비스와 업로드 의도 소비는 후속 변경이며 운영 적용 및 자동 신규 설치 편입은 승인되지 않았다."
+      ]
+    },
+    {
       "ref": "scripts/migrate-507-email-identity-unique.sql",
       "phase": "custom-definition",
       "fresh": {
@@ -1934,6 +1964,62 @@
   ],
   "objects": [
     {
+      "id": "class-log-document-tables",
+      "kind": "table-set",
+      "names": [
+        "public.class_log_document_records",
+        "public.class_log_document_files",
+        "public.class_log_document_revisions"
+      ],
+      "owner": "scripts/migrate-class-log-documents.sql",
+      "definitions": [
+        {
+          "source": "scripts/migrate-class-log-documents.sql",
+          "relationship": "primary",
+          "reason": "수업일지 문서 저장과 확정 이력 보존의 정본이다."
+        }
+      ],
+      "requires": [
+        "web-base"
+      ],
+      "checks": [
+        "기존 일지의 열과 행을 유지하고 새 설치·기존 행·중복 적용의 원자 실패를 격리 PostgreSQL에서 검증한다.",
+        "파일 슬롯·최초 및 이전 버전·이력 보존 제약을 대조한다."
+      ],
+      "unresolved": [
+        "쓰기 서비스와 업로드 의도 소비는 후속 변경이며 운영 적용 및 자동 신규 설치 편입은 승인되지 않았다."
+      ],
+      "requiredForFresh": false
+    },
+    {
+      "id": "class-log-document-guards",
+      "kind": "trigger-set",
+      "names": [
+        "class_log_document_records_immutable",
+        "class_log_document_files_immutable",
+        "class_log_document_revisions_immutable"
+      ],
+      "owner": "scripts/migrate-class-log-documents.sql",
+      "definitions": [
+        {
+          "source": "scripts/migrate-class-log-documents.sql",
+          "relationship": "primary",
+          "reason": "수업일지 문서 저장과 확정 이력 보존의 정본이다."
+        }
+      ],
+      "requires": [
+        "class-log-document-tables"
+      ],
+      "checks": [
+        "기존 일지의 열과 행을 유지하고 새 설치·기존 행·중복 적용의 원자 실패를 격리 PostgreSQL에서 검증한다.",
+        "파일 슬롯·최초 및 이전 버전·이력 보존 제약을 대조한다."
+      ],
+      "unresolved": [
+        "쓰기 서비스와 업로드 의도 소비는 후속 변경이며 운영 적용 및 자동 신규 설치 편입은 승인되지 않았다."
+      ],
+      "requiredForFresh": false
+    },
+    {
       "id": "email-identity-unique",
       "kind": "index-set",
       "names": [
@@ -3722,6 +3808,7 @@
         }
       ],
       "exclusions": [
+        {"ref": "scripts/migrate-class-log-documents.sql", "reason": "수업일지 문서 구조는 전용 격리 테스트에서 검증하며 이 기존 설치 fixture에서는 적용하지 않는다."},
         {
           "ref": "scripts/migrate-507-email-identity-unique.sql",
           "reason": "기존 통합 fixture는 #507 검토 인덱스를 적용하지 않는다. 전용 auth 격리 경합 검증과 별개로 fresh bundle·운영 편입은 미해결이다."
@@ -3922,6 +4009,7 @@
         }
       ],
       "exclusions": [
+        {"ref": "scripts/migrate-class-log-documents.sql", "reason": "수업일지 문서 구조는 전용 격리 테스트에서 검증하며 이 기존 설치 fixture에서는 적용하지 않는다."},
         {
           "ref": "scripts/migrate-507-email-identity-unique.sql",
           "reason": "기존 통합 fixture는 #507 검토 인덱스를 적용하지 않는다. 전용 auth 격리 경합 검증과 별개로 fresh bundle·운영 편입은 미해결이다."
