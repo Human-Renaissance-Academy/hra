@@ -131,7 +131,7 @@ export default async function ResourcesPage({ searchParams }: Props) {
       }
     >
       <section
-        className={portalRole && !isAdmin ? "mb-2 space-y-1" : "mb-8 space-y-3 sm:mb-14 sm:space-y-4"}
+        className={portalRole && !isAdmin ? "mb-2" : "mb-8 space-y-3 sm:mb-14 sm:space-y-4"}
       >
         <div className="flex items-center gap-3">
           <div
