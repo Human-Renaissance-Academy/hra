@@ -131,7 +131,7 @@ export default async function ResourcesPage({ searchParams }: Props) {
       }
     >
       <section
-        className={portalRole && !isAdmin ? "sr-only" : "mb-8 space-y-3 sm:mb-14 sm:space-y-4"}
+        className={portalRole && !isAdmin ? "mb-2 space-y-1" : "mb-8 space-y-3 sm:mb-14 sm:space-y-4"}
       >
         <div className="flex items-center gap-3">
           <div
@@ -148,7 +148,7 @@ export default async function ResourcesPage({ searchParams }: Props) {
                 : "text-2xl font-bold text-[#1a1a1a] sm:text-3xl md:text-4xl lg:text-5xl"
             }
           >
-            {portalRole ? "학사포털" : "자료실"}
+            자료실
           </h1>
         </div>
         {!portalRole && (
