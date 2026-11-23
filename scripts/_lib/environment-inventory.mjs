@@ -617,6 +617,14 @@ export const environmentInventory = {
       "true가 아니면 자료실 반응형 QA skip; 통과 증거 아님",
     ),
     variable(
+      "HRA_CLASS_LOG_DOCUMENT_QA",
+      "qa",
+      "수업일지 문서 화면 격리 QA 시나리오",
+      false,
+      "자료실 QA 실행기의 --class-log-documents 실행에서 true를 전달",
+      "true가 아니면 전용 문서 화면 QA를 건너뜀",
+    ),
+    variable(
       "HRA_ACADEMIC_UI_QA",
       "qa",
       "학생 화면 격리 QA 시나리오",

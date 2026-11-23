@@ -115,6 +115,7 @@ Production·Preview·Development는 DB·공개/비공개 Blob·OAuth·세션 비
 | `HRA_ATTENDANCE_STAFF_PASSWORD` | 이번 실행의 합성 운영 인력 비밀번호 | Development 합성 검증 / CI 격리 실행; 합성 계정·격리 DB; 공급자 QA는 승인한 전용 namespace·원장만 | 예 | 전용 출결 UI 로그인 | 없으면 합성 계정 로그인 불가; 운영 비밀번호 재사용 금지 | 앱 예시에 넣지 않음 |
 | `HRA_ATTENDANCE_STUDENT_EMAIL` | 이번 실행의 합성 학생 이메일 | Development 합성 검증 / CI 격리 실행; 합성 계정·격리 DB; 공급자 QA는 승인한 전용 namespace·원장만 | 아니요 | 전용 출결 UI 로그인 | 없으면 합성 계정 로그인 불가; 실제 계정 사용 금지 | 앱 예시에 넣지 않음 |
 | `HRA_ATTENDANCE_STUDENT_PASSWORD` | 이번 실행의 합성 학생 비밀번호 | Development 합성 검증 / CI 격리 실행; 합성 계정·격리 DB; 공급자 QA는 승인한 전용 namespace·원장만 | 예 | 전용 출결 UI 로그인 | 없으면 합성 계정 로그인 불가; 운영 비밀번호 재사용 금지 | 앱 예시에 넣지 않음 |
+| `HRA_CLASS_LOG_DOCUMENT_QA` | 수업일지 문서 화면 격리 QA 시나리오 | Development 합성 검증 / CI 격리 실행; 합성 계정·격리 DB; 공급자 QA는 승인한 전용 namespace·원장만 | 아니요 | 자료실 QA 실행기의 --class-log-documents 실행에서 true를 전달 | true가 아니면 전용 문서 화면 QA를 건너뜀 | 앱 예시에 넣지 않음 |
 | `HRA_G1_APP_ORIGIN` | G1 격리 앱 origin | Development 합성 검증 / CI 격리 실행; 합성 계정·격리 DB; 공급자 QA는 승인한 전용 namespace·원장만 | 아니요 | G1 실행기가 생성 | 없거나 준비되지 않으면 G1 네트워크 검증 불가 | 앱 예시에 넣지 않음 |
 | `HRA_G1_STORE_ORIGIN` | G1 로컬 private 저장소 origin | Development 합성 검증 / CI 격리 실행; 합성 계정·격리 DB; 공급자 QA는 승인한 전용 namespace·원장만 | 아니요 | G1 실행기가 생성 | 없거나 준비되지 않으면 로컬 저장소 검증 불가; 운영 저장소 사용 금지 | 앱 예시에 넣지 않음 |
 | `HRA_PUBLIC_E2E_LIST` | 확장 공개 reporter의 수집 전용 구분 | Development 합성 검증 / CI 격리 실행; 합성 계정·격리 DB; 공급자 QA는 승인한 전용 namespace·원장만 | 아니요 | 격리 실행기의 --list 단계에서만 true | true가 아니면 필수 24개 사례의 실제 완료까지 검증 | 앱 예시에 넣지 않음 |

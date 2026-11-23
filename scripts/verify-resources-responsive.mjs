@@ -28,7 +28,7 @@ import {
 const repository = dirname(dirname(fileURLToPath(import.meta.url)));
 // 외부 자격 증명·NODE_OPTIONS를 상속하지 않고 실행에 필요한 시스템 값만 자식 환경으로 복사합니다.
 const allowedEnvironment = Object.fromEntries(
-  ["PATH", "HOME", "TMPDIR", "TMP", "TEMP", "SYSTEMROOT", "PLAYWRIGHT_BROWSERS_PATH"]
+  ["PATH", "HOME", "TMPDIR", "TMP", "TEMP", "SYSTEMROOT"]
     .filter((key) => process.env[key])
     .map((key) => [key, process.env[key]]),
 );

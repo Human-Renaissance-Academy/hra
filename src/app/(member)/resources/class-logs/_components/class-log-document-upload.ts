@@ -3,33 +3,56 @@
  * 같은 요청에서 전송을 완료한 슬롯을 기억하고 확정만 다시 요청할 수 있습니다.
  */
 import { put } from "@vercel/blob/client";
-import { z } from "zod/v4";
-
-const publishedResponse = z.object({
-  state: z.literal("published"),
-  logId: z.uuid(),
-  version: z.number().int().positive(),
-});
-
-const uploadResponse = z.object({
-  state: z.literal("upload"),
-  files: z.array(
-    z.object({
-      slot: z.enum(["pdf", "hangul"]),
-      pathname: z.string().min(1),
-      contentType: z.string().min(1),
-      token: z.string().min(1),
-    }),
-  ),
-});
-
-const responseSchema = z.discriminatedUnion("state", [
-  publishedResponse,
-  uploadResponse,
-  z.object({ state: z.literal("ready") }),
-]);
-
+// 객체 스키마의 런타임 코드 생성 검사 없이 브라우저의 CSP 안에서 응답을 검증합니다.
 type Slot = "pdf" | "hangul";
+type UploadTarget = { slot: Slot; pathname: string; contentType: string; token: string };
+type UploadResponse =
+  | { state: "published"; logId: string; version: number }
+  | { state: "upload"; files: UploadTarget[] }
+  | { state: "ready" };
+
+function isObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function isUploadTarget(value: unknown): value is UploadTarget {
+  return (
+    isObject(value) &&
+    (value.slot === "pdf" || value.slot === "hangul") &&
+    typeof value.pathname === "string" &&
+    value.pathname.length > 0 &&
+    typeof value.contentType === "string" &&
+    value.contentType.length > 0 &&
+    typeof value.token === "string" &&
+    value.token.length > 0
+  );
+}
+
+function parseResponse(body: unknown): UploadResponse | null {
+  if (!isObject(body)) return null;
+  if (body.state === "ready") return { state: "ready" };
+  if (
+    body.state === "published" &&
+    typeof body.logId === "string" &&
+    /^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i.test(body.logId) &&
+    typeof body.version === "number" &&
+    Number.isSafeInteger(body.version) &&
+    body.version > 0
+  ) {
+    return { state: "published", logId: body.logId, version: body.version };
+  }
+  if (
+    body.state === "upload" &&
+    Array.isArray(body.files) &&
+    body.files.length > 0 &&
+    body.files.length <= 2 &&
+    body.files.every(isUploadTarget)
+  ) {
+    return { state: "upload", files: body.files };
+  }
+  return null;
+}
+
 type FileMetadata = {
   fileFormat: "PDF" | "HWP" | "HWPX";
   originalName: string;
@@ -77,13 +100,13 @@ async function requestDocument(
   }
 
   const body: unknown = await response.json().catch(() => null);
-  const parsed = responseSchema.safeParse(body);
+  const parsed = parseResponse(body);
   // 파일 확인 또는 확정을 재시도할 수 있는 상태는 같은 요청 번호로 이어갑니다.
-  if (parsed.success && parsed.data.state === "ready") return parsed.data;
+  if (parsed?.state === "ready") return parsed;
   if (!response.ok) {
-    const failure = z.object({ code: z.string() }).safeParse(body);
-    if (failure.success && failure.data.code === "NOT_READY") return { state: "ready" } as const;
-    if (failure.success && failure.data.code === "EXPIRED") {
+    const code = isObject(body) ? body.code : null;
+    if (code === "NOT_READY") return { state: "ready" } as const;
+    if (code === "EXPIRED") {
       throw new ClassLogDocumentUploadError(
         "업로드 예약이 만료되었습니다. 같은 입력으로 다시 등록해 주세요.",
         true,
@@ -102,8 +125,8 @@ async function requestDocument(
     throw new ClassLogDocumentUploadError(messages[response.status] ?? retryMessage);
   }
 
-  if (!parsed.success) throw new ClassLogDocumentUploadError(retryMessage);
-  return parsed.data;
+  if (!parsed) throw new ClassLogDocumentUploadError(retryMessage);
+  return parsed;
 }
 
 /** 예약이 돌려준 파일 경로와 형식을 그대로 사용하며 확정에는 요청 번호만 전달합니다. */
